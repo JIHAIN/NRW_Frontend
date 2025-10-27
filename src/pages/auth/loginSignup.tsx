@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-gradient-to-br from-blue-50 via-white to-white">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-gradient from-blue-50 via-white to-white">
       {/* Left: Brand / Message */}
       <section className="hidden lg:flex flex-col justify-between p-12 bg-white border-r">
         <div>
