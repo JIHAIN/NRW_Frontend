@@ -38,11 +38,6 @@ function MainHome() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="w-full  mt-10 py-6 text-center text-gray-500 text-sm bg-white">
-        <p>© 2025 AlAin Project | Powered by OWPML & GPT</p>
-      </footer>
     </div>
   );
 }

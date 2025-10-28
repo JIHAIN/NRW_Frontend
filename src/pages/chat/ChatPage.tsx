@@ -27,12 +27,7 @@ export default function ChatUI() {
   };
 
   return (
-    <div className="flex flex-col h-screen mx-[25%] bg-blue-50">
-      {/* 상단 헤더 */}
-      <header className="border-0 rounded border-blue-200 bg-white p-3 flex gap-2 items-center">
-        ChatGPT 스타일 대화창 연습
-      </header>
-
+    <div className="flex flex-col h-screen max-h-150 mx-[20%] p-0 bg-blue-50">
       {/* 메시지 표시 영역 */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
         {messages.map((msg, i) => (
