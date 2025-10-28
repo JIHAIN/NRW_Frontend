@@ -96,7 +96,7 @@ export default function DocDetailModal({ doc, onClose }: DocDetailModalProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 py-6">
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100 p-6 text-sm text-slate-500">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-gradient from-slate-50 via-white to-slate-100 p-6 text-sm text-slate-500">
                 <p className="font-medium text-slate-700">
                   실제 문서 뷰어 자리
                 </p>

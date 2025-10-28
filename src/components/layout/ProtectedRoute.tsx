@@ -1,5 +1,5 @@
 // src/components/layout/ProtectedRoute.tsx
-import { Navigate, Outlet } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 // import { useAuth } from "../../hooks/useAuth"; // 로그인 상태를 가져오는 훅
 
 const ProtectedRoute = () => {
