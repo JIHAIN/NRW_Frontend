@@ -27,9 +27,9 @@ export default function ChatUI() {
   };
 
   return (
-    <div className="flex flex-col h-screen max-h-150 mx-[20%] p-0 bg-blue-50">
+    <div className="flex flex-col h-150 p-0">
       {/* 메시지 표시 영역 */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+      <div className="flex-1 overflow-y-auto px-5 py-10 flex flex-col gap-3">
         {messages.map((msg, i) => (
           <div
             key={i}
@@ -40,8 +40,8 @@ export default function ChatUI() {
             <Card
               className={`max-w-[75%] ${
                 msg.role === "user"
-                  ? "bg-blue-500 text-white rounded-br-none p-0"
-                  : "bg-gray-5s0 rounded-bl-none p-0"
+                  ? "bg-blue-400 text-white rounded-br-none p-0"
+                  : "bg-yellow-100 rounded-bl-none p-0"
               }`}
             >
               <CardContent className="p-3 text-sm whitespace-pre-wrap">
@@ -57,7 +57,7 @@ export default function ChatUI() {
       {/* 입력창 */}
       <form
         onSubmit={handleSend}
-        className="border-2 rounded-b-2xl border-blue-200 bg-white p-3 flex gap-2 items-center"
+        className="border-2 rounded-b-2xl border-blue-200  p-3 flex gap-2 items-center"
       >
         <Tooltip>
           <TooltipTrigger>

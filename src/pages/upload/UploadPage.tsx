@@ -66,12 +66,10 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 pt-12">
+    <div className="min-h-screen pb-20 pt-12">
       <section className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4">
         <header className="space-y-2">
-          <h1 className="text-3xl font-semibold text-slate-900">
-            문서 업로드
-          </h1>
+          <h1 className="text-3xl font-semibold text-slate-900">문서 업로드</h1>
           <p className="text-sm text-slate-600">
             RAG 인덱싱 파이프라인으로 보낼 문서를 업로드합니다. 실제 업로드
             로직은 추후 API 연동 시 구현하며, 지금은 흐름을 확인할 수 있는
@@ -91,7 +89,7 @@ export default function UploadPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <label className="block rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 hover:border-blue-200 hover:bg-blue-50/30">
+              <label className="block rounded-3xl border border-dashed border-slate-300  p-8 text-center text-slate-500 hover:border-blue-200 hover:bg-blue-50/30">
                 <div className="flex flex-col items-center gap-3">
                   <Upload className="size-8 text-blue-500" />
                   <div className="text-base font-medium text-slate-700">
@@ -186,9 +184,16 @@ export default function UploadPage() {
             <CardContent className="flex flex-col gap-3 py-6 text-sm text-slate-600">
               <p className="font-semibold text-slate-800">다음 단계 안내</p>
               <ol className="list-decimal space-y-2 pl-5">
-                <li>업로드 완료 시 문서 리스트에서 처리 상태를 확인할 수 있습니다.</li>
-                <li>텍스트 추출, 임베딩 생성 같은 비동기 작업은 준비 중입니다.</li>
-                <li>추후 알림/웹훅 연동으로 상태 변화를 받아볼 수 있도록 확장될 예정입니다.</li>
+                <li>
+                  업로드 완료 시 문서 리스트에서 처리 상태를 확인할 수 있습니다.
+                </li>
+                <li>
+                  텍스트 추출, 임베딩 생성 같은 비동기 작업은 준비 중입니다.
+                </li>
+                <li>
+                  추후 알림/웹훅 연동으로 상태 변화를 받아볼 수 있도록 확장될
+                  예정입니다.
+                </li>
               </ol>
             </CardContent>
           </Card>
