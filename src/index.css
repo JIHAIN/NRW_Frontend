@@ -7,11 +7,8 @@ body {
   /* 글꼴 렌더링을 부드럽게 만듦 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Pretendard 우선 사용, 영문 가독성을 위해 Inter 추가, 최종 fallback은 시스템 산세리프 */
-  font-family: "Pretendard", "Inter", system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
-    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
-    "Noto Color Emoji";
+  font-family: "Google Sans Flex", "Google Sans", "Helvetica Neue", sans-serif;
+  line-height: 1.6;
 }
 
 :root {

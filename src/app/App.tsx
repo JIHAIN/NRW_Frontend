@@ -10,10 +10,11 @@ function App() {
       <SidebarProvider>
         <div className="min-h-screen flex flex-1">
           <AppSidebar />
-          <div className="w-full flex-col">
-            <Header />
-            <main className="flex-1 overflow-y-auto">
-              <div className="mx-auto w-full max-w-5xl ">
+
+          <div className="w-full flex-col ">
+            <main className="flex-1 overflow-y-auto  ">
+              <Header />
+              <div className="mx-auto w-full max-w-5xl  ">
                 <AppRoutes />
               </div>
             </main>

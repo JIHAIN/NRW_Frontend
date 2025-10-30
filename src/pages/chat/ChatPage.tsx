@@ -73,6 +73,7 @@ export default function ChatUI() {
             <p className="">파일 추가 및 기타</p>
           </TooltipContent>
         </Tooltip>
+
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
