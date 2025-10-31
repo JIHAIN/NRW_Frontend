@@ -4,7 +4,7 @@ import { Routes, Route } from "react-router-dom";
 import AuthPage from "@/pages/auth/loginSignup";
 import MainHome from "@/pages";
 import DashBoard from "@/pages/dashboard/DashBoard";
-import ChatUI from "@/pages/chat/chat_page";
+import ChatUI from "@/pages/chat/ChatPage";
 import DocsListPage from "@/pages/docs/DocsListPage";
 import UploadPage from "@/pages/upload/UploadPage";
 // import ProtectedRoute from '../components/layout/ProtectedRoute'; // 가정

@@ -4,11 +4,7 @@ import * as React from "react";
 import {
   AudioWaveform,
   Command,
-  Frame,
   GalleryVerticalEnd,
-  Map,
-  PieChart,
-  BookAlertIcon,
   BookCheckIcon,
   Home,
   NotepadText,
