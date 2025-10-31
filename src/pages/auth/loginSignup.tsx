@@ -8,7 +8,6 @@ export default function AuthPage() {
       {/* Left: Brand / Message */}
       <section className="hidden lg:flex flex-col justify-between p-12 bg-white border-r">
         <div>
-          <img src="/public/alain_textOnly2.png" alt="AlAin" className="h-10" />
           <h1 className="mt-10 text-4xl font-bold text-gray-900">
             문서를 올리면, 문서가 말해주는 AI
           </h1>

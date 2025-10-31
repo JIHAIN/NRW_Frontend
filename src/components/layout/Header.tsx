@@ -1,14 +1,13 @@
 import { Link } from "react-router-dom";
-import { SidebarTrigger } from "../ui/sidebar";
 
 function Header() {
   return (
-    <div className="w-full  flex flex-col  text-gray-800">
-      <header className="w-full ">
+    <div className="w-full flex flex-col text-gray-800">
+      <header className="w-full">
         <div className=" mx-auto flex justify-between items-center p-4">
-          <SidebarTrigger />
+          <img src="./public/alain_textOnly2.png" className="h-10" />
           <Link to="/auth/login_signup">
-            <button className=" bg-blue-600 text-white px-6 py-1 rounded-4xl transition-transform duration-150 hover:scale-110">
+            <button className=" bg-blue-400 text-white px-6 py-1 rounded-xl transition-transform duration-150 hover:scale-110">
               로그인
             </button>
           </Link>
