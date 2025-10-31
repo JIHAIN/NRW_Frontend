@@ -29,7 +29,7 @@ const data = {
   user: {
     name: "알랭",
     email: "tkddn@temp.com",
-    avatar: "./public/alain_charLogo01_transparent.png",
+    avatar: "./alain_charLogo01_transparent.png",
   },
   teams: [
     {

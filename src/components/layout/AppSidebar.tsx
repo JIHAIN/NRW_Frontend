@@ -98,7 +98,7 @@ export function AppSidebar() {
   return (
     <Sidebar className="text-[14px] font-medium w-62">
       <SidebarHeader>
-        <img src=" public/alain_textOnly2.png" className="w-15 h-5" />
+        <img src=" ./alain_textOnly2.png" className="w-15 h-5" />
       </SidebarHeader>
       <SidebarContent className="w-full">
         <SidebarGroup className="flex flex-col gap-1">

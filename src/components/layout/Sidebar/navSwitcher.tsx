@@ -38,7 +38,7 @@ export function TeamSwitcher({
               className="flex justify-between data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <img
-                src=" ./public/newRun_noText.png"
+                src=" ./newRun_noText.png"
                 className="w-6 h-6 rounded-full group-data-[collapsible=icon]:hover:hidden  group-data-[collapsible=icon]:m-1"
               />
               <div className="grid flex-1 text-center text-sm leading-tight">
