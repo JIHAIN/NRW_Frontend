@@ -1,0 +1,91 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+
+body {
+  /* 글꼴 렌더링을 부드럽게 만듦 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: "Google Sans Flex", "Google Sans", "Helvetica Neue", sans-serif;
+  line-height: 1.6;
+}
+
+@layer compoonets {
+  /* 커스텀 컴포넌트 스타일 */
+
+  /* 유리같은 효과를 내는 클래스 */
+  .glass{
+   /* rounded-lg */
+  border-radius: 0.5rem; /* Tailwind의 rounded-lg 값 (8px) */
+
+  /* border-1 border-blue-200/50 */
+  border: 1px solid rgba(199, 210, 254, 0.5); /* blue-200 (RGB: 199, 210, 254)에 50% 투명도 적용 */
+
+  /* backdrop-blur-[5px] */
+  backdrop-filter: blur(5px); /* 요소 뒤 배경에 5px의 블러 효과 적용 */
+  -webkit-backdrop-filter: blur(5px); /* Safari 및 구형 브라우저 지원 */
+
+  /* bg-white/80 */
+  background-color: rgba(255, 255, 255, 0.8); /* 흰색 배경에 80% 투명도 적용 */
+  }
+
+  .glass-toltip{
+  /* border-1 border-blue-200/50 */
+  border: 1px solid rgba(199, 210, 254, 0.8); /* blue-200 (RGB: 199, 210, 254)에 50% 투명도 적용 */
+
+  /* backdrop-blur-[5px] */
+  backdrop-filter: blur(2px); /* 요소 뒤 배경에 5px의 블러 효과 적용 */
+  -webkit-backdrop-filter: blur(5px); /* Safari 및 구형 브라우저 지원 */
+
+  /* bg-white/80 */
+  background-color: rgba(255, 255, 255, 0.8); /* 흰색 배경에 80% 투명도 적용 */
+  padding: 0.5rem; /* 툴팁 내부 여백 */}
+}
+
+
+:root {
+  /* 라이트 모드 변수 */
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  /* 다크 모드 변수 */
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+/* 스크롤바 넓이지정 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+/* 스크롤바 트랙 꾸미기 */
+::-webkit-scrollbar-track {
+  background: #ffffff;
+  border-radius: 5px;
+}
+/* 스크롤바 손잡이 꾸미기 */
+::-webkit-scrollbar-thumb {
+  background: #0000001c;
+  border-radius: 5px;
+}
+/* 스크롤바 손잡이 호버 색 */
+::-webkit-scrollbar-thumb::hover {
+  background: #111;
+}
