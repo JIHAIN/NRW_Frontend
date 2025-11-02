@@ -26,7 +26,7 @@ function MainHome() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p className="">파일 추가 및 기타</p>
+                  <p >파일 추가 및 기타</p>
                 </TooltipContent>
               </Tooltip>
               <input

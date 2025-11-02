@@ -54,7 +54,7 @@ export function NavProjects({
       <SidebarMenu>
         {visibleProjects.map((item) => (
           <SidebarMenuItem key={item.name}>
-            <SidebarMenuButton asChild>
+            <SidebarMenuButton asChild className="cursor-pointer hover:bg-gray-200">
               <a href={item.url}>
                 <span>{item.name}</span>
               </a>
@@ -68,20 +68,20 @@ export function NavProjects({
                 </SidebarMenuAction>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-30 rounded-lg"
+                className="w-30 rounded-lg glass"
                 side={isMobile ? "bottom" : "right"}
                 align={isMobile ? "end" : "start"}
               >
-                <DropdownMenuItem>
-                  <Folder className="text-muted-foreground" />
-                  <span>보관하기</span>
+                <DropdownMenuItem className="cursor-pointer hover:bg-gray-200">
+                  <Folder className="text-muted-foreground " />
+                  <span >보관하기</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer hover:bg-gray-200">
                   <Forward className="text-muted-foreground" />
                   <span>공유하기</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer hover:bg-gray-200">
                   <Trash2 className="text-muted-foreground" />
                   <span>삭제하기</span>
                 </DropdownMenuItem>
@@ -93,7 +93,7 @@ export function NavProjects({
         {hasHiddenProjects && (
           <SidebarMenuItem>
             <SidebarMenuButton
-              className="text-sidebar-foreground/70"
+              className="text-sidebar-foreground/70 hover:bg-gray-200 cursor-pointer"
               onClick={handleToggleShow} // 클릭 시 목록을 토글
             >
               <MoreHorizontal className="text-sidebar-foreground/70" />

@@ -11,6 +11,39 @@ body {
   line-height: 1.6;
 }
 
+@layer compoonets {
+  /* 커스텀 컴포넌트 스타일 */
+
+  /* 유리같은 효과를 내는 클래스 */
+  .glass{
+   /* rounded-lg */
+  border-radius: 0.5rem; /* Tailwind의 rounded-lg 값 (8px) */
+
+  /* border-1 border-blue-200/50 */
+  border: 1px solid rgba(199, 210, 254, 0.5); /* blue-200 (RGB: 199, 210, 254)에 50% 투명도 적용 */
+
+  /* backdrop-blur-[5px] */
+  backdrop-filter: blur(5px); /* 요소 뒤 배경에 5px의 블러 효과 적용 */
+  -webkit-backdrop-filter: blur(5px); /* Safari 및 구형 브라우저 지원 */
+
+  /* bg-white/80 */
+  background-color: rgba(255, 255, 255, 0.8); /* 흰색 배경에 80% 투명도 적용 */
+  }
+
+  .glass-toltip{
+  /* border-1 border-blue-200/50 */
+  border: 1px solid rgba(199, 210, 254, 0.8); /* blue-200 (RGB: 199, 210, 254)에 50% 투명도 적용 */
+
+  /* backdrop-blur-[5px] */
+  backdrop-filter: blur(2px); /* 요소 뒤 배경에 5px의 블러 효과 적용 */
+  -webkit-backdrop-filter: blur(5px); /* Safari 및 구형 브라우저 지원 */
+
+  /* bg-white/80 */
+  background-color: rgba(255, 255, 255, 0.8); /* 흰색 배경에 80% 투명도 적용 */
+  padding: 0.5rem; /* 툴팁 내부 여백 */}
+}
+
+
 :root {
   /* 라이트 모드 변수 */
   --sidebar: hsl(0 0% 98%);
