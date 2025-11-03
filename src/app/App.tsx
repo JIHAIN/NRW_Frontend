@@ -13,7 +13,7 @@ function App() {
           <div className="w-full flex-col ">
             <main className="flex-1 overflow-y-auto bg-white  ">
               <Header />
-              <div className="mx-auto w-full max-w-5xl ">
+              <div className="mx-auto w-full ">
                 <AppRoutes />
               </div>
             </main>

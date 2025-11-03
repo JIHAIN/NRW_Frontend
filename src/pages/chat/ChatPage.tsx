@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, type DragEvent } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-// import { Input } from "@/components/ui/input"; // 남겨두지만 미사용. 필요 시 검색바 등에 재활용 가능.
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,13 +11,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   BadgeCheck,
-  CreditCard,
   Paperclip,
   X,
   File as FileIcon,
   ArrowBigUpIcon,
   Ellipsis,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // 유틸: 파일 크기 포맷팅
 function bytes(n: number) {
@@ -129,7 +133,7 @@ export default function ChatUI() {
 
   return (
     <div
-      className="flex flex-col h-[700px] rounded-3xl "
+      className="flex flex-col h-[700px] w-full max-w-6xl rounded-3xl "
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -140,7 +144,7 @@ export default function ChatUI() {
       )}
 
       {/* 메시지 영역 */}
-      <div className="flex-1 overflow-y-auto px-5 py-10 flex flex-col gap-3 rounded-t-2xl">
+      <div className="flex-1 overflow-y-auto px-5 py-10  flex flex-col gap-3 rounded-t-2xl">
         {messages.map((msg, i) => (
           <div
             key={i}
@@ -220,38 +224,50 @@ export default function ChatUI() {
 
         {/* 하단 행: 메뉴, textarea, 전송, 업로드 버튼 */}
         <div className="flex items-end gap-2  rounded-2xl border border-blue-100 focus:ring-2 focus:ring-blue-200">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="text-blue-600 size-9 px-1.5 rounded-2xl hover:bg-blue-50"
-                aria-label="열기"
+          <Tooltip>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <TooltipTrigger asChild>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="text-blue-600 size-9 px-1.5 rounded-2xl cursor-pointer"
+                    aria-label="열기"
+                  >
+                    <Ellipsis className="m-1" />
+                  </span>
+                </TooltipTrigger>
+              </DropdownMenuTrigger>
+              <TooltipContent>
+                <p>파일 추가</p>
+              </TooltipContent>
+
+              <DropdownMenuContent
+                align="start"
+                side="top"
+                sideOffset={8}
+                className="glass-toltip"
               >
-                <Ellipsis />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="top" sideOffset={8}>
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    openFilePicker();
-                  }}
-                >
-                  <Paperclip className="mr-2" /> 파일 업로드
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem>
-                  <BadgeCheck className="mr-2" /> 옵션 A
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <CreditCard className="mr-2" /> 옵션 B
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuGroup className="">
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      openFilePicker();
+                    }}
+                    className="point-gray"
+                  >
+                    <Paperclip className="mr-2" /> 파일 업로드
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup className="point-gray">
+                  <DropdownMenuItem>
+                    <BadgeCheck className="mr-2" /> 옵션 A
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Tooltip>
 
           {/* textarea: 자동 리사이즈, Shift+Enter 줄바꿈, Enter 전송 */}
           <textarea
@@ -267,19 +283,10 @@ export default function ChatUI() {
           />
           <button
             type="submit"
-            className="rounded-2xl bg-blue-600 px-3 py-2 text-white hover:bg-blue-700"
+            className="rounded-2xl bg-blue-600  p-2 text-white hover:bg-blue-700 cursor-pointer"
           >
             <ArrowBigUpIcon />
           </button>
-
-          {/* <button
-            type="button"
-            onClick={mockUpload}
-            className="rounded-2xl bg-gray-100 px-3 py-2 text-sm text-gray-700 hover:bg-gray-200"
-            title="업로드(자리표시자)"
-          >
-            <Upload className="inline size-4 mr-1" /> 업로드
-          </button> */}
         </div>
 
         {/* 하단 힌트 */}

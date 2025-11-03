@@ -7,6 +7,7 @@ import DashBoard from "@/pages/dashboard/DashBoard";
 import ChatUI from "@/pages/chat/ChatPage";
 import DocsListPage from "@/pages/docs/DocsListPage";
 import UploadPage from "@/pages/upload/UploadPage";
+import NotebookLikePage from "@/pages/notebook_like/notebook";
 // import ProtectedRoute from '../components/layout/ProtectedRoute'; // 가정
 // import Header from '../components/layout/Header'; // 가정
 // import Footer from '../components/layout/Footer'; // 가정
@@ -33,6 +34,7 @@ const AppRoutes = () => (
         element={<ProtectedRoute />} // 👈 보호된 루트 컴포넌트로 활용
     >
         {/*보호된 경로들*/}
+    <Route path="/note" element={<NotebookLikePage />} />
     <Route path="/dashboard" element={<DashBoard />} />
     <Route path="/chat" element={<ChatUI />} />
     <Route path="/docs" element={<DocsListPage />} />
