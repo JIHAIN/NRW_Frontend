@@ -56,7 +56,7 @@ const data = {
       items: [
         {
           title: "메인",
-          url: "/",
+          url: "/note",
         },
         {
           title: "대시보드",
@@ -210,17 +210,15 @@ const data = {
   ],
 };
 
-export function AppSidebar({
-  ...props
-}: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="icon" {...props}  >
-      <SidebarHeader >
+    <Sidebar collapsible="icon" {...props}>
+      <SidebarHeader>
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects}/>
+        <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />

@@ -9,11 +9,12 @@ function App() {
     <GlobalProvider>
       <SidebarProvider>
         <div className="min-h-screen flex flex-1">
-          <AppSidebar />
-          <div className="w-full flex-col ">
-            <main className="flex-1 overflow-y-auto bg-white  ">
-              <Header />
-              <div className="mx-auto w-full ">
+          <AppSidebar className="bg-slate-50" />
+          <div className="w-full flex flex-col ">
+            {/* 헤더 고정 높이는 46px */}
+            <Header />
+            <main className="flex-1 overflow-y-hidden bg-white  ">
+              <div className="mx-auto w-full h-full bg-slate-50 overflow-hidden">
                 <AppRoutes />
               </div>
             </main>

@@ -1,114 +1,67 @@
-import * as Tooltip from "@radix-ui/react-tooltip";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Sidebar } from "./note_layour/sidebar";
-import { Topbar } from "./note_layour/Topbar";
-import { ContextPane } from "./note_layour/ContextPane";
+import { DocList } from "./note_layour/DocList";
 import { DocViewer } from "./note_layour/DocViewer";
 import { ChatPanel } from "./note_layour/ChatPanel";
-
-/**
- * NotebookLM-like 레이아웃 (React 19 + Vite + Tailwind v4 구성 호환)
- * - 좌측: 사이드바(노트북/문서 리스트)
- * - 중앙: 상단 헤더 + 본문 2단(문서 뷰어 | 대화/질의응답)
- * - 우측: 컨텍스트 패널(메타/요약/작업)
- *
- * 분리 권장 컴포넌트
- * 1) Sidebar      → <Sidebar />
- * 2) Topbar       → <Topbar />
- * 3) DocViewer    → <DocViewer />
- * 4) ChatPanel    → <ChatPanel />
- * 5) ContextPane  → <ContextPane />
- *
- * 본 파일은 단일 구성으로 제공. 필요 시 위 5개로 분리하면 유지보수 용이.
- */
+import { useState } from "react";
+import { IterationCcwIcon } from "lucide-react";
+import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
 export default function NotebookLikePage() {
+  // 페이지 전환기능용
+  const [SidevarOn, setSidevarOn] = useState(true);
+
+  const handleSwap = () => {
+    setSidevarOn((prev) => !prev);
+  };
+
+  const mainContent = SidevarOn ? <DocViewer /> : <DocList />;
+  // 여기까지 페이지 전환기능
+
   return (
-    <div className="min-h-screen w-full bg-blue-50 text-[14px]">
-      <div className="grid grid-cols-[280px_minmax(0,1fr)_360px] grid-rows-[auto_minmax(0,1fr)] gap-0 w-full  mx-auto">
-        {/* Sidebar */}
-        <aside className="row-span-2 border-r border-blue-100 bg-white/60 backdrop-blur-sm">
-          <Sidebar />
-        </aside>
+    <div className="flex-1 overflow-hidden w-full h-full max-w-full text-[14px] ">
+      <main className="col-span-1 overflow-hidden h-full ">
+        <PanelGroup direction="horizontal" className="h-full">
+          {/* ================================== */}
+          {/* Panel 1 (DocViewer / DocList) */}
+          {/* ================================== */}
+          <Panel defaultSize={50} minSize={10}>
+            <section className=" h-full w-full flex flex-col bg-white  ">
+              <div className="flex justify-between border-b border-blue-100 px-4 py-2">
+                <div className="text-xs font-semibold text-blue-900/70  ">
+                  문서 뷰어
+                </div>
+                <button
+                  onClick={handleSwap}
+                  className=" text-blue-300 rounded-2xl point-hover"
+                >
+                  <IterationCcwIcon size={20} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden px-4">{mainContent}</div>
+            </section>
+          </Panel>
 
-        {/* Topbar spans middle+right */}
-        <header className="col-span-2 border-b border-blue-100 bg-white/70 backdrop-blur-sm">
-          <Topbar />
-        </header>
+          {/* 사이즈 조절 경계선 */}
+          <PanelResizeHandle className="border border-blue-50" />
 
-        {/* Main content area */}
-        <main className="col-span-1 overflow-hidden">
-          <MainTwoPane />
-        </main>
-
-        {/* Right contextual pane */}
-        <aside className="border-l border-blue-100 bg-white/60 backdrop-blur-sm overflow-y-auto">
-          <ContextPane />
-        </aside>
-      </div>
+          {/* ================================== */}
+          {/* Panel 2 (ChatPanel) */}
+          {/* ================================== */}
+          <Panel defaultSize={50} minSize={10}>
+            <section className=" h-full bg-white w-full flex flex-col">
+              <div className="border-b border-blue-100 px-4 py-1 ">
+                <div className="mb-3 text-xs  font-semibold text-blue-900/70 ">
+                  채팅
+                </div>
+              </div>
+              <div className="flex-1 overflow-hidden pb-3 flex flex-col gap-4">
+                <ChatPanel />
+              </div>
+            </section>
+          </Panel>
+        </PanelGroup>
+      </main>
     </div>
-  );
-}
-
-/* ------------- Main two-pane ------------- */
-export function MainTwoPane() {
-  return (
-    <div className="h-full grid grid-cols-2">
-      <DocViewer />
-      <ChatPanel />
-    </div>
-  );
-}
-
-/* ---------------- Small UI bits ----------- */
-export function Panel({
-  title,
-  icon,
-  children,
-}: {
-  title: string;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-blue-100 bg-white p-3">
-      <div className="flex items-center gap-2 text-sm font-medium mb-2">
-        {icon}
-        {title}
-      </div>
-      <div className="text-[13px] text-blue-900/80">{children}</div>
-    </div>
-  );
-}
-
-export function IconButton({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Tooltip.Provider>
-      <Tooltip.Root>
-        <Tooltip.Trigger asChild>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center size-8 rounded-lg hover:bg-blue-100 text-blue-700"
-            aria-label={label}
-            title={label}
-          >
-            {children}
-          </button>
-        </Tooltip.Trigger>
-        <Tooltip.Content
-          sideOffset={6}
-          className="rounded-md border border-blue-100 bg-white px-2 py-1 text-xs shadow-sm"
-        >
-          {label}
-        </Tooltip.Content>
-      </Tooltip.Root>
-    </Tooltip.Provider>
   );
 }
 
@@ -118,7 +71,7 @@ export function Dropdown({
   align = "start",
 }: {
   children: React.ReactNode; // ← 필수
-  items: { label: string; icon?: React.ReactNode }[]; // ← 아이콘은 JSX
+  items: { label: string; icon?: React.ReactNode }[];
   align?: "start" | "end";
 }) {
   return (

@@ -54,7 +54,7 @@ export function NavProjects({
       <SidebarMenu>
         {visibleProjects.map((item) => (
           <SidebarMenuItem key={item.name}>
-            <SidebarMenuButton asChild className="cursor-pointer hover:bg-gray-200">
+            <SidebarMenuButton asChild className="point-hover">
               <a href={item.url}>
                 <span>{item.name}</span>
               </a>
@@ -72,16 +72,16 @@ export function NavProjects({
                 side={isMobile ? "bottom" : "right"}
                 align={isMobile ? "end" : "start"}
               >
-                <DropdownMenuItem className="cursor-pointer hover:bg-gray-200">
+                <DropdownMenuItem className="point-hover">
                   <Folder className="text-muted-foreground " />
-                  <span >보관하기</span>
+                  <span>보관하기</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer hover:bg-gray-200">
+                <DropdownMenuItem className="point-hover">
                   <Forward className="text-muted-foreground" />
                   <span>공유하기</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer hover:bg-gray-200">
+                <DropdownMenuItem className="point-hover">
                   <Trash2 className="text-muted-foreground" />
                   <span>삭제하기</span>
                 </DropdownMenuItem>
@@ -93,7 +93,7 @@ export function NavProjects({
         {hasHiddenProjects && (
           <SidebarMenuItem>
             <SidebarMenuButton
-              className="text-sidebar-foreground/70 hover:bg-gray-200 cursor-pointer"
+              className="text-sidebar-foreground/70 point-hover"
               onClick={handleToggleShow} // 클릭 시 목록을 토글
             >
               <MoreHorizontal className="text-sidebar-foreground/70" />

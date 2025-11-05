@@ -8,6 +8,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   font-family: "Google Sans Flex", "Google Sans", "Helvetica Neue", sans-serif;
   line-height: 1.6;
+  outline: none;
 }
 
 @layer compoonets {
@@ -51,12 +52,18 @@ body {
     ); /* 흰색 배경에 80% 투명도 적용 */
     /* padding: 0.5rem; */
   }
-  .point-gray {
+  .point-hover {
     cursor: pointer;
     &:hover {
-      background: var(--color-gray-200);
+      background: var(--color-blue-100);
     }
   }
+}
+
+html,
+body,
+#root {
+  height: 100%;
 }
 
 :root {

@@ -41,7 +41,7 @@ export function NavUser({
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild className="cursor-pointer hover:bg-gray-200">
+          <DropdownMenuTrigger asChild className="point-hover">
             <SidebarMenuButton
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
@@ -77,28 +77,28 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem className="cursor-pointer hover:bg-gray-200">
+              <DropdownMenuItem className="point-hover">
                 <Sparkles />
                 Upgrade to Pro
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem className="cursor-pointer hover:bg-gray-200">
+              <DropdownMenuItem className="point-hover">
                 <BadgeCheck />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer hover:bg-gray-200">
+              <DropdownMenuItem className="point-hover">
                 <CreditCard />
                 Billing
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer hover:bg-gray-200">
+              <DropdownMenuItem className="point-hover">
                 <Bell />
                 Notifications
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer hover:bg-gray-200">
+            <DropdownMenuItem className="point-hover">
               <LogOut />
               Log out
             </DropdownMenuItem>

@@ -13,7 +13,11 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function TeamSwitcher({
   teams,
@@ -30,10 +34,9 @@ export function TeamSwitcher({
   if (!activeTeam) {
     return null;
   }
-  const tooltipText = isSidebarOpen ? '사이드바 닫기' : '사이드바 열기';
+  const tooltipText = isSidebarOpen ? "사이드바 닫기" : "사이드바 열기";
 
   return (
-    
     <SidebarMenu className="group">
       <SidebarMenuItem>
         <DropdownMenu modal={false}>
@@ -52,7 +55,7 @@ export function TeamSwitcher({
               </div>
               <Tooltip>
                 <TooltipTrigger>
-                  <SidebarTrigger className="w-10 h-10  cursor-ew-resize hover:bg-gray-200" />
+                  <SidebarTrigger className="w-10 h-10  cursor-ew-resize hover:bg-blue-100" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{tooltipText}</p>
