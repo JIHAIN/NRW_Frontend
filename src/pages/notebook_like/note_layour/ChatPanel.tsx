@@ -133,7 +133,8 @@ export function ChatPanel() {
 
   return (
     <div
-      className="flex flex-col h-full  w-full max-w-6xl rounded-xl "
+      // className="flex flex-col h-full w-full max-w-6xl rounded-xl "
+      className="flex flex-col w-full h-[88vh] max-w-6xl rounded-xl relative min-h-0"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -143,7 +144,7 @@ export function ChatPanel() {
         <div className="pointer-events-none absolute inset-0 z-20 rounded-3xl border-dashed border-blue-400/70 bg-blue-100/50" />
       )}
       {/* 메시지 영역 */}
-      <div className="flex-1  overflow-y-auto px-5 py-10 flex flex-col gap-3 rounded-t-2xl">
+      <div className="flex-1 overflow-y-auto min-h-0 px-4 pt-8 flex flex-col gap-2 rounded-t-2xl">
         {messages.map((msg, i) => (
           <div
             key={i}
@@ -173,7 +174,7 @@ export function ChatPanel() {
           e.preventDefault();
           send();
         }}
-        className=" bg-white rounded-b-2xl p-2 flex flex-col gap-2"
+        className=" rounded-b-2xl p-2 flex flex-col gap-2 shrink-0"
       >
         {/* 숨김 파일 입력 */}
         <input
@@ -186,14 +187,14 @@ export function ChatPanel() {
 
         {/* 첨부 리스트: 입력창 내부 상단에 칩 형태로 표시. 존재 시 컴포저 높이만 증가 */}
         {files.length > 0 && (
-          <div className="flex flex-wrap items-start gap-2 px-1">
-            <div className="text-xs text-gray-600 mr-1">
+          <div className="flex flex-wrap items-start gap-2 p-2 glass">
+            <div className="text-xs text-gray-600 mr-1 pb-1 w-full border-b border-blue-100 ">
               첨부 {files.length}개
             </div>
             {files.map((f, i) => (
               <div
                 key={`${f.name}-${i}`}
-                className="group flex items-center gap-2 rounded-lg border px-2 py-1 text-xs bg-white"
+                className="group flex items-center gap-2 rounded-lg border px-2 py-1 text-xs  glass"
               >
                 <FileIcon className="size-3.5" />
                 <span
@@ -214,7 +215,7 @@ export function ChatPanel() {
             <button
               type="button"
               onClick={() => setFiles([])}
-              className="ml-auto text-[11px] text-gray-500 hover:text-gray-800"
+              className="ml-auto text-[11px] text-gray-500 point-hover"
             >
               모두 제거
             </button>
@@ -247,19 +248,19 @@ export function ChatPanel() {
                 sideOffset={8}
                 className="glass-toltip"
               >
-                <DropdownMenuGroup className="">
+                <DropdownMenuGroup>
                   <DropdownMenuItem
                     onSelect={(e) => {
                       e.preventDefault();
                       openFilePicker();
                     }}
-                    className="point-gray"
+                    className="point-hover backdrop-grayscale"
                   >
                     <Paperclip className="mr-2" /> 파일 업로드
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuGroup className="point-gray">
+                <DropdownMenuGroup className="point-hover backdrop-grayscale">
                   <DropdownMenuItem>
                     <BadgeCheck className="mr-2" /> 옵션 A
                   </DropdownMenuItem>
@@ -278,7 +279,7 @@ export function ChatPanel() {
             onCompositionEnd={() => setIsComposing(false)}
             placeholder="ALAiN에게 물어보기"
             rows={1}
-            className="flex-1 max-h-[200px] resize-none  px-4 py-2 text-sm focus:outline-none scroll-auto"
+            className="flex-1 max-h-[200px] resize-none  px-4 py-2 text-sm focus:outline-none scroll-auto "
           />
           <button
             type="submit"

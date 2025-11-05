@@ -51,7 +51,7 @@ export function TeamSwitcher({
               />
               <div className="grid flex-1 text-center text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-medium">NEURON WAY</span>
-                <span className="truncate text-xs">ALAiN</span>
+                <span className="truncate text-xs">Alain</span>
               </div>
               <Tooltip>
                 <TooltipTrigger>

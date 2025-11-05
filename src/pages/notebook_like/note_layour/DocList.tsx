@@ -8,7 +8,7 @@ export function DocList() {
     <div className="h-full flex flex-col">
       <div className="p-3 flex-1 overflow-y-auto">
         <div className="mb-2 flex items-center justify-between">
-          <div className="mt-3 flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-2 py-1.5">
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-blue-100  px-2 py-1.5">
             <Search className="size-4 text-blue-600" />
             <input
               placeholder="검색"

@@ -45,35 +45,6 @@ const mockDocuments: DocumentDetail[] = [
       },
     ],
   },
-
-  {
-    id: "DOC-2024-026",
-    title: "고객 Onboarding 매뉴얼 초안",
-    type: "DOCX",
-    status: "error",
-    uploadedAt: "2024-10-22 11:05",
-    size: "1.1 MB",
-    owner: "CS팀",
-    description:
-      "CS 매뉴얼 초안. 파일 포맷 변환 중 에러가 발생해 재업로드가 필요합니다.",
-    tags: ["CS", "매뉴얼", "에러"],
-    pages: 26,
-    preview:
-      "현재 문서를 열 수 없습니다. 원본 파일 재확인이 필요합니다.\n\n에러 코드: CONVERT-415",
-    recentActivity: [
-      {
-        actor: "시스템",
-        action: "파일 포맷 변환 중 오류가 감지되었습니다.",
-        at: "2024-10-22 11:07",
-      },
-      {
-        actor: "최지원",
-        action: "초안 버전을 업로드했습니다.",
-        at: "2024-10-22 11:05",
-      },
-    ],
-  },
-
   {
     id: "DOC-2024-017",
     title: "규정집 2024 개정본",
@@ -101,7 +72,33 @@ const mockDocuments: DocumentDetail[] = [
       },
     ],
   },
-
+  {
+    id: "DOC-2024-017",
+    title: "규정집 2024 개정본",
+    type: "PDF",
+    status: "processing",
+    uploadedAt: "2024-10-18 09:01",
+    size: "6.2 MB",
+    owner: "정예린 / 운영지원팀",
+    description:
+      "사내 업무 규정 변경분에 대한 정리 자료. 현재 OCR 기반 텍스트 추출이 진행 중입니다.",
+    tags: ["규정", "운영지원", "OCR"],
+    pages: 72,
+    preview:
+      "업데이트 요약\n- 휴가 규정 개정\n- 보안 정책 추가 항목\n\n처리 상태: 텍스트 추출 중 (35%)",
+    recentActivity: [
+      {
+        actor: "시스템",
+        action: "텍스트 추출 작업이 35% 진행되었습니다.",
+        at: "2024-10-18 09:27",
+      },
+      {
+        actor: "정예린",
+        action: "신규 규정 PDF를 업로드했습니다.",
+        at: "2024-10-18 09:01",
+      },
+    ],
+  },
   {
     id: "DOC-2024-021",
     title: "문서 QA 로그 10월 3주차",
@@ -125,410 +122,159 @@ const mockDocuments: DocumentDetail[] = [
     ],
   },
   {
-    id: "PRD-2024-005",
-    title: "새로운 기능 '실시간 알림' 제품 요구사항 정의서",
-    type: "PDF",
-    status: "processing",
-    uploadedAt: "2024-10-25 10:30",
-    size: "1.2 MB",
-    owner: "기획팀",
-    description:
-      "2025년 Q1 릴리즈 목표 '실시간 알림 시스템' 개발을 위한 상세 요구사항 및 화면 설계.",
-    tags: ["기획", "요구사항", "알림"],
-    pages: 25,
-    preview:
-      "핵심 목표: 사용자 참여율 15% 증대. 시스템 구조: Redis Pub/Sub 기반. 주요 화면: 설정, 알림 목록.",
-    recentActivity: [
-      {
-        actor: "디자인팀",
-        action: "알림 아이콘 3종 디자인 초안을 추가했습니다.",
-        at: "2024-10-28 14:00",
-      },
-    ],
-  },
-  {
-    id: "DEV-2024-112",
-    title: "API 명세서 V2.1",
-    type: "YAML",
-    status: "ready",
-    uploadedAt: "2024-10-29 09:00",
-    size: "250 KB",
-    owner: "개발팀",
-    description:
-      "새로운 결제 모듈 연동을 위한 백엔드 API 명세. OpenAPI 3.0 규격 준수.",
-    tags: ["개발", "백엔드", "API"],
-    pages: 1,
-    preview:
-      "/api/v2/payments - POST, GET 요청 상세 스키마 정의. 토큰 인증 필수.",
-    recentActivity: [
-      {
-        actor: "개발팀",
-        action: "결제 성공 코드(201) 응답 예시를 수정했습니다.",
-        at: "2024-10-30 11:30",
-      },
-    ],
-  },
-  {
-    id: "HR-2024-040",
-    title: "2025년 신규 입사자 온보딩 매뉴얼",
+    id: "DOC-2024-026",
+    title: "고객 Onboarding 매뉴얼 초안",
     type: "DOCX",
-    status: "ready",
-    uploadedAt: "2024-10-01 18:00",
-    size: "3.5 MB",
-    owner: "인사팀",
+    status: "error",
+    uploadedAt: "2024-10-22 11:05",
+    size: "1.1 MB",
+    owner: "CS팀",
     description:
-      "신규 입사자를 위한 회사 소개, 복지, 주요 시스템 사용법 가이드.",
-    tags: ["HR", "매뉴얼", "가이드"],
-    pages: 50,
-    preview: "목차: 1. 환영 인사 2. 조직 문화 3. 주요 복지 4. 개발 환경 설정.",
+      "CS 매뉴얼 초안. 파일 포맷 변환 중 에러가 발생해 재업로드가 필요합니다.",
+    tags: ["CS", "매뉴얼", "에러"],
+    pages: 26,
+    preview:
+      "현재 문서를 열 수 없습니다. 원본 파일 재확인이 필요합니다.\n\n에러 코드: CONVERT-415",
     recentActivity: [
       {
-        actor: "인사팀",
-        action: "개정된 연차 휴가 규정을 반영했습니다.",
-        at: "2024-10-05 09:00",
+        actor: "시스템",
+        action: "파일 포맷 변환 중 오류가 감지되었습니다.",
+        at: "2024-10-22 11:07",
+      },
+      {
+        actor: "최지원",
+        action: "초안 버전을 업로드했습니다.",
+        at: "2024-10-22 11:05",
       },
     ],
   },
   {
-    id: "MKT-2024-015",
-    title: "검색 엔진 최적화(SEO) 개선 전략 보고서",
-    type: "PPTX",
+    id: "DOC-2024-001",
+    title: "AI 프로젝트 제안서 v3.1",
+    type: "HWPX 보고서",
     status: "ready",
-    uploadedAt: "2024-10-15 13:00",
-    size: "5.1 MB",
-    owner: "마케팅팀",
-    description: "웹사이트 트래픽 증대를 위한 SEO 분석 결과 및 실행 계획.",
-    tags: ["마케팅", "보고서", "SEO"],
+    uploadedAt: "2024-10-12 14:23",
+    size: "2.4 MB",
+    owner: "김민지 / 전략기획팀",
+    description:
+      "AI 프로젝트의 추진 배경과 추진 전략, RAG 기반 질의 시스템 도입 계획을 정리한 문서입니다.",
+    tags: ["제안서", "AI", "RAG", "전략"],
     pages: 18,
     preview:
-      "현황: 주요 키워드 순위 평균 25위. 목표: 3개월 내 10위권 진입. 실행: 메타태그, 콘텐츠 보강.",
+      "프로젝트 목표\n- 사내 문서 검색 효율화\n- 근거 기반 질의응답 제공\n\n핵심 일정\n1. PoC (11월)\n2. 본개발 (12월~)\n3. 베타 오픈 (3월)",
     recentActivity: [
       {
-        actor: "마케팅팀",
-        action: "경쟁사 분석 슬라이드를 추가했습니다.",
-        at: "2024-10-16 10:00",
+        actor: "김민지",
+        action: "문서 본문을 최신 요구사항으로 업데이트했습니다.",
+        at: "2024-10-14 09:12",
+      },
+      {
+        actor: "홍길동",
+        action: "QA 세션에서 12건의 질의가 처리되었습니다.",
+        at: "2024-10-13 18:45",
       },
     ],
   },
   {
-    id: "LOG-2024-044",
-    title: "프론트엔드 오류 로그 11월 1일자",
-    type: "JSON",
-    status: "error",
-    uploadedAt: "2024-11-02 08:30",
-    size: "15.7 MB",
-    owner: "FE개발팀",
-    description:
-      "특정 환경에서의 로그인 실패 관련 자바스크립트 콘솔 오류 로그.",
-    tags: ["로그", "프론트엔드", "에러"],
-    pages: 1,
-    preview:
-      "오류 유형: TypeError: Cannot read properties of undefined. 발생 환경: Chrome 120, Mobile.",
-    recentActivity: [
-      {
-        actor: "BE개발팀",
-        action: "API 응답 데이터 구조 문제인지 확인 중입니다.",
-        at: "2024-11-02 10:00",
-      },
-    ],
-  },
-  {
-    id: "SEC-2024-001",
-    title: "2024년 정기 보안 감사 보고서",
+    id: "DOC-2024-017",
+    title: "규정집 2024 개정본",
     type: "PDF",
-    status: "ready",
-    uploadedAt: "2024-09-30 16:45",
-    size: "4.8 MB",
-    owner: "보안팀",
-    description: "외부 전문 기관을 통한 시스템 전반의 보안 취약점 점검 결과.",
-    tags: ["보안", "감사", "보고서"],
-    pages: 88,
-    preview:
-      "결론: 중대한 취약점 없음. 권고 사항: 비밀번호 정책 강화, 라이브러리 업데이트 주기 단축.",
-    recentActivity: [
-      {
-        actor: "보안팀",
-        action: "최종 검토 및 승인되었습니다.",
-        at: "2024-10-01 10:00",
-      },
-    ],
-  },
-  {
-    id: "UIX-2024-008",
-    title: "결제 플로우 A/B 테스트 결과 리포트",
-    type: "XLSX",
-    status: "ready",
-    uploadedAt: "2024-10-10 11:00",
-    size: "780 KB",
-    owner: "디자인팀",
-    description:
-      "개선된 결제 화면(B안)과 기존 화면(A안)의 전환율 비교 분석 데이터.",
-    tags: ["UX", "A/B테스트", "데이터"],
-    pages: 1,
-    preview:
-      "전환율: A안 3.5%, B안 4.1%. 결론: B안 채택. 개선 요인: 버튼 색상 대비 증가.",
-    recentActivity: [
-      {
-        actor: "기획팀",
-        action: "결과 데이터를 기반으로 서비스 정책 수정 회의를 요청했습니다.",
-        at: "2024-10-10 15:00",
-      },
-    ],
-  },
-  {
-    id: "PLAN-2025-001",
-    title: "2025년도 개발 로드맵 (초안)",
-    type: "PPTX",
     status: "processing",
-    uploadedAt: "2024-11-01 14:00",
-    size: "3.1 MB",
-    owner: "경영지원팀",
+    uploadedAt: "2024-10-18 09:01",
+    size: "6.2 MB",
+    owner: "정예린 / 운영지원팀",
     description:
-      "내년도 핵심 프로젝트, 인력 계획, 기술 스택 방향성이 포함된 발표 자료.",
-    tags: ["로드맵", "계획", "전략"],
-    pages: 12,
+      "사내 업무 규정 변경분에 대한 정리 자료. 현재 OCR 기반 텍스트 추출이 진행 중입니다.",
+    tags: ["규정", "운영지원", "OCR"],
+    pages: 72,
     preview:
-      "Q1: MSA 전환 검토. Q2: 글로벌 서비스 확장 준비. 기술: Python/GoLang 채택 논의.",
+      "업데이트 요약\n- 휴가 규정 개정\n- 보안 정책 추가 항목\n\n처리 상태: 텍스트 추출 중 (35%)",
     recentActivity: [
       {
-        actor: "대표이사",
-        action: "데이터 기반 의사결정 강화를 주문했습니다.",
-        at: "2024-11-04 10:00",
+        actor: "시스템",
+        action: "텍스트 추출 작업이 35% 진행되었습니다.",
+        at: "2024-10-18 09:27",
+      },
+      {
+        actor: "정예린",
+        action: "신규 규정 PDF를 업로드했습니다.",
+        at: "2024-10-18 09:01",
       },
     ],
   },
   {
-    id: "LEG-2024-003",
-    title: "개인정보 처리 방침 개정(안)",
-    type: "DOCX",
+    id: "DOC-2024-017",
+    title: "규정집 2024 개정본",
+    type: "PDF",
     status: "processing",
-    uploadedAt: "2024-10-22 17:30",
-    size: "50 KB",
-    owner: "법무팀",
-    description: "최근 법률 개정 사항을 반영한 개인정보 처리 방침의 수정 버전.",
-    tags: ["법무", "정책", "개인정보"],
-    pages: 5,
+    uploadedAt: "2024-10-18 09:01",
+    size: "6.2 MB",
+    owner: "정예린 / 운영지원팀",
+    description:
+      "사내 업무 규정 변경분에 대한 정리 자료. 현재 OCR 기반 텍스트 추출이 진행 중입니다.",
+    tags: ["규정", "운영지원", "OCR"],
+    pages: 72,
     preview:
-      "주요 변경: 보유 및 이용 기간 명확화. 민감 정보 처리 동의 항목 추가.",
+      "업데이트 요약\n- 휴가 규정 개정\n- 보안 정책 추가 항목\n\n처리 상태: 텍스트 추출 중 (35%)",
     recentActivity: [
       {
-        actor: "법무팀",
-        action: "최종 승인을 위해 경영지원팀에 전달했습니다.",
-        at: "2024-10-23 09:00",
+        actor: "시스템",
+        action: "텍스트 추출 작업이 35% 진행되었습니다.",
+        at: "2024-10-18 09:27",
+      },
+      {
+        actor: "정예린",
+        action: "신규 규정 PDF를 업로드했습니다.",
+        at: "2024-10-18 09:01",
       },
     ],
   },
   {
-    id: "LOG-2024-045",
-    title: "백엔드 부하 테스트 결과 로그",
-    type: "ZIP",
-    status: "ready",
-    uploadedAt: "2024-11-04 15:00",
-    size: "20.5 MB",
-    owner: "BE개발팀",
-    description:
-      "JMeter를 활용한 동시 사용자 1000명 부하 테스트 결과 원본 로그 파일.",
-    tags: ["로그", "테스트", "성능"],
-    pages: 1,
-    preview: "최대 TPS: 120. 평균 응답시간: 550ms. 병목 구간: DB 연결 풀.",
-    recentActivity: [
-      {
-        actor: "BE개발팀",
-        action: "결과 압축 파일을 업로드했습니다.",
-        at: "2024-11-04 15:00",
-      },
-    ],
-  },
-  {
-    id: "REQ-2024-010",
-    title: "데이터베이스 구조 변경 요청서",
-    type: "SQL",
-    status: "processing",
-    uploadedAt: "2024-10-18 10:00",
-    size: "15 KB",
-    owner: "DBA팀",
-    description:
-      "사용자 테이블에 '마지막 로그인 IP' 컬럼 추가를 위한 스키마 변경 스크립트.",
-    tags: ["DB", "요청", "스키마"],
-    pages: 1,
-    preview: "ALTER TABLE `users` ADD COLUMN `last_login_ip` VARCHAR(45) NULL;",
-    recentActivity: [
-      {
-        actor: "보안팀",
-        action: "개인정보보호 관련 이슈가 없는지 검토 중입니다.",
-        at: "2024-10-19 14:00",
-      },
-    ],
-  },
-  {
-    id: "WIKI-2024-002",
-    title: "프론트엔드 개발 가이드라인 (React)",
-    type: "MARKDOWN",
-    status: "ready",
-    uploadedAt: "2024-09-15 09:00",
-    size: "45 KB",
-    owner: "FE개발팀",
-    description:
-      "React 환경에서의 컴포넌트 구조, 코드 스타일, ESLint/Prettier 설정 기준.",
-    tags: ["가이드", "개발", "프론트엔드"],
-    pages: 8,
-    preview: "규칙: 함수형 컴포넌트, TypeScript 필수 사용, Hooks 사용 권장.",
-    recentActivity: [
-      {
-        actor: "FE개발팀",
-        action: "최신 React 버전(18.x)에 맞춰 내용을 업데이트했습니다.",
-        at: "2024-10-01 10:00",
-      },
-    ],
-  },
-  {
-    id: "DATA-2024-055",
-    title: "월간 고객 이탈률 보고서 10월",
+    id: "DOC-2024-021",
+    title: "문서 QA 로그 10월 3주차",
     type: "CSV",
     status: "ready",
-    uploadedAt: "2024-11-03 12:00",
-    size: "450 KB",
-    owner: "분석팀",
-    description:
-      "10월 한 달간의 신규 가입자 대비 이탈률 및 이탈 사유 원본 데이터.",
-    tags: ["데이터", "분석", "이탈률"],
-    pages: 1,
-    preview:
-      "총 이탈 고객: 1,500명. 주요 사유: 가격 불만(40%), 낮은 사용 빈도(30%).",
-    recentActivity: [
-      {
-        actor: "경영지원팀",
-        action: "다음 달 가격 정책 회의 자료로 사용을 요청했습니다.",
-        at: "2024-11-04 09:00",
-      },
-    ],
-  },
-  {
-    id: "TEST-2024-030",
-    title: "통합 테스트 케이스 목록",
-    type: "XLSX",
-    status: "error",
-    uploadedAt: "2024-10-25 15:30",
-    size: "150 KB",
-    owner: "QA팀",
-    description:
-      "다음 주요 업데이트에 대한 모든 기능의 통합 테스트 시나리오 및 예상 결과.",
-    tags: ["테스트", "QA", "시나리오"],
-    pages: 1,
-    preview: "총 테스트 케이스: 150개. 현재 진행률: 50%. 결함 발견율: 5%.",
-    recentActivity: [
-      {
-        actor: "개발팀",
-        action: "결함 수정 완료 후 QA팀에 재 테스트를 요청했습니다.",
-        at: "2024-10-28 11:00",
-      },
-    ],
-  },
-  {
-    id: "PRD-2024-006",
-    title: "모바일 앱 UX/UI 개편 최종 디자인",
-    type: "FIGMA",
-    status: "ready",
-    uploadedAt: "2024-10-20 10:00",
-    size: "1.8 MB",
-    owner: "디자인팀",
-    description:
-      "사용자 편의성 향상을 위한 모바일 애플리케이션 화면 디자인 최종본.",
-    tags: ["디자인", "모바일", "UX"],
-    pages: 60,
-    preview: "주요 변경: 하단 내비게이션 바 개편, 메인 화면 정보 밀도 조정.",
-    recentActivity: [
-      {
-        actor: "기획팀",
-        action: "디자인 검토 완료 및 개발 착수 승인했습니다.",
-        at: "2024-10-21 14:00",
-      },
-    ],
-  },
-  {
-    id: "DOC-2024-022",
-    title: "시스템 아키텍처 다이어그램 V3.0",
-    type: "PNG",
-    status: "ready",
-    uploadedAt: "2024-10-15 11:30",
-    size: "280 KB",
-    owner: "개발팀",
-    description:
-      "최신 마이크로 서비스 아키텍처 구성을 보여주는 전체 시스템 개요도.",
-    tags: ["개발", "아키텍처", "다이어그램"],
-    pages: 1,
-    preview:
-      "구성: Nginx(Gateway) -> API Gateway -> Microservices (3개) -> DB (RDS, Redis).",
-    recentActivity: [
-      {
-        actor: "인프라팀",
-        action: "배포 환경 구성 시 참고할 예정입니다.",
-        at: "2024-10-16 09:30",
-      },
-    ],
-  },
-  {
-    id: "MKT-2024-016",
-    title: "A/I 기반 추천 시스템 도입 제안서",
-    type: "PPTX",
-    status: "processing",
-    uploadedAt: "2024-11-03 16:00",
-    size: "6.2 MB",
+    uploadedAt: "2024-10-20 21:14",
+    size: "950 KB",
     owner: "데이터팀",
     description:
-      "개인화된 콘텐츠 추천을 위한 머신러닝 모델 도입의 기대 효과 및 비용 분석.",
-    tags: ["AI", "추천", "제안서"],
-    pages: 15,
+      "문서 QA 서비스 사용 로그와 세션 요약 데이터. 인사이트 추출을 위한 데이터셋입니다.",
+    tags: ["로그", "QA", "데이터"],
+    pages: 4,
     preview:
-      "기대 효과: CTR 20% 향상. 사용 기술: Python, TensorFlow. 예산: 5천만원.",
+      "10월 3주차 주요 지표 요약\n- 총 질의: 432건\n- 평균 응답시간: 1.8초\n- 실패율: 4.2%",
     recentActivity: [
       {
         actor: "데이터팀",
-        action: "기술 검토를 위해 개발팀에 공유했습니다.",
-        at: "2024-11-04 10:30",
+        action: "요약 통계를 포함한 CSV를 다시 업로드했습니다.",
+        at: "2024-10-20 21:14",
       },
     ],
   },
   {
-    id: "FIN-2024-011",
-    title: "10월 월간 재무 보고서",
-    type: "PDF",
-    status: "ready",
-    uploadedAt: "2024-11-04 14:00",
-    size: "1.1 MB",
-    owner: "재무팀",
-    description: "10월 매출, 비용, 순이익을 요약한 내부 경영 자료.",
-    tags: ["재무", "보고서", "경영"],
-    pages: 10,
-    preview:
-      "주요 지표: 매출 10% 성장, 비용 집행률 95%. 특이 사항: 마케팅 비용 증가.",
-    recentActivity: [
-      {
-        actor: "재무팀",
-        action: "최종 검토 후 시스템에 업로드되었습니다.",
-        at: "2024-11-04 14:00",
-      },
-    ],
-  },
-  {
-    id: "HR-2024-041",
-    title: "개발팀 직무 평가 기준 가이드",
+    id: "DOC-2024-026",
+    title: "고객 Onboarding 매뉴얼 초안",
     type: "DOCX",
-    status: "processing",
-    uploadedAt: "2024-10-29 13:00",
-    size: "80 KB",
-    owner: "인사팀",
+    status: "error",
+    uploadedAt: "2024-10-22 11:05",
+    size: "1.1 MB",
+    owner: "CS팀",
     description:
-      "프론트엔드/백엔드 개발자를 위한 역량별 평가 항목 및 등급 기준.",
-    tags: ["HR", "평가", "개발"],
-    pages: 6,
+      "CS 매뉴얼 초안. 파일 포맷 변환 중 에러가 발생해 재업로드가 필요합니다.",
+    tags: ["CS", "매뉴얼", "에러"],
+    pages: 26,
     preview:
-      "평가 항목: 코드 품질, 문제 해결 능력, 협업 기여도. 등급: 주니어/시니어/리드.",
+      "현재 문서를 열 수 없습니다. 원본 파일 재확인이 필요합니다.\n\n에러 코드: CONVERT-415",
     recentActivity: [
       {
-        actor: "개발팀",
-        action: "개발팀장의 피드백을 반영하여 수정 중입니다.",
-        at: "2024-10-30 10:00",
+        actor: "시스템",
+        action: "파일 포맷 변환 중 오류가 감지되었습니다.",
+        at: "2024-10-22 11:07",
+      },
+      {
+        actor: "최지원",
+        action: "초안 버전을 업로드했습니다.",
+        at: "2024-10-22 11:05",
       },
     ],
   },
@@ -622,7 +368,7 @@ export default function DocsListPage() {
               <div className="flex items-center gap-2">
                 <label
                   htmlFor="statusFilter"
-                  className=" text-xs font-medium uppercase tracking-wide text-slate-500 "
+                  className="text-xs font-medium uppercase tracking-wide text-slate-500"
                 >
                   상태
                 </label>
@@ -634,7 +380,7 @@ export default function DocsListPage() {
                       e.target.value as DocumentDetail["status"] | "all"
                     )
                   }
-                  className="cursor-pointer rounded-full border border-blue-100 px-2 py-2 text-sm text-slate-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="rounded-full border border-blue-100 px-2 py-2 text-sm text-slate-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="all">전체</option>
                   <option value="ready">처리 완료</option>
@@ -647,7 +393,7 @@ export default function DocsListPage() {
                 <Button
                   type="button"
                   variant={viewMode === "large" ? "outline" : "default"}
-                  className="rounded-full px-3 py-2 text-sm border-blue-100 point-hover"
+                  className="rounded-full px-3 py-2 text-sm border-blue-100 "
                   aria-pressed={viewMode === "large"}
                   onClick={() => setViewMode("large")}
                 >
@@ -656,7 +402,7 @@ export default function DocsListPage() {
                 <Button
                   type="button"
                   variant={viewMode === "compact" ? "outline" : "default"}
-                  className="rounded-full px-3 py-2 text-sm border-blue-100 point-hover"
+                  className="rounded-full px-3 py-2 text-sm border-blue-100"
                   aria-pressed={viewMode === "compact"}
                   onClick={() => setViewMode("compact")}
                 >
@@ -665,7 +411,7 @@ export default function DocsListPage() {
                 <Button
                   type="button"
                   variant={viewMode === "titleOnly" ? "outline" : "default"}
-                  className="rounded-full px-3 py-2 text-sm border-blue-100 point-hover"
+                  className="rounded-full px-3 py-2 text-sm border-blue-100"
                   aria-pressed={viewMode === "titleOnly"}
                   onClick={() => setViewMode("titleOnly")}
                 >
@@ -745,7 +491,7 @@ export default function DocsListPage() {
                       <CardFooter>
                         <Button
                           variant="outline"
-                          className="w-full rounded-full border-blue-100 point-hover"
+                          className="w-full rounded-full border-blue-100"
                           onClick={() => setSelectedDoc(doc)}
                         >
                           세부 정보 보기
@@ -794,7 +540,7 @@ export default function DocsListPage() {
                       <CardFooter className="pt-0">
                         <Button
                           variant="outline"
-                          className="w-full rounded-full border-blue-100 point-hover"
+                          className="w-full rounded-full border-blue-100"
                           onClick={() => setSelectedDoc(doc)}
                         >
                           세부 정보 보기
@@ -814,11 +560,11 @@ export default function DocsListPage() {
                       className="flex items-start justify-between gap-4 rounded-xl border border-blue-100 bg-white p-4"
                     >
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-slate-900 ">
+                        <div className="truncate text-sm font-semibold text-slate-900">
                           {doc.title}
                         </div>
                         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">
-                          <span className="inline-flex items-center gap-1 ">
+                          <span className="inline-flex items-center gap-1">
                             <span className="text-slate-500">상태</span>
                             <span
                               className={cn(
@@ -842,10 +588,10 @@ export default function DocsListPage() {
                       <div className="shrink-0">
                         <Button
                           variant="outline"
-                          className="rounded-full border-blue-100 point-hover"
+                          className="rounded-full border-blue-100"
                           onClick={() => setSelectedDoc(doc)}
                         >
-                          세부 정보 보기
+                          세부정보 보기
                         </Button>
                       </div>
                     </div>
