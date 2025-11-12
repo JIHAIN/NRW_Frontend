@@ -5,9 +5,9 @@ function Header() {
     <div className="w-full flex flex-col">
       <header className="w-full border-b border-blue-100  ">
         <div className=" mx-auto flex justify-between items-center px-4 h-[5vh]   ">
-          <Link to="/">
+          <Link to="/note">
             <img
-              src="./Alain.png"
+              src="./alain_textOnly2.png"
               className="h-5 cursor-pointer text-blue-500"
             />
           </Link>

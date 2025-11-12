@@ -133,7 +133,6 @@ export function ChatPanel() {
 
   return (
     <div
-      // className="flex flex-col h-full w-full max-w-6xl rounded-xl "
       className="flex flex-col w-full h-[88vh] max-w-6xl rounded-xl relative min-h-0"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}

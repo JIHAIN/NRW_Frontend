@@ -138,7 +138,6 @@ export default function UploadPage() {
               )}
             </CardContent>
           </Card>
-
           <Card className="border-slate-100 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-slate-900">
@@ -165,36 +164,6 @@ export default function UploadPage() {
                   <option value="data">데이터셋</option>
                 </select>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">
-                  업로드 메모
-                </label>
-                <textarea
-                  value={memo}
-                  onChange={(event) => setMemo(event.target.value)}
-                  rows={4}
-                  placeholder="선택 사항: 업로드 목적, 요청 사항 등을 기록하세요."
-                  className="rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-100"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-100 bg-blue-50/40 shadow-none">
-            <CardContent className="flex flex-col gap-3 py-6 text-sm text-slate-600">
-              <p className="font-semibold text-slate-800">다음 단계 안내</p>
-              <ol className="list-decimal space-y-2 pl-5">
-                <li>
-                  업로드 완료 시 문서 리스트에서 처리 상태를 확인할 수 있습니다.
-                </li>
-                <li>
-                  텍스트 추출, 임베딩 생성 같은 비동기 작업은 준비 중입니다.
-                </li>
-                <li>
-                  추후 알림/웹훅 연동으로 상태 변화를 받아볼 수 있도록 확장될
-                  예정입니다.
-                </li>
-              </ol>
             </CardContent>
           </Card>
 

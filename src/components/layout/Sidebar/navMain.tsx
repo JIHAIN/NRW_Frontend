@@ -46,7 +46,7 @@ export function NavMain({
                 <SidebarMenuButton tooltip={item.title} className="point-hover">
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-92" />
+                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-92 opacity-50" />
                 </SidebarMenuButton>
               </CollapsibleTrigger>
               <CollapsibleContent>

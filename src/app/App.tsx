@@ -13,7 +13,7 @@ function App() {
           <div className="w-full flex flex-col ">
             {/* 헤더 고정 높이는 46px */}
             <Header />
-            <main className="flex-1 overflow-hidden  ">
+            <main className="flex-1 overflow-hidden   ">
               <div className="mx-auto w-full h-full bg-white overflow-hidden">
                 <AppRoutes />
               </div>

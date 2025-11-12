@@ -50,118 +50,37 @@ const data = {
   ],
   navMain: [
     {
-      title: "임시 라우터",
+      title: "메인 기능",
       url: "/",
       icon: Home,
       items: [
         {
-          title: "메인",
-          url: "/note",
-        },
-        {
-          title: "대시보드",
-          url: "/dashboard",
-        },
-        {
           title: "채팅",
-          url: "/chat",
-        },
-        {
-          title: "문서관리",
-          url: "/docs",
+          url: "/note",
         },
       ],
     },
 
     {
-      title: "우리 사업부",
-      url: "#",
-      icon: BookCheckIcon,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "프로젝트 / 기안",
+      title: "관리자 메뉴",
       url: "#",
       icon: NotepadText,
       items: [
         {
-          title: "General",
-          url: "#",
+          title: "사용자 관리",
+          url: "/User",
         },
         {
-          title: "Team",
-          url: "#",
+          title: "부서 및 프로젝트 관리",
+          url: "/Manage",
         },
         {
-          title: "Billing",
-          url: "#",
+          title: "문서 관리",
+          url: "/Docs",
         },
         {
-          title: "Limits",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "대시보드",
-      url: "#",
-      icon: LayoutDashboardIcon,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "새 채팅",
-      url: "#",
-      icon: MessageCircle,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
+          title: "대시보드",
+          url: "/dashboard",
         },
       ],
     },

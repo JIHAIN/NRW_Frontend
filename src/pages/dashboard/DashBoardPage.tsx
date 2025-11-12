@@ -11,7 +11,7 @@ import React from "react";
  * - 아래 mock 데이터 타입을 유지하고 fetch 결과를 주입하세요.
  * - 실시간 새로고침이 필요하면 SWR/React Query 등을 적용하세요.
  */
-export default function DashBoard() {
+export default function DashBoardPage() {
   /* ===========================
    * 1) 타입 정의
    * ===========================
@@ -153,10 +153,10 @@ export default function DashBoard() {
    * ===========================
    */
   return (
-    <section className="p-6 md:p-8">
+    <section className="page-layout">
       {/* 헤더 */}
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold">대시보드</h1>
+        <h1 className="page-title">대시보드</h1>
         <p className="mt-1 text-sm text-gray-500">{headerDate}</p>
       </header>
 

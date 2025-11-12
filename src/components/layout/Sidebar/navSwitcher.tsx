@@ -47,15 +47,19 @@ export function TeamSwitcher({
             >
               <img
                 src=" ./newRun_noText.png"
-                className=" w-6 h-6 rounded-full group-data-[collapsible=icon]:m-1 group-data-[collapsible=icon]:group-hover:hidden "
+                className=" w-6 h-6 rounded-full group-data-[collapsible=icon]:m-1 group-data-[collapsible=icon]:group-hover:hidden opacity-85"
               />
               <div className="grid flex-1 text-center text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-medium">NEURON WAY</span>
-                <span className="truncate text-xs">Alain</span>
+                <span className="truncate font-bold text-blue-500">
+                  NEURON WAY
+                </span>
+                <span className="truncate text-xs font-bold text-blue-500">
+                  Alain
+                </span>
               </div>
               <Tooltip>
                 <TooltipTrigger>
-                  <SidebarTrigger className="w-10 h-10  cursor-ew-resize hover:bg-blue-100" />
+                  <SidebarTrigger className="w-10 h-10  cursor-ew-resize hover:bg-blue-100 opacity-80 " />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{tooltipText}</p>

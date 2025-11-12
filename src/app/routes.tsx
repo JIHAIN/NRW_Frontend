@@ -3,11 +3,13 @@
 import { Routes, Route } from "react-router-dom";
 import AuthPage from "@/pages/auth/loginSignup";
 import MainHome from "@/pages";
-import DashBoard from "@/pages/dashboard/DashBoard";
-import ChatUI from "@/pages/chat/ChatPage";
-import DocsListPage from "@/pages/docs/DocsListPage";
+import DashBoard from "@/pages/dashboard/DashBoardPage";
+
 import UploadPage from "@/pages/upload/UploadPage";
 import NotebookLikePage from "@/pages/notebook_like/notebook";
+import ProjectPage from "@/pages/project/ProjectPage";
+import { UserManagementPage } from "@/pages/admin/UserManagementPage";
+import { ManagePage } from "@/pages/Manage/ManagePage";
 // import ProtectedRoute from '../components/layout/ProtectedRoute'; // 가정
 // import Header from '../components/layout/Header'; // 가정
 // import Footer from '../components/layout/Footer'; // 가정
@@ -36,9 +38,12 @@ const AppRoutes = () => (
         {/*보호된 경로들*/}
     <Route path="/note" element={<NotebookLikePage />} />
     <Route path="/dashboard" element={<DashBoard />} />
-    <Route path="/chat" element={<ChatUI />} />
-    <Route path="/docs" element={<DocsListPage />} />
+
     <Route path="/upload" element={<UploadPage />} />
+    <Route path="/Docs" element={<ProjectPage />} />
+    <Route path="/User" element={<UserManagementPage />} />
+    <Route path="/Manage" element={<ManagePage />} />
+
     {/*  <Route path="/upload" element={<UploadPage />} /> */}
     {/*  <Route index element={<ChatPage />} /> */}
     {/* 3. 404 Not Found (모든 일치하지 않는 경로) */}
