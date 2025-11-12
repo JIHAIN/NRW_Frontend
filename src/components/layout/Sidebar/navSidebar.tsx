@@ -5,11 +5,8 @@ import {
   AudioWaveform,
   Command,
   GalleryVerticalEnd,
-  BookCheckIcon,
   Home,
   NotepadText,
-  LayoutDashboardIcon,
-  MessageCircle,
 } from "lucide-react";
 
 import { NavMain } from "@/components/layout/Sidebar/navMain";

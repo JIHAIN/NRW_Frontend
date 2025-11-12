@@ -22,7 +22,6 @@ export default function UploadPage() {
   const navigate = useNavigate();
   const [files, setFiles] = useState<PendingFile[]>([]);
   const [collection, setCollection] = useState("default");
-  const [memo, setMemo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
