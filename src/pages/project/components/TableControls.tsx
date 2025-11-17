@@ -35,7 +35,7 @@ interface TableControlsProps {
   // 체크박스 기능 관련 Props 추가
   hasSelection: boolean;
   onBulkDownload: () => void;
-  onBulkDelete: () => void;
+  onBulkDelete?: () => void; // ✨ 1. 'undefined'를 받을 수 있도록 ? (optional) 처리
 }
 // -------------------------------------------------------------
 
@@ -153,13 +153,16 @@ const TableControls: FC<TableControlsProps> = (props) => {
               <Download size={16} className="text-blue-500" />
               일괄 다운로드
             </Button>
-            <Button
-              onClick={props.onBulkDelete}
-              className="gap-1 border border-blue-100 rounded-2xl px-3 py-1 text-red-700/70 point-hover bg-white hover:bg-gray-100 text-sm"
-            >
-              <Trash2 size={16} className="text-red-500" />
-              일괄 삭제
-            </Button>
+            {/* ✨ 2. 'onBulkDelete' prop이 존재할 때만 '일괄 삭제' 버튼 렌더링 */}
+            {props.onBulkDelete && (
+              <Button
+                onClick={props.onBulkDelete}
+                className="gap-1 border border-blue-100 rounded-2xl px-3 py-1 text-red-700/70 point-hover bg-white hover:bg-gray-100 text-sm"
+              >
+                <Trash2 size={16} className="text-red-500" />
+                일괄 삭제
+              </Button>
+            )}
           </>
         )}
       </div>

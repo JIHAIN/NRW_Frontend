@@ -37,6 +37,7 @@ interface FilterComboboxProps<T extends ComboboxValue> {
   onValueChange: (value: T) => void;
   placeholder: string;
   className?: string;
+  disabled?: boolean;
 }
 
 // 💡 컴포넌트에도 제네릭 T 적용
@@ -46,6 +47,7 @@ export function FilterCombobox<T extends ComboboxValue>({
   onValueChange,
   placeholder,
   className, // 클래스 받기
+  disabled = false,
 }: FilterComboboxProps<T>) {
   const [open, setOpen] = useState(false);
 
@@ -56,15 +58,18 @@ export function FilterCombobox<T extends ComboboxValue>({
 
   return (
     <div className={cn("w-full", className)}>
-      {" "}
       {/* className 적용 */}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             role="combobox"
             aria-expanded={open}
-            // 기존 Button 스타일을 통합하고 재사용 가능한 형태로 정리
-            className="w-full justify-between border-blue-200 bg-white hover:bg-blue-50/50 text-gray-700 min-w-[130px] p-2 h-auto text-sm opacity-80 cursor-pointer"
+            className={cn(
+              "w-full justify-between border-blue-200 bg-white hover:bg-blue-50/50 text-gray-700 min-w-[130px] p-2 h-auto text-sm opacity-80 cursor-pointer",
+              // ✨ 3. disabled 상태일 때 스타일 적용
+              disabled && "opacity-60 cursor-not-allowed bg-gray-100"
+            )}
+            disabled={disabled} // ✨ 4. Button에 disabled 속성 전달
           >
             {displayLabel}
             <ChevronRight

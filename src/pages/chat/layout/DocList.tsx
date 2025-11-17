@@ -1,5 +1,5 @@
 import { Ellipsis, FileText, Plus, Search, Settings } from "lucide-react";
-import { Dropdown } from "../notebook";
+import { Dropdown } from "@/components/common/Dropdown";
 import { IconButton } from "@/components/common/IconButton";
 
 /* ---------------- Sidebar ---------------- */

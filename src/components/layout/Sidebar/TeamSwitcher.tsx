@@ -1,7 +1,5 @@
 "use client";
 
-import * as React from "react";
-
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -19,21 +17,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export function TeamSwitcher({
-  teams,
-}: {
-  teams: {
-    name: string;
-    logo: React.ElementType;
-    plan: string;
-  }[];
-}) {
+export function TeamSwitcher() {
   const { open: isSidebarOpen } = useSidebar();
-  const [activeTeam] = React.useState(teams[0]);
 
-  if (!activeTeam) {
-    return null;
-  }
   const tooltipText = isSidebarOpen ? "사이드바 닫기" : "사이드바 열기";
 
   return (
@@ -46,7 +32,7 @@ export function TeamSwitcher({
               className="flex justify-between data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <img
-                src=" ./newRun_noText.png"
+                src="./newRun_noText.png"
                 className=" w-6 h-6 rounded-full group-data-[collapsible=icon]:m-1 group-data-[collapsible=icon]:group-hover:hidden opacity-85"
               />
               <div className="grid flex-1 text-center text-sm leading-tight group-data-[collapsible=icon]:hidden">

@@ -135,7 +135,7 @@ const DepartmentManager: FC<DepartmentManagerProps> = ({
                   e.stopPropagation();
                   onDeleteClick(dept);
                 }}
-                className={`p-1 rounded-full hover:bg-red-50 transition-colors ${
+                className={`p-1 rounded-full hover:bg-red-50 transition-colors cursor-pointer ${
                   selectedDeptId === dept.id
                     ? "text-red-300 hover:text-white hover:bg-red-600"
                     : "text-red-500"

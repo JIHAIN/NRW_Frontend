@@ -9,6 +9,7 @@ export interface TableBodyProps {
   // ✨ 체크박스 관련 props 추가 ✨
   selectedItemIds: Set<number>;
   onCheckboxChange: (itemId: number, isChecked: boolean) => void;
+  canManage: boolean; // ✨ 1. canManage prop 추가
 }
 
 // 함수 컴포넌트(FC)에 TableBodyProps 타입을 적용
@@ -17,6 +18,7 @@ const TableBody: FC<TableBodyProps> = ({
   onAction,
   selectedItemIds,
   onCheckboxChange,
+  canManage, // ✨ 2. canManage 비구조화 할당
 }) => {
   return (
     <div>
@@ -53,21 +55,25 @@ const TableBody: FC<TableBodyProps> = ({
           </div>
           {/* 완료 일자 */}
           <div className="w-[10%]">{item.completed}</div>
-          {/* 관리 */}
+          {/* ✨ 3. '관리' 섹션 수정 ✨ */}
           <div className="w-2/12 flex justify-center space-x-3 text-gray-500">
-            {/* onAction 호출 시 타입에 맞는 문자열 전달 */}
+            {/* 다운로드 버튼 (항상 표시) */}
             <button
               onClick={() => onAction("download", item)}
               className="hover:text-blue-500 cursor-pointer"
             >
               <Download size={18} />
             </button>
-            <button
-              onClick={() => onAction("delete", item)}
-              className="hover:text-blue-500 cursor-pointer"
-            >
-              <Trash2 size={18} />
-            </button>
+
+            {/* 'canManage'가 true일 때만 '삭제' 버튼 표시 */}
+            {canManage && (
+              <button
+                onClick={() => onAction("delete", item)}
+                className="hover:text-red-500 cursor-pointer" // (색상 변경)
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
           </div>
         </div>
       ))}

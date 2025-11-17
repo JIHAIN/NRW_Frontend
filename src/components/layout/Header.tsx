@@ -7,7 +7,7 @@ function Header() {
         <div className=" mx-auto flex justify-between items-center px-4 h-[5vh]   ">
           <Link to="/note">
             <img
-              src="./alain_textOnly2.png"
+              src="/alain_textOnly2.png"
               className="h-5 cursor-pointer text-blue-500"
             />
           </Link>

@@ -178,3 +178,17 @@ body,
 ::-webkit-scrollbar-thumb::hover {
   background: #111;
 }
+
+.bat {
+  width: 1px;
+  height: 1px;
+
+  position: relative;
+  transform: translate(-128px, -128px) scale(4);
+  animation: flap 0.4s steps(6) infinite;
+}
+@keyframes flap {
+  to {
+    background-position: -192px 0;
+  }
+}

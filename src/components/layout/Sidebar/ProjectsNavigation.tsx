@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useState } from "react";
 
-export function NavProjects({
+export function ProjectsNavigation({
   projects,
 }: {
   projects: {

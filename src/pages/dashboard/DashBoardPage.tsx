@@ -1,4 +1,5 @@
 import React from "react";
+import StatsChart from "./components/StatsChart";
 
 /**
  * DashBoard
@@ -11,7 +12,7 @@ import React from "react";
  * - 아래 mock 데이터 타입을 유지하고 fetch 결과를 주입하세요.
  * - 실시간 새로고침이 필요하면 SWR/React Query 등을 적용하세요.
  */
-export default function DashBoardPage() {
+export default function DashboardPage() {
   /* ===========================
    * 1) 타입 정의
    * ===========================
@@ -141,12 +142,11 @@ export default function DashBoardPage() {
       )
       .join(" ");
 
-  // 바차트 스케일
-  const barW = 28;
-  const barGap = 16;
-  const barChartWidth = errorByDate.length * (barW + barGap) + 40;
-  const barChartHeight = 180;
-  const maxBar = Math.max(...errorByDate.map((d) => d.count), 80);
+  // StatsChart 컴포넌트에 전달할 데이터로 변환
+  const barChartData = errorByDate.map((d) => ({
+    name: d.date.slice(5), // "10-15" 형식으로 변환
+    count: d.count,
+  }));
 
   /* ===========================
    * 4) 렌더
@@ -440,48 +440,7 @@ export default function DashBoardPage() {
             </span>
           </header>
 
-          <svg
-            width={barChartWidth}
-            height={barChartHeight}
-            role="img"
-            aria-label="오류 수 막대차트"
-          >
-            {/* 축 */}
-            <line
-              x1="20"
-              y1={barChartHeight - 24}
-              x2={barChartWidth - 20}
-              y2={barChartHeight - 24}
-              stroke="#E5E7EB"
-            />
-            <line
-              x1="20"
-              y1="12"
-              x2="20"
-              y2={barChartHeight - 24}
-              stroke="#E5E7EB"
-            />
-
-            {/* 막대 */}
-            {errorByDate.map((d, i) => {
-              const x = 28 + i * (barW + barGap);
-              const h = Math.round((d.count / maxBar) * (barChartHeight - 48));
-              const y = barChartHeight - 24 - h;
-              return (
-                <g key={d.date}>
-                  <rect x={x} y={y} width={barW} height={h} fill="#EF4444" />
-                  <text
-                    x={x + barW / 2}
-                    y={barChartHeight - 6}
-                    textAnchor="middle"
-                    className="fill-gray-500 text-[10px]"
-                  >
-                    {d.date.slice(5)}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
+          <StatsChart data={barChartData} />
 
           <p className="mt-2 text-xs text-gray-500">
             막대 클릭 시 해당 날짜의 실패 로그 목록으로 라우팅하는 UX를

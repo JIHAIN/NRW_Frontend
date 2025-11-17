@@ -1,15 +1,16 @@
 // src/app/routes.tsx
 
 import { Routes, Route } from "react-router-dom";
-import AuthPage from "@/pages/auth/loginSignup";
+import AuthPage from "@/pages/auth/AuthPage";
 import MainHome from "@/pages";
-import DashBoard from "@/pages/dashboard/DashBoardPage";
+import DashboardPage from "@/pages/dashboard/DashboardPage";
 
 import UploadPage from "@/pages/upload/UploadPage";
-import NotebookLikePage from "@/pages/notebook_like/notebook";
+import ChatPage from "@/pages/chat/ChatPage";
 import ProjectPage from "@/pages/project/ProjectPage";
 import { UserManagementPage } from "@/pages/admin/UserManagementPage";
-import { ManagePage } from "@/pages/Manage/ManagePage";
+import { DeptProjectAdminPage } from "@/pages/admin/DeptProjectAdminPage";
+import { TestAuthPanel } from "@/components/common/TestAuthPanel";
 // import ProtectedRoute from '../components/layout/ProtectedRoute'; // 가정
 // import Header from '../components/layout/Header'; // 가정
 // import Footer from '../components/layout/Footer'; // 가정
@@ -36,13 +37,15 @@ const AppRoutes = () => (
         element={<ProtectedRoute />} // 👈 보호된 루트 컴포넌트로 활용
     >
         {/*보호된 경로들*/}
-    <Route path="/note" element={<NotebookLikePage />} />
-    <Route path="/dashboard" element={<DashBoard />} />
+    <Route path="/chat" element={<ChatPage />} />
 
-    <Route path="/upload" element={<UploadPage />} />
-    <Route path="/Docs" element={<ProjectPage />} />
-    <Route path="/User" element={<UserManagementPage />} />
-    <Route path="/Manage" element={<ManagePage />} />
+    <Route path="/admin/dashboard" element={<DashboardPage />} />
+    <Route path="/admin/upload" element={<UploadPage />} />
+    <Route path="/admin/Docs" element={<ProjectPage />} />
+    <Route path="/admin/User" element={<UserManagementPage />} />
+    <Route path="/admin/project" element={<DeptProjectAdminPage />} />
+
+    <Route path="/TestPanel" element={<TestAuthPanel />} />
 
     {/*  <Route path="/upload" element={<UploadPage />} /> */}
     {/*  <Route index element={<ChatPage />} /> */}

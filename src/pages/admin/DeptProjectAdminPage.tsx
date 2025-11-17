@@ -1,4 +1,4 @@
-// src/pages/manage/ManagePage.tsx
+// src/pages/admin/DeptProjectAdminPage.tsx
 
 import { useState, type FC } from "react";
 // 💡 통합 더미 데이터 사용으로 변경
@@ -64,7 +64,7 @@ const SimpleConfirmModal: FC<SimpleConfirmModalProps> = ({
 // 💡 메인 컴포넌트: ManagePage
 // --------------------------------------------------------------------------
 
-export const ManagePage: FC = () => {
+export const DeptProjectAdminPage: FC = () => {
   // 📚 부서 및 프로젝트 데이터 상태 관리 (더미 데이터 사용)
   const [departments, setDepartments] =
     useState<Department[]>(DUMMY_DEPARTMENTS);
@@ -217,4 +217,4 @@ export const ManagePage: FC = () => {
   );
 };
 
-export default ManagePage;
+export default DeptProjectAdminPage;

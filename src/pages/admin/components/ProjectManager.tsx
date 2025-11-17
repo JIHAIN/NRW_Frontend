@@ -203,7 +203,7 @@ const ProjectManager: FC<ProjectManagerProps> = ({
               </div>
               <button
                 onClick={() => onDeleteClick(proj)}
-                className="text-red-500 p-1 rounded-full hover:bg-red-50 transition-colors"
+                className="text-red-500 p-1 rounded-full hover:bg-red-200 transition-colors cursor-pointer"
                 title="프로젝트 삭제"
               >
                 <Trash2 size={18} />

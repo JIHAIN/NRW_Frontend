@@ -64,3 +64,34 @@ src/
     ```bash
     npm run lint
     ```
+
+ * 엔드포인트: @router.post("/upload-and-parse/")
+       * 이는 백엔드에 /api/v1/upload-and-parse 경로로 POST 요청을 보낼 수 있는 엔드포인트가 있다는 의미입니다.
+         (FastAPI의 v1 라우터가 /api/v1 경로에 마운트되어 있을 것으로 예상됩니다.)
+   * 기능: async def upload_and_parse_hwp(...)
+       * .hwp 또는 .hwpx 파일을 업로드하고 파싱(분석)하는 기능을 담당합니다.
+   * 입력 (프론트엔드에서 보내야 할 데이터):
+       * file: UploadFile = File(...): 업로드할 실제 파일입니다.
+       * dept_id: str | None = Form(None)
+       * project_id: str | None = Form(None)
+       * user_id: str | None = Form(None)
+       * 이들은 파일과 함께 보낼 수 있는 선택적인 폼(form) 데이터입니다.
+   * 출력 (백엔드에서 프론트엔드로 보내는 데이터):
+       * filename, doc_id, metadata, indexed 상태를 포함하는 JSON 객체를 반환합니다.
+   * 오류 처리: .hwp 또는 .hwpx 파일이 아니면 400 에러를 반환합니다.
+
+  프론트엔드 연동 가이드:
+
+   1. 백엔드 실행 확인: 백엔드 서버는 현재 http://localhost:8000에서 정상적으로 실행 중입니다.
+   2. API 문서 활용: 가장 중요한 것은 웹 브라우저에서 `http://localhost:8000/docs` 페이지를 여는 것입니다. 이
+      페이지에서 /api/v1/upload-and-parse 엔드포인트(그리고 /api/v1/health, /api/v1/rag/... 등 다른
+      엔드포인트들도)를 확인할 수 있습니다. 각 엔드포인트의 상세한 설명, 필요한 입력 값, 예상되는 출력 값을 볼 수
+      있으며, 심지어 직접 테스트도 해볼 수 있습니다.
+   3. 구체적인 연동 예시 (`/api/v1/upload-and-parse`):
+       * 프론트엔드에서는 이 엔드포인트로 HTTP POST 요청을 보내야 합니다.
+       * 요청 본문(body)에는 FormData 객체를 사용하여 file 필드에 업로드할 파일을 담고, 필요하다면 dept_id,
+         project_id, user_id 필드에 해당 값들을 담아 보냅니다.
+       * 예를 들어, JavaScript의 fetch API나 axios 라이브러리를 사용하여
+         http://localhost:8000/api/v1/upload-and-parse로 요청을 보낼 수 있습니다.
+   4. 다른 엔드포인트 탐색: /docs 페이지에서 health나 rag 관련 엔드포인트들도 확인하여 프론트엔드에서 필요한 다른
+      기능들을 파악할 수 있습니다.

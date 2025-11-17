@@ -3,7 +3,7 @@ import React, { useState, useMemo } from "react";
 import TableBody from "./TableBody";
 import Pagination from "./Pagination";
 import TableControls from "./TableControls";
-import { useDebounce } from "../../../hooks/use_Debounce";
+import { useDebounce } from "../../../hooks/useDebounce";
 import {
   DUMMY_DOCUMENTS,
   DUMMY_PROJECTS,
@@ -16,15 +16,17 @@ const ALL_DOCUMENTS: Document[] = DUMMY_DOCUMENTS;
 
 const ITEMS_PER_PAGE: number = 10;
 
-// ✨ ProjectTable 컴포넌트 Props 정의 ✨
+// ✨ 1. ProjectTable Props에 currentUserRole 추가 ✨
 interface ProjectTableProps {
   selectedDepartment: string;
   selectedProject: string;
+  currentUserRole: string; // 이전 단계(ProjectPage)에서 이 prop을 받음
 }
 
 export function ProjectTable({
   selectedDepartment,
   selectedProject,
+  currentUserRole, // ✨ 2. prop 비구조화 할당
 }: ProjectTableProps): React.ReactElement {
   //  필터 상태 관리
   const [searchText, setSearchText] = useState<string>("");
@@ -38,6 +40,10 @@ export function ProjectTable({
 
   //  검색어에 디바운스 적용
   const debouncedSearchText = useDebounce<string>(searchText, 300);
+
+  // ✨ 사용자가 'user'인지, 'manager'/'super_admin'인지 확인 ✨
+  const canManage =
+    currentUserRole === "manager" || currentUserRole === "super_admin";
 
   // ✨ 1. 프로젝트 부서 여부 확인 로직 추가 ✨
   const isReadyToDisplay = selectedDepartment && selectedProject;
@@ -93,6 +99,7 @@ export function ProjectTable({
     debouncedSearchText,
     statusFilter,
     locationFilter,
+    isReadyToDisplay, // isReadyToDisplay 의존성 추가 (더 정확함)
   ]);
 
   // 페이지네이션 로직
@@ -156,7 +163,9 @@ export function ProjectTable({
     if (type === "download") {
       alert(`${selectedItems.length}개의 문서를 다운로드합니다.`);
     } else if (type === "delete") {
+      // ✨ 4. 삭제 로직은 'canManage'일 때만 호출되지만, 이중 확인
       if (
+        canManage &&
         confirm(
           `선택된 ${selectedItems.length}개의 문서를 정말 삭제하시겠습니까?`
         )
@@ -197,7 +206,9 @@ export function ProjectTable({
         // ✨ 체크박스 관련 props 전달 ✨
         hasSelection={hasSelection}
         onBulkDownload={() => handleBulkAction("download")}
-        onBulkDelete={() => handleBulkAction("delete")}
+        // ✨ 5. 'canManage'가 true일 때만 onBulkDelete prop 전달
+        // (TableControls가 undefined를 받으면 '일괄 삭제' 버튼 숨기도록 구현해야 함)
+        onBulkDelete={canManage ? () => handleBulkAction("delete") : undefined}
       />
 
       {/* ✨ 3. 조건부 렌더링 ✨ */}
@@ -237,6 +248,8 @@ export function ProjectTable({
               onAction={handleAction}
               selectedItemIds={selectedItemIds}
               onCheckboxChange={handleCheckboxChange}
+              // ✨ 6. 'canManage' prop을 TableBody로 전달
+              canManage={canManage}
             />
           ) : (
             <div className="text-center p-8 text-gray-500">

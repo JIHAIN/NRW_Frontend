@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, CheckCircle2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Upload, CheckCircle2, AlertCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { uploadDocument } from "@/services/documents.service";
 
 type PendingFile = {
   id: string;
@@ -20,10 +22,22 @@ type PendingFile = {
 
 export default function UploadPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [files, setFiles] = useState<PendingFile[]>([]);
   const [collection, setCollection] = useState("default");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
+
+  const uploadMutation = useMutation({
+    mutationFn: ({ file, metadata }: { file: File; metadata: any }) =>
+      uploadDocument(file, metadata),
+    onSuccess: () => {
+      // 성공 시 문서 목록 등 관련 쿼리를 무효화하여 다시 불러올 수 있습니다.
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+    onError: (error) => {
+      // 에러 처리 로직 (예: 토스트 메시지 표시)
+      console.error("Upload failed:", error.message);
+    },
+  });
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files;
@@ -50,18 +64,32 @@ export default function UploadPage() {
     setFiles((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!files.length) {
-      setShowConfirmation(false);
       return;
     }
-    setIsSubmitting(true);
-    // 백엔드 연동 전까지는 모의 흐름만 제공합니다.
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setShowConfirmation(true);
-    }, 350);
+
+    const metadata = {
+      dept_id: "some-dept-id", // 예시: 실제 값으로 교체 필요
+      project_id: "some-project-id", // 예시: 실제 값으로 교체 필요
+      user_id: "some-user-id", // 예시: 실제 값으로 교체 필요
+    };
+
+    try {
+      // 모든 파일에 대한 업로드 프로미스를 생성합니다.
+      const uploadPromises = files.map(({ file }) =>
+        uploadMutation.mutateAsync({ file, metadata })
+      );
+
+      // 모든 프로미스가 완료될 때까지 기다립니다.
+      await Promise.all(uploadPromises);
+
+      // 모든 파일 업로드 성공 후 파일 목록 초기화
+      setFiles([]);
+    } catch (error) {
+      console.error("An error occurred during file uploads:", error);
+    }
   };
 
   return (
@@ -137,7 +165,7 @@ export default function UploadPage() {
               )}
             </CardContent>
           </Card>
-          <Card className="border-slate-100 shadow-sm">
+          {/* <Card className="border-slate-100 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-slate-900">
                 2. 메타데이터
@@ -164,7 +192,7 @@ export default function UploadPage() {
                 </select>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
           <CardFooter className="flex flex-col gap-4 pt-6">
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
@@ -181,21 +209,29 @@ export default function UploadPage() {
             </div>
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={uploadMutation.isPending || !files.length}
               className="w-full gap-2 rounded-full py-3 text-base"
             >
-              {isSubmitting ? "업로드 준비 중..." : "업로드 요청 보내기"}
+              {uploadMutation.isPending ? "업로드 중..." : "업로드 요청 보내기"}
             </Button>
-            {showConfirmation && (
+            {uploadMutation.isSuccess && (
               <div className="flex items-center gap-2 rounded-2xl border border-green-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                 <CheckCircle2 className="size-4" />
                 <span>
-                  모의 업로드가 완료되었습니다. 실제 업로드 로직은 API 연결 후
-                  적용됩니다.
+                  총 {files.length}개 파일의 업로드 및 인덱싱 요청이 성공적으로
+                  완료되었습니다.
                 </span>
               </div>
             )}
-            {!files.length && !showConfirmation && (
+            {uploadMutation.isError && (
+              <div className="flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                <AlertCircle className="size-4" />
+                <span>
+                  업로드 중 오류가 발생했습니다: {uploadMutation.error.message}
+                </span>
+              </div>
+            )}
+            {!files.length && !uploadMutation.isSuccess && (
               <p className="text-xs text-rose-500">
                 업로드할 파일을 선택하고 다시 시도하세요.
               </p>
