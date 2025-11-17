@@ -24,7 +24,6 @@ export default function UploadPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [files, setFiles] = useState<PendingFile[]>([]);
-  const [collection, setCollection] = useState("default");
 
   const uploadMutation = useMutation({
     mutationFn: ({ file, metadata }: { file: File; metadata: any }) =>
@@ -165,40 +164,10 @@ export default function UploadPage() {
               )}
             </CardContent>
           </Card>
-          {/* <Card className="border-slate-100 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-slate-900">
-                2. 메타데이터
-              </CardTitle>
-              <CardDescription className="text-sm text-slate-600">
-                분류/메모 정보는 인덱싱 시 태깅에 활용됩니다. 추후 API 연동
-                후에는 프로젝트, 보안 레벨 등 추가 필드를 확장할 수 있습니다.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">
-                  문서 분류
-                </label>
-                <select
-                  value={collection}
-                  onChange={(event) => setCollection(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-100"
-                >
-                  <option value="default">기본 컬렉션</option>
-                  <option value="policy">정책/규정</option>
-                  <option value="proposal">제안/기획</option>
-                  <option value="data">데이터셋</option>
-                </select>
-              </div>
-            </CardContent>
-          </Card> */}
 
           <CardFooter className="flex flex-col gap-4 pt-6">
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
-              <span>
-                총 {files.length}개 파일 • 대상 컬렉션: {collection || "미정"}
-              </span>
+              <span>총 {files.length}개 파일</span>
               <button
                 type="button"
                 className="font-semibold text-blue-600 hover:text-blue-700"
