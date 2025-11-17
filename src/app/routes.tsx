@@ -10,7 +10,6 @@ import ChatPage from "@/pages/chat/ChatPage";
 import ProjectPage from "@/pages/project/ProjectPage";
 import { UserManagementPage } from "@/pages/admin/UserManagementPage";
 import { DeptProjectAdminPage } from "@/pages/admin/DeptProjectAdminPage";
-import { TestAuthPanel } from "@/components/common/TestAuthPanel";
 // import ProtectedRoute from '../components/layout/ProtectedRoute'; // 가정
 // import Header from '../components/layout/Header'; // 가정
 // import Footer from '../components/layout/Footer'; // 가정
@@ -44,8 +43,6 @@ const AppRoutes = () => (
     <Route path="/admin/Docs" element={<ProjectPage />} />
     <Route path="/admin/User" element={<UserManagementPage />} />
     <Route path="/admin/project" element={<DeptProjectAdminPage />} />
-
-    <Route path="/TestPanel" element={<TestAuthPanel />} />
 
     {/*  <Route path="/upload" element={<UploadPage />} /> */}
     {/*  <Route index element={<ChatPage />} /> */}
