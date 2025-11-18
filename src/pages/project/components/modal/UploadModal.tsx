@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Plus,
-} from "lucide-react"; // 아이콘 추가
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,18 +36,18 @@ import { uploadDocument } from "@/services/documents.service";
 import type { DocumentCategory } from "@/types/UserType";
 import { CATEGORY_LABEL, CATEGORY_FILTERS } from "@/constants/projectConstants";
 
+// API 명세에 맞춘 메타데이터 타입 정의
+interface UploadMetadata {
+  dept_id: number;
+  project_id: number;
+  user_id: number;
+  category?: string;
+}
+
 type PendingFile = {
   id: string;
   file: File;
 };
-
-// API 명세에 맞춘 메타데이터 타입 정의
-interface UploadMetadata {
-  dept_id: string;
-  project_id: string;
-  user_id: string;
-  // category: string; // API 미반영으로 제외
-}
 
 interface UploadModalProps {
   departmentId: number | undefined;
@@ -57,8 +57,8 @@ interface UploadModalProps {
 }
 
 export function UploadModal({
-  departmentId,
-  projectId,
+  // departmentId,
+  // projectId,
   projectName,
   disabled,
 }: UploadModalProps) {
@@ -66,11 +66,11 @@ export function UploadModal({
   const [files, setFiles] = useState<PendingFile[]>([]);
   const [category, setCategory] = useState<DocumentCategory>("GENERAL");
 
-  //  업로드 성공 시 메시지에 표시할 파일 개수 저장용
+  // 업로드 성공 시 메시지에 표시할 파일 개수 저장용
   const [lastUploadedCount, setLastUploadedCount] = useState(0);
 
   // 임시 유저 ID
-  const currentUserId = 1;
+  // const currentUserId = 1; // (데모용 하드코딩 사용 시 미사용)
 
   const queryClient = useQueryClient();
 
@@ -122,79 +122,46 @@ export function UploadModal({
     }
   };
 
-  //  제출 핸들러 (Alert 제거)
-  // const handleSubmit = async () => {
-  //   if (!files.length || !projectId || !departmentId) return;
-
-  //   // 업로드 시작 전 개수 저장
-  //   setLastUploadedCount(files.length);
-
-  //   // API 명세(String)에 맞춰 변환
-  //   const metadata: UploadMetadata = {
-  //     user_id: String(currentUserId),
-  //     dept_id: String(departmentId),
-  //     project_id: String(projectId),
-  //     // category: category, // (백엔드 반영 전까지 주석 처리)
-  //   };
-
-  //   try {
-  //     const uploadPromises = files.map(({ file }) =>
-  //       uploadMutation.mutateAsync({ file, metadata })
-  //     );
-
-  //     await Promise.all(uploadPromises);
-
-  //     // 성공 시 파일 목록 비우기 (메시지는 lastUploadedCount로 표시)
-  //     setFiles([]);
-
-  //     // ⚠️ 주의: 여기서 setOpen(false)를 하면 성공 메시지를 못 보고 닫힙니다.
-  //     // 사용자가 직접 닫거나, 성공 메시지를 보고 닫게 둡니다.
-  //   } catch (error) {
-  //     console.error("Upload failed:", error);
-  //     // 에러 발생 시 파일 목록 유지 (재시도 가능하게)
-  //   }
-  // };
-
+  // ✨ 제출 핸들러 (데모용 하드코딩 적용)
   const handleSubmit = async () => {
-    // 파일 선택 여부만 체크 (ID 체크는 임시 해제하거나 유지해도 무방)
-    if (!files.length) return alert("파일을 선택해주세요.");
+    if (!files.length) return;
 
-    // 업로드 개수 저장 (UI 표시용)
+    // (ID 체크는 데모를 위해 잠시 생략 가능)
+    // if (!projectId || !departmentId) return;
+
+    // 업로드 시작 전 개수 저장
     setLastUploadedCount(files.length);
 
     // 🧪 [데모용] 하드코딩된 메타데이터
-    // 시연을 위해 무조건 유저 2, 부서 1, 프로젝트 1로 고정합니다.
-    // 나중에 실제 연동 시 이 부분을 주석 처리하고 아래 동적 데이터를 사용하세요.
+    // (백엔드 FK 오류 방지를 위해 확실한 ID 1, 1, 2 전송)
     const DEMO_METADATA: UploadMetadata = {
-      user_id: 2, // 시연용 유저 ID
-      dept_id: 1, // 시연용 부서 ID
-      project_id: 1, // 시연용 프로젝트 ID
-      category: category, // 카테고리는 선택한 대로
+      user_id: 2,
+      dept_id: 1,
+      project_id: 1,
+      category: category,
     };
 
     /* [Original Code - 나중에 복구하세요]
     const metadata: UploadMetadata = {
-      user_id: currentUserId, 
-      dept_id: departmentId!,  
-      project_id: projectId!,  
+      user_id: currentUserId,
+      dept_id: departmentId!,
+      project_id: projectId!,
       category: category,
     };
     */
 
     try {
       const uploadPromises = files.map(({ file }) =>
-        // ✨ 하드코딩된 DEMO_METADATA 사용
         uploadMutation.mutateAsync({ file, metadata: DEMO_METADATA })
       );
 
       await Promise.all(uploadPromises);
 
-      // 성공 처리
+      // 성공 시 파일 목록 비우기
       setFiles([]);
-      // setOpen(false); // 성공 메시지 확인을 위해 닫지 않음
     } catch (error) {
       console.error("Upload failed:", error);
-      // 에러 발생 시에도 일단 넘어가려면 여기서 alert를 띄우지 않거나 무시할 수 있음
+      // 에러 발생 시 파일 목록 유지
     }
   };
 
@@ -262,7 +229,9 @@ export function UploadModal({
                   </span>{" "}
                   또는 드래그 앤 드롭
                 </p>
-                <p className="text-xs text-gray-500">HWP , HWPX</p>
+                <p className="text-xs text-gray-500">
+                  HWP, HWPX, PDF (최대 200MB)
+                </p>
               </div>
               <Input
                 type="file"
@@ -300,7 +269,7 @@ export function UploadModal({
           )}
         </div>
 
-        {/*  결과 메시지 표시 영역 (버튼 바로 위) */}
+        {/* 결과 메시지 표시 영역 (버튼 바로 위) */}
         <div className="w-full">
           {/* 성공 메시지 */}
           {uploadMutation.isSuccess && (
@@ -326,7 +295,7 @@ export function UploadModal({
           )}
         </div>
 
-        {/*  Footer: 버튼과 메시지를 수직으로 배치하기 위해 flex-col 사용 */}
+        {/* Footer: 버튼과 메시지를 수직으로 배치하기 위해 flex-col 사용 */}
         <DialogFooter className="flex flex-col sm:justify-center gap-4">
           {/* 버튼 그룹 (가운데 정렬) */}
           <div className="flex w-full justify-center gap-2">

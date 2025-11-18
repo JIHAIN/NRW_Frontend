@@ -134,16 +134,25 @@ export function ProjectTable({
   const handleCheckboxChange = (itemId: number, isChecked: boolean) => {
     setSelectedItemIds((prev) => {
       const newSet = new Set(prev);
-      isChecked ? newSet.add(itemId) : newSet.delete(itemId);
+      // 수정됨: 삼항 연산자 -> if 문
+      if (isChecked) {
+        newSet.add(itemId);
+      } else {
+        newSet.delete(itemId);
+      }
       return newSet;
     });
   };
+
   const handleSelectAllChange = (isChecked: boolean) => {
     setSelectedItemIds((prev) => {
       const newSet = new Set(prev);
-      isChecked
-        ? currentTableData.forEach((i) => newSet.add(i.id))
-        : currentTableData.forEach((i) => newSet.delete(i.id));
+      // 수정됨: 삼항 연산자 -> if 문
+      if (isChecked) {
+        currentTableData.forEach((i) => newSet.add(i.id));
+      } else {
+        currentTableData.forEach((i) => newSet.delete(i.id));
+      }
       return newSet;
     });
   };
@@ -171,7 +180,7 @@ export function ProjectTable({
   };
 
   const handleBulkAction = (type: "download" | "delete") => {
-    alert("일괄 작업은 아직 준비 중입니다.");
+    if (type !== null) alert("일괄 작업은 아직 준비 중입니다.");
   };
 
   // 옵션

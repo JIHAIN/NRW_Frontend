@@ -1,5 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchDocumentContent } from "@/services/documents.service";
 import { useChatStore } from "@/store/chatStore";
 import { FileText, X, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,16 +13,17 @@ export function DocViewer() {
   };
 
   // 문서 내용 가져오기 (선택된 문서가 있을 때만 실행)
-  const { data: docContent, isLoading } = useQuery({
-    queryKey: ["docContent", selectedReference?.sourceName],
-    queryFn: () => {
-      // 실제로는 doc_id가 필요합니다. 지금은 sourceName을 임시로 사용하거나
-      // chatStore에 docId도 같이 저장해야 합니다.
-      // 예시: user_id=2 (고정), doc_id=파일명(임시)
-      return fetchDocumentContent("2", selectedReference?.sourceName || "");
-    },
-    enabled: !!selectedReference, // 선택되었을 때만 쿼리 실행
-  });
+
+  // const { data: docContent, isLoading } = useQuery({
+  //   queryKey: ["docContent", selectedReference?.sourceName],
+  //   queryFn: () => {
+  //     // 실제로는 doc_id가 필요합니다. 지금은 sourceName을 임시로 사용하거나
+  //     // chatStore에 docId도 같이 저장해야 합니다.
+  //     // 예시: user_id=2 (고정), doc_id=파일명(임시)
+  //     return fetchDocumentContent("2", selectedReference?.sourceName || "");
+  //   },
+  //   enabled: !!selectedReference, // 선택되었을 때만 쿼리 실행
+  // });
 
   return (
     <div className="h-full rounded-xl flex flex-col bg-white border-l border-blue-50">
