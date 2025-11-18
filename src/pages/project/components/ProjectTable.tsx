@@ -1,95 +1,96 @@
-// ProjectTable.tsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import TableBody from "./TableBody";
 import Pagination from "./Pagination";
 import TableControls from "./TableControls";
-import { useDebounce } from "../../../hooks/useDebounce";
-import {
-  DUMMY_DOCUMENTS,
-  DUMMY_PROJECTS,
-  DUMMY_DEPARTMENTS,
-} from "@/types/dummy_data";
-import type { Document } from "@/types/UserType";
+import { useDebounce } from "@/hooks/useDebounce";
 
-// 더미데이터
-const ALL_DOCUMENTS: Document[] = DUMMY_DOCUMENTS;
+// ✨ React Query & API Service
+import { useQuery } from "@tanstack/react-query";
+import { fetchDocuments, downloadDocument } from "@/services/documents.service";
 
-const ITEMS_PER_PAGE: number = 10;
+// Store & Type
+import { useSystemStore } from "@/store/systemStore";
+import type {
+  Document,
+  DocumentStatus,
+  DocumentCategory,
+} from "@/types/UserType";
+import { STATUS_FILTERS, CATEGORY_FILTERS } from "@/constants/projectConstants";
 
-// ✨ 1. ProjectTable Props에 currentUserRole 추가 ✨
+// ❌ Mock Data 삭제! (이제 필요 없음)
+
+const ITEMS_PER_PAGE = 10;
+
 interface ProjectTableProps {
   selectedDepartment: string;
   selectedProject: string;
-  currentUserRole: string; // 이전 단계(ProjectPage)에서 이 prop을 받음
+  currentUserRole: string;
 }
 
 export function ProjectTable({
   selectedDepartment,
   selectedProject,
-  currentUserRole, // ✨ 2. prop 비구조화 할당
+  currentUserRole,
 }: ProjectTableProps): React.ReactElement {
-  //  필터 상태 관리
-  const [searchText, setSearchText] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
-  const [locationFilter, setLocationFilter] = useState<string>("");
+  const { departments, projects } = useSystemStore();
 
-  // ✨ 체크박스 상태 관리 (이전 구현 포함) ✨
+  // ✨ [핵심] API로 실제 문서 목록 가져오기
+  const { data: documents = [], isLoading } = useQuery({
+    queryKey: ["documents"],
+    queryFn: fetchDocuments,
+  });
+
+  // 상태 관리
+  const [searchText, setSearchText] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<DocumentStatus | "">("");
+  const [categoryFilter, setCategoryFilter] = useState<DocumentCategory | "">(
+    ""
+  );
   const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(
     new Set()
   );
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
-  //  검색어에 디바운스 적용
   const debouncedSearchText = useDebounce<string>(searchText, 300);
+  const roleUpper = currentUserRole ? currentUserRole.toUpperCase() : "";
+  const canManage = roleUpper === "SUPER_ADMIN" || roleUpper === "MANAGER";
 
-  // ✨ 사용자가 'user'인지, 'manager'/'super_admin'인지 확인 ✨
-  const canManage =
-    currentUserRole === "manager" || currentUserRole === "super_admin";
-
-  // ✨ 1. 프로젝트 부서 여부 확인 로직 추가 ✨
-  const isReadyToDisplay = selectedDepartment && selectedProject;
-
-  // 1. 데이터 필터링 (부서/프로젝트 -> 검색/상태/위치 순)
+  // ✨ 필터링 로직 (Mock 대신 documents 데이터 사용)
   const filteredData: Document[] = useMemo(() => {
-    if (!isReadyToDisplay) {
-      return [];
-    }
+    // 1. API 로딩 중이거나 데이터 없으면 빈 배열
+    if (isLoading || !documents) return [];
 
-    let result = ALL_DOCUMENTS;
+    let result = documents;
 
-    const deptId = DUMMY_DEPARTMENTS.find(
-      (d) => d.name === selectedDepartment
-    )?.id;
-    const projId = DUMMY_PROJECTS.find((p) => p.name === selectedProject)?.id;
+    // 2. 부서/프로젝트 필터링 (선택된 경우만)
+    // 주의: 현재 API가 dept_id, project_id를 안 줘서(0으로 설정됨),
+    //       '전체 보기'가 아니면 데이터가 안 나올 수 있습니다.
+    //       일단 필터링 로직은 유지하되, 데이터가 없어서 안 나오는 건 정상입니다.
+    const deptId = departments.find((d) => d.name === selectedDepartment)?.id;
+    const projId = projects.find((p) => p.name === selectedProject)?.id;
 
-    // a. 프로젝트 필터링 (선택된 프로젝트만으로 필터링)
     if (projId) {
       result = result.filter((item) => item.projectId === projId);
     } else if (deptId) {
-      // b. 프로젝트가 선택되지 않고 부서만 선택된 경우: 해당 부서 소속 프로젝트 문서를 모두 표시
-      const projectIdsInDept = DUMMY_PROJECTS.filter(
-        (p) => p.departmentId === deptId
-      ).map((p) => p.id);
-      result = result.filter((item) =>
-        projectIdsInDept.includes(item.projectId)
-      );
+      result = result.filter((item) => item.departmentId === deptId);
     }
 
-    // c. 문서 이름 검색 필터링
+    // 3. 검색어 필터
     if (debouncedSearchText) {
       const lowerCaseSearch = debouncedSearchText.toLowerCase();
       result = result.filter((item) =>
-        item.name.toLowerCase().includes(lowerCaseSearch)
+        item.originalFilename.toLowerCase().includes(lowerCaseSearch)
       );
     }
 
-    // d. 상태 필터링
+    // 4. 상태 필터
     if (statusFilter) {
       result = result.filter((item) => item.status === statusFilter);
     }
 
-    // e. 위치 필터링
-    if (locationFilter) {
-      result = result.filter((item) => item.location === locationFilter);
+    // 5. 카테고리 필터
+    if (categoryFilter) {
+      result = result.filter((item) => item.category === categoryFilter);
     }
 
     return result;
@@ -98,131 +99,112 @@ export function ProjectTable({
     selectedProject,
     debouncedSearchText,
     statusFilter,
-    locationFilter,
-    isReadyToDisplay, // isReadyToDisplay 의존성 추가 (더 정확함)
+    categoryFilter,
+    documents, // ✨ API 데이터 의존성
+    isLoading,
+    departments,
+    projects,
   ]);
 
-  // 페이지네이션 로직
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const totalItems: number = filteredData.length;
-  const totalPages: number = Math.ceil(totalItems / ITEMS_PER_PAGE);
+  // 페이지네이션 계산
+  const totalItems = filteredData.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
-  // 페이지 이동 시, 필터링된 데이터가 변경되면 1페이지로 돌아가도록 처리 및 선택 초기화
-  React.useEffect(() => {
+  useEffect(() => {
     setCurrentPage(1);
-    setSelectedItemIds(new Set()); // 필터 변경 시 선택된 항목 초기화
+    setSelectedItemIds(new Set());
   }, [
     selectedDepartment,
     selectedProject,
     debouncedSearchText,
     statusFilter,
-    locationFilter,
+    categoryFilter,
   ]);
 
-  // 2. 현재 페이지에 보여줄 데이터 슬라이싱
-  const currentTableData: Document[] = useMemo(() => {
-    const firstPageIndex: number = (currentPage - 1) * ITEMS_PER_PAGE;
-    const lastPageIndex: number = firstPageIndex + ITEMS_PER_PAGE;
-    return filteredData.slice(firstPageIndex, lastPageIndex);
+  const currentTableData = useMemo(() => {
+    const firstIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredData.slice(firstIndex, firstIndex + ITEMS_PER_PAGE);
   }, [currentPage, filteredData]);
 
-  // ✨ 체크박스 로직 (통합) ✨
-  const isAllSelected: boolean =
+  // 체크박스 핸들러 (기존 유지)
+  const isAllSelected =
     currentTableData.length > 0 &&
     currentTableData.every((item) => selectedItemIds.has(item.id));
-  const hasSelection: boolean = selectedItemIds.size > 0;
-
+  const hasSelection = selectedItemIds.size > 0;
   const handleCheckboxChange = (itemId: number, isChecked: boolean) => {
     setSelectedItemIds((prev) => {
       const newSet = new Set(prev);
-      if (isChecked) {
-        newSet.add(itemId);
-      } else {
-        newSet.delete(itemId);
-      }
+      isChecked ? newSet.add(itemId) : newSet.delete(itemId);
       return newSet;
     });
   };
-
   const handleSelectAllChange = (isChecked: boolean) => {
     setSelectedItemIds((prev) => {
       const newSet = new Set(prev);
-      if (isChecked) {
-        currentTableData.forEach((item) => newSet.add(item.id));
-      } else {
-        currentTableData.forEach((item) => newSet.delete(item.id));
-      }
+      isChecked
+        ? currentTableData.forEach((i) => newSet.add(i.id))
+        : currentTableData.forEach((i) => newSet.delete(i.id));
       return newSet;
     });
   };
 
-  const handleBulkAction = (type: "download" | "delete") => {
-    const selectedItems = ALL_DOCUMENTS.filter((item) =>
-      selectedItemIds.has(item.id)
-    );
+  // 액션 핸들러
+  const handleAction = async (type: "download" | "delete", item: Document) => {
     if (type === "download") {
-      alert(`${selectedItems.length}개의 문서를 다운로드합니다.`);
-    } else if (type === "delete") {
-      // ✨ 4. 삭제 로직은 'canManage'일 때만 호출되지만, 이중 확인
-      if (
-        canManage &&
-        confirm(
-          `선택된 ${selectedItems.length}개의 문서를 정말 삭제하시겠습니까?`
-        )
-      ) {
-        alert("삭제 처리 완료.");
-        setSelectedItemIds(new Set());
+      try {
+        // API 명세에 맞춰 userId와 docId(파일명) 전달
+        // item.userId는 숫자형이므로 문자열로 변환하되, "user=1" 포맷이 필요한지는 백엔드 확인 후 적용
+        // 일단 "user=숫자" 포맷으로 시도해봅니다.
+        const userIdParam = `user=${item.userId}`;
+        await downloadDocument(
+          userIdParam,
+          item.originalFilename,
+          item.originalFilename
+        );
+      } catch (error) {
+        console.error("Download failed:", error);
+        alert("다운로드에 실패했습니다.");
       }
+    } else if (type === "delete") {
+      alert("삭제 기능은 아직 연결되지 않았습니다.");
     }
   };
-  // -------------------------
 
-  // 3. 필터 드롭다운 옵션 추출
-  const statusOptions: string[] = useMemo(
-    () => Array.from(new Set(ALL_DOCUMENTS.map((item) => item.status))),
-    []
-  );
-  const locationOptions: string[] = useMemo(
-    () => Array.from(new Set(ALL_DOCUMENTS.map((item) => item.location))),
-    []
-  );
-
-  const handleAction = (type: "download" | "delete", item: Document): void => {
-    alert(`${item.name}을(를) ${type}합니다.`);
+  const handleBulkAction = (type: "download" | "delete") => {
+    alert("일괄 작업은 아직 준비 중입니다.");
   };
 
+  // 옵션
+  const statusOptions = useMemo(() => STATUS_FILTERS, []);
+  const categoryOptions = useMemo(() => CATEGORY_FILTERS, []);
+
   return (
-    <div className="w-full  rounded-lg  bg-white">
-      {/* ⏫ Table Controls 컴포넌트 추가 */}
+    <div className="w-full rounded-lg bg-white">
       <TableControls
         searchText={searchText}
         onSearchChange={setSearchText}
         statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        locationFilter={locationFilter}
-        onLocationFilterChange={setLocationFilter}
+        onStatusFilterChange={(val) => setStatusFilter(val as DocumentStatus)}
         statusOptions={statusOptions}
-        locationOptions={locationOptions}
-        // ✨ 체크박스 관련 props 전달 ✨
+        categoryFilter={categoryFilter}
+        onCategoryFilterChange={(val) =>
+          setCategoryFilter(val as DocumentCategory)
+        }
+        categoryOptions={categoryOptions}
         hasSelection={hasSelection}
         onBulkDownload={() => handleBulkAction("download")}
-        // ✨ 5. 'canManage'가 true일 때만 onBulkDelete prop 전달
-        // (TableControls가 undefined를 받으면 '일괄 삭제' 버튼 숨기도록 구현해야 함)
         onBulkDelete={canManage ? () => handleBulkAction("delete") : undefined}
       />
 
-      {/* ✨ 3. 조건부 렌더링 ✨ */}
-      {!isReadyToDisplay ? (
-        // 부서 또는 프로젝트가 선택되지 않았을 때
-        <div className="text-center p-8 text-gray-500">
-          상단의 부서와 프로젝트를 선택해주세요.
+      {/* ✨ 로딩 상태 표시 */}
+      {isLoading ? (
+        <div className="text-center p-12 text-gray-500">
+          데이터를 불러오는 중입니다...
         </div>
       ) : (
-        // 부서와 프로젝트가 모두 선택되었을 때 테이블 표시
         <>
-          {/* 📋 테이블 헤더 */}
           <header className="flex items-center text-sm font-semibold text-gray-600 bg-gray-50 p-3">
-            {/* ... (헤더 내용 유지) ... */}
+            {/* ... 헤더 동일 ... */}
             <div className="w-1/12 text-center">
               <input
                 type="checkbox"
@@ -232,32 +214,30 @@ export function ProjectTable({
               />
             </div>
             <div className="w-3/12">문서 이름</div>
-            <div className="w-2/12">문서 위치</div>
-            <div className="w-[10%] flex items-center gap-1 cursor-pointer">
-              생성 일자
-            </div>
+            <div className="w-2/12">분류</div>
+            <div className="w-[10%] cursor-pointer">생성 일자</div>
             <div className="w-[10%]">상태</div>
-            <div className="w-[10%]">완료 일자</div>
+            <div className="w-[10%]">업데이트</div>
             <div className="w-2/12 text-center">관리</div>
           </header>
 
-          {/* 📑 테이블 본문 */}
           {currentTableData.length > 0 ? (
             <TableBody
               data={currentTableData}
               onAction={handleAction}
               selectedItemIds={selectedItemIds}
               onCheckboxChange={handleCheckboxChange}
-              // ✨ 6. 'canManage' prop을 TableBody로 전달
               canManage={canManage}
             />
           ) : (
             <div className="text-center p-8 text-gray-500">
-              검색 결과에 해당하는 문서가 없습니다.
+              {/* 필터 때문에 안 보이는 건지, 진짜 없는 건지 구분 */}
+              {documents.length === 0
+                ? "등록된 문서가 없습니다."
+                : "조건에 맞는 문서가 없습니다."}
             </div>
           )}
 
-          {/* 🔢 페이지네이션 컴포넌트 */}
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}

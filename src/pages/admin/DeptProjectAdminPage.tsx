@@ -1,16 +1,17 @@
 // src/pages/admin/DeptProjectAdminPage.tsx
 
-import { useState, type FC } from "react";
-// 💡 통합 더미 데이터 사용으로 변경
-import { DUMMY_DEPARTMENTS, DUMMY_PROJECTS } from "../../types/dummy_data";
+import { useState, type FC, useEffect } from "react";
 import DepartmentManager from "./components/DepartmentManager";
 import ProjectManager from "./components/ProjectManager";
 import DeleteConfirmationModal from "./components/DeleteConfirmationModal";
 import type { Department, Project } from "@/types/UserType";
 import { X } from "lucide-react";
 
+// ✨ 시스템 스토어 임포트
+import { useSystemStore } from "@/store/systemStore";
+
 // --------------------------------------------------------------------------
-// 💡 부서 삭제를 위한 간단한 확인 모달 (ManagePage 내부에 정의)
+// 💡 부서/프로젝트 삭제를 위한 간단한 확인 모달
 // --------------------------------------------------------------------------
 interface SimpleConfirmModalProps {
   name: string;
@@ -61,135 +62,134 @@ const SimpleConfirmModal: FC<SimpleConfirmModalProps> = ({
 };
 
 // --------------------------------------------------------------------------
-// 💡 메인 컴포넌트: ManagePage
+// 💡 메인 컴포넌트: DeptProjectAdminPage
 // --------------------------------------------------------------------------
 
 export const DeptProjectAdminPage: FC = () => {
-  // 📚 부서 및 프로젝트 데이터 상태 관리 (더미 데이터 사용)
-  const [departments, setDepartments] =
-    useState<Department[]>(DUMMY_DEPARTMENTS);
-  const [projects, setProjects] = useState<Project[]>(DUMMY_PROJECTS);
+  // ✨ 1. 시스템 스토어 구독
+  const {
+    departments,
+    projects,
+    fetchSystemData,
+    addDepartment,
+    deleteDepartment,
+    addProject,
+    deleteProject,
+  } = useSystemStore();
 
-  // 💡 선택된 부서 ID 상태 (필터링 기준)
-  // 초기값은 '전체'를 의미하는 null 또는 0으로 설정합니다.
+  // ✨ 2. 초기 데이터 로드
+  useEffect(() => {
+    fetchSystemData();
+  }, [fetchSystemData]);
+
+  // UI 상태 관리
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<
     number | null
   >(null);
 
-  // 🗑️ 프로젝트 삭제 모달 상태
+  // 프로젝트 삭제 모달 상태
   const [isProjectModalOpen, setIsProjectModalOpen] = useState<boolean>(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
-  // 🗑️ 부서 삭제 모달 상태
+  // 부서 삭제 모달 상태
   const [isDeptModalOpen, setIsDeptModalOpen] = useState<boolean>(false);
   const [deptToDelete, setDeptToDelete] = useState<Department | null>(null);
 
   // -------------------------
-  // 💡 데이터 CRUD 함수
+  // 💡 핸들러 함수 (Store 액션 호출)
   // -------------------------
+
+  // 1. 부서 추가
   const handleAddDepartment = (name: string) => {
-    const newId = Math.max(...departments.map((d) => d.id)) + 1;
-    setDepartments([...departments, { id: newId, name }]);
+    addDepartment(name);
   };
 
+  // 2. 부서 삭제
   const handleDeleteDepartment = () => {
     if (!deptToDelete) return;
 
-    // 1. 부서 삭제
-    setDepartments(departments.filter((d) => d.id !== deptToDelete.id));
+    deleteDepartment(deptToDelete.id);
 
-    // 2. 해당 부서의 프로젝트도 삭제
-    const remainingProjects = projects.filter(
-      (p) => p.departmentId !== deptToDelete.id
-    );
-    setProjects(remainingProjects);
-
-    // 3. 모달 닫기 및 필터 초기화
     setIsDeptModalOpen(false);
     setDeptToDelete(null);
-    setSelectedDepartmentId(null);
+
+    // 현재 보고 있던 부서가 삭제되면 선택 해제
+    if (selectedDepartmentId === deptToDelete.id) {
+      setSelectedDepartmentId(null);
+    }
   };
 
+  // 3. 프로젝트 추가
   const handleAddProject = (name: string, departmentId: number) => {
-    const newId = Math.max(...projects.map((p) => p.id)) + 1;
-    setProjects([
-      ...projects,
-      {
-        id: newId,
-        name,
-        departmentId,
-        creationDate: new Date().toISOString().split("T")[0],
-      },
-    ]);
+    // ✨ 새로운 UserType에 맞춰 객체 생성
+    const newProject: Project = {
+      id: 0, // Store에서 ID 재할당됨
+      departmentId: departmentId, // dept_id -> departmentId 확인!
+      name: name,
+      description: "",
+      status: "ACTIVE",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    addProject(newProject);
   };
 
+  // 4. 프로젝트 삭제
   const handleConfirmProjectDelete = (keepDocuments: boolean) => {
     if (!projectToDelete) return;
 
-    // 프로젝트 삭제
-    const projectId = projectToDelete.id;
-    setProjects(projects.filter((p) => p.id !== projectId));
+    deleteProject(projectToDelete.id);
 
     if (!keepDocuments) {
       console.log(
-        `[문서 삭제] 프로젝트 ID ${projectId}의 모든 문서를 삭제합니다.`
+        `[API 요청 필요] 프로젝트 ID ${projectToDelete.id} 관련 문서 삭제 로직 실행`
       );
-      // 실제 API 호출 로직: deleteDocumentsByProjectId(projectId);
     } else {
-      console.log(`[문서 보관] 프로젝트 ID ${projectId}의 문서는 유지합니다.`);
-      // 실제 API 호출 로직: updateDocumentsProjectIdToNull(projectId);
+      console.log(`[정보] 프로젝트 문서는 보관됩니다.`);
     }
 
     setIsProjectModalOpen(false);
     setProjectToDelete(null);
   };
 
-  // -------------------------
-  // 💡 부서 클릭/선택 핸들러
-  // -------------------------
+  // 부서 선택 핸들러
   const handleSelectDepartment = (deptId: number | null) => {
     setSelectedDepartmentId(deptId);
   };
 
-  // -------------------------
-  // 💡 렌더링
-  // -------------------------
   return (
-    <div className="flex flex-col gap-4  page-layout h-full w-full">
-      <h1 className=" page-title">부서 및 프로젝트 관리</h1>
+    <div className="flex flex-col gap-4 page-layout h-full w-full">
+      <h1 className="page-title">부서 및 프로젝트 관리</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-full w-full">
-        {/* 1. 부서 관리 영역 (왼쪽) */}
+        {/* 좌측: 부서 관리 */}
         <DepartmentManager
           departments={departments}
           onAdd={handleAddDepartment}
-          // 삭제 버튼 클릭 시 모달 상태만 업데이트
           onDeleteClick={(dept) => {
             setDeptToDelete(dept);
             setIsDeptModalOpen(true);
           }}
-          // 💡 부서 목록 클릭 시 필터링 ID 업데이트
           onSelectDept={handleSelectDepartment}
           selectedDeptId={selectedDepartmentId}
         />
 
-        {/* 2. 프로젝트 관리 영역 (오른쪽) */}
+        {/* 우측: 프로젝트 관리 */}
         <ProjectManager
           projects={projects}
           departments={departments}
           onAdd={handleAddProject}
-          // 삭제 버튼 클릭 시 프로젝트 모달 상태 업데이트
           onDeleteClick={(proj) => {
             setProjectToDelete(proj);
             setIsProjectModalOpen(true);
           }}
-          // 💡 필터링 상태와 핸들러 전달
           selectedDeptId={selectedDepartmentId}
           onSelectDept={handleSelectDepartment}
         />
       </div>
 
-      {/* 🗑️ 프로젝트 삭제 확인 모달 */}
+      {/* 프로젝트 삭제 모달 */}
       {isProjectModalOpen && projectToDelete && (
         <DeleteConfirmationModal
           projectName={projectToDelete.name}
@@ -201,7 +201,7 @@ export const DeptProjectAdminPage: FC = () => {
         />
       )}
 
-      {/* 🗑️ 부서 삭제 확인 모달 (SimpleConfirmModal 사용) */}
+      {/* 부서 삭제 모달 */}
       {isDeptModalOpen && deptToDelete && (
         <SimpleConfirmModal
           name={deptToDelete.name}

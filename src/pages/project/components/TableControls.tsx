@@ -1,9 +1,5 @@
-// TableControls.tsx
-import { type FC } from "react";
-// 필요한 아이콘 및 UI 컴포넌트 임포트
-import { ChevronRight, Search, Check, Download, Trash2 } from "lucide-react";
-import * as React from "react";
-
+import { type FC, useState } from "react";
+import { Search, Download, Trash2, ChevronRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,29 +14,31 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { CATEGORY_LABEL } from "@/constants/projectConstants";
 
 // -------------------------------------------------------------
-// TableControlsProps (체크박스/일괄관리 기능 포함)
+// Props 정의
 // -------------------------------------------------------------
 interface TableControlsProps {
   searchText: string;
   onSearchChange: (text: string) => void;
+
   statusFilter: string;
   onStatusFilterChange: (status: string) => void;
-  locationFilter: string;
-  onLocationFilterChange: (location: string) => void;
   statusOptions: string[];
-  locationOptions: string[];
 
-  // 체크박스 기능 관련 Props 추가
+  // ✨ 분류(Category) 필터로 변경
+  categoryFilter: string;
+  onCategoryFilterChange: (category: string) => void;
+  categoryOptions: string[];
+
   hasSelection: boolean;
   onBulkDownload: () => void;
-  onBulkDelete?: () => void; // ✨ 1. 'undefined'를 받을 수 있도록 ? (optional) 처리
+  onBulkDelete?: () => void;
 }
-// -------------------------------------------------------------
 
 // -------------------------------------------------------------
-// 재사용 가능한 필터 드롭다운 컴포넌트 (FilterDropdown)
+// FilterDropdown
 // -------------------------------------------------------------
 interface OptionItem {
   value: string;
@@ -50,7 +48,7 @@ interface OptionItem {
 interface FilterDropdownProps {
   currentFilter: string;
   onFilterChange: (value: string) => void;
-  options: string[];
+  options: OptionItem[]; // ✨ 객체 배열로 받도록 수정
   defaultLabel: string;
   widthClass?: string;
 }
@@ -62,14 +60,11 @@ const FilterDropdown: FC<FilterDropdownProps> = ({
   defaultLabel,
   widthClass = "w-full",
 }) => {
-  const [open, setOpen] = React.useState(false);
-  const displayLabel = currentFilter || defaultLabel;
+  const [open, setOpen] = useState(false);
 
-  // 옵션 데이터 포맷
-  const formattedOptions: OptionItem[] = [
-    { value: "", label: defaultLabel },
-    ...options.map((o) => ({ value: o, label: o })),
-  ];
+  // 현재 선택된 필터의 라벨 찾기
+  const currentLabel =
+    options.find((o) => o.value === currentFilter)?.label || defaultLabel;
 
   return (
     <div className={widthClass}>
@@ -78,16 +73,13 @@ const FilterDropdown: FC<FilterDropdownProps> = ({
           <Button
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between opacity-70 border border-blue-100 rounded-2xl p-1.5 focus:outline-none cursor-pointer text-center text-[0.9rem] bg-white
-            "
+            className="w-full justify-between opacity-70 border border-blue-100 rounded-2xl p-1.5 focus:outline-none cursor-pointer text-center text-[0.9rem] bg-white"
           >
-            {displayLabel}
+            {currentLabel}
             <ChevronRight
-              className={`
-              ml-auto transition-transform duration-200 
-              ${open ? "rotate-90" : ""} 
-              w-4 h-4 text-gray-500
-            `}
+              className={`ml-auto transition-transform duration-200 ${
+                open ? "rotate-90" : ""
+              } w-4 h-4 text-gray-500`}
             />
           </Button>
         </PopoverTrigger>
@@ -96,12 +88,36 @@ const FilterDropdown: FC<FilterDropdownProps> = ({
             <CommandList className="p-0">
               <CommandEmpty>옵션이 없습니다.</CommandEmpty>
               <CommandGroup>
-                {formattedOptions.map((option) => (
+                {/* 전체 옵션 */}
+                <CommandItem
+                  value=""
+                  onSelect={() => {
+                    onFilterChange("");
+                    setOpen(false);
+                  }}
+                >
+                  {defaultLabel}
+                  <Check
+                    className={cn(
+                      "ml-auto",
+                      currentFilter === "" ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                </CommandItem>
+
+                {/* 개별 옵션들 */}
+                {options.map((option) => (
                   <CommandItem
                     key={option.value}
                     value={option.value}
                     onSelect={(currentValue) => {
-                      onFilterChange(currentValue);
+                      // CommandItem은 value를 소문자로 리턴하는 경우가 있어, 원래 값을 찾아서 전달
+                      const selected =
+                        options.find(
+                          (o) =>
+                            o.value.toLowerCase() === currentValue.toLowerCase()
+                        )?.value || currentValue;
+                      onFilterChange(selected);
                       setOpen(false);
                     }}
                   >
@@ -124,14 +140,23 @@ const FilterDropdown: FC<FilterDropdownProps> = ({
     </div>
   );
 };
-// -------------------------------------------------------------
 
 const TableControls: FC<TableControlsProps> = (props) => {
+  // ✨ 옵션 데이터를 {value, label} 형태로 변환
+  const formattedStatusOptions = props.statusOptions.map((s) => ({
+    value: s,
+    label: s,
+  }));
+
+  // 카테고리는 한글 변환 적용
+  const formattedCategoryOptions = props.categoryOptions.map((c) => ({
+    value: c,
+    label: (CATEGORY_LABEL as any)[c] || c,
+  }));
+
   return (
     <div className="flex justify-between items-center py-2 px-10 ">
-      {/* 문서 이름 검색 및 일괄 관리 버튼 그룹 */}
       <div className="flex items-center gap-3">
-        {/* 검색창 */}
         <div className="flex items-center border border-blue-100 rounded-2xl p-1 bg-white w-80">
           <Search size={20} className="text-blue-400 mx-2" />
           <input
@@ -143,7 +168,6 @@ const TableControls: FC<TableControlsProps> = (props) => {
           />
         </div>
 
-        {/* 일괄 관리 버튼 (선택된 항목이 있을 때만 표시) */}
         {props.hasSelection && (
           <>
             <Button
@@ -153,7 +177,7 @@ const TableControls: FC<TableControlsProps> = (props) => {
               <Download size={16} className="text-blue-500" />
               일괄 다운로드
             </Button>
-            {/* ✨ 2. 'onBulkDelete' prop이 존재할 때만 '일괄 삭제' 버튼 렌더링 */}
+
             {props.onBulkDelete && (
               <Button
                 onClick={props.onBulkDelete}
@@ -167,28 +191,26 @@ const TableControls: FC<TableControlsProps> = (props) => {
         )}
       </div>
 
-      {/* 상태 필터 드롭다운 및 위치 필터 */}
       <div className="flex items-center gap-12">
         <div className="flex items-center gap-4">
           <label className="text-sm font-medium text-gray-700">상태:</label>
-
           <FilterDropdown
             currentFilter={props.statusFilter}
             onFilterChange={props.onStatusFilterChange}
-            options={props.statusOptions}
+            options={formattedStatusOptions}
             defaultLabel="전체 상태"
             widthClass="w-[10rem]"
           />
         </div>
 
         <div className="flex items-center gap-4">
-          <label className="text-sm font-medium text-gray-700">위치:</label>
-
+          {/* ✨ 위치 -> 분류 */}
+          <label className="text-sm font-medium text-gray-700">분류:</label>
           <FilterDropdown
-            currentFilter={props.locationFilter}
-            onFilterChange={props.onLocationFilterChange}
-            options={props.locationOptions}
-            defaultLabel="전체 위치"
+            currentFilter={props.categoryFilter}
+            onFilterChange={props.onCategoryFilterChange}
+            options={formattedCategoryOptions}
+            defaultLabel="전체 분류"
             widthClass="w-[10rem]"
           />
         </div>

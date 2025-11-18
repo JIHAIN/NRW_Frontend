@@ -1,101 +1,88 @@
-// src/pages/admin/UserManagementPage.tsx
-
 import { useState, useMemo, type FC, useEffect } from "react";
-import { Trash2, Settings, Search, X } from "lucide-react";
+import { Trash2, Settings, Search } from "lucide-react";
 import UserEditModal from "./UserEditModal";
-// 타입은 @/types/UserType 에서 가져온다고 가정
 import type { User, UserRole } from "@/types/UserType";
-import {
-  DUMMY_USERS,
-  DUMMY_DEPARTMENTS,
-  DUMMY_PROJECTS,
-} from "../../types/dummy_data";
-// Pagination 컴포넌트 임포트 (경로 확인)
+
+// ✨ Store 임포트
+import { useSystemStore } from "@/store/systemStore";
+import { useUserStore } from "@/store/userStore";
+
 import Pagination from "../project/components/Pagination";
 import { FilterCombobox } from "@/components/common/FilterCombobox";
 
-// FilterCombobox에서 사용될 OptionItem 타입 (string 값으로 사용)
+// --------------------------------------------------------------------------
+// 💡 상수 및 헬퍼 정의
+// --------------------------------------------------------------------------
+
+const ITEMS_PER_PAGE: number = 10;
+
+// UI 표시용 Role 라벨 맵핑
+const ROLE_LABELS: Record<UserRole, string> = {
+  SUPER_ADMIN: "총괄 관리자",
+  MANAGER: "관리자",
+  USER: "일반 사용자",
+};
+
+// Role별 뱃지 색상 맵핑
+const ROLE_COLOR_MAP: Record<UserRole, { bg: string; text: string }> = {
+  SUPER_ADMIN: { bg: "bg-red-100", text: "text-red-700" },
+  MANAGER: { bg: "bg-yellow-100", text: "text-yellow-700" },
+  USER: { bg: "bg-blue-100", text: "text-blue-500" },
+};
+
+// 필터 옵션용 Interface
 interface OptionItem<T> {
   value: T;
   label: string;
 }
 
-// -----------------------------------------------------------------
-// ✨ 1. 상수 및 헬퍼 정의
-// -----------------------------------------------------------------
-
-const ITEMS_PER_PAGE: number = 10;
-const ROLES: UserRole[] = ["총괄 관리자", "관리자", "일반 사용자"];
-
-// 💡 권한 옵션 (FilterCombobox OptionItem<string> 형식)
-const ROLE_OPTIONS: OptionItem<string>[] = [
-  { value: "전체 권한", label: "전체 권한" },
-  ...ROLES.map((role) => ({ value: role, label: role })),
+// 권한 필터 옵션 생성 (검색 필터용 - 전체 포함)
+const ROLE_FILTER_OPTIONS: OptionItem<string>[] = [
+  { value: "ALL", label: "전체 권한" },
+  { value: "SUPER_ADMIN", label: "총괄 관리자" },
+  { value: "MANAGER", label: "관리자" },
+  { value: "USER", label: "일반 사용자" },
 ];
 
-// 💡 부서 옵션 (FilterCombobox OptionItem<string> 형식, 이름 기준)
-const DEPT_OPTIONS: OptionItem<string>[] = [
-  { value: "전체 부서", label: "전체 부서" },
-  ...DUMMY_DEPARTMENTS.map((dept) => ({ value: dept.name, label: dept.name })),
-];
+// ✨ 수정 모달용 권한 목록 (전체 제외)
+const EDIT_ROLES: UserRole[] = ["SUPER_ADMIN", "MANAGER", "USER"];
 
-// 💡 권한별 색상 매핑 (UX 개선)
-const ROLE_COLOR_MAP: Record<UserRole, { bg: string; text: string }> = {
-  "총괄 관리자": { bg: "bg-red-100", text: "text-red-700" },
-  관리자: { bg: "bg-yellow-100", text: "text-yellow-700" },
-  "일반 사용자": { bg: "bg-blue-100", text: "text-blue-500" },
-};
-
-// -----------------------------------------------------------------
-// ✨ 2. 사용자 삭제 확인 모달 (UX 개선)
-// -----------------------------------------------------------------
+// --------------------------------------------------------------------------
+// 💡 삭제 확인 모달
+// --------------------------------------------------------------------------
 interface DeleteConfirmModalProps {
   userName: string;
   onConfirm: () => void;
   onClose: () => void;
 }
-
 const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
   userName,
   onConfirm,
   onClose,
 }) => {
-  // 배경을 클릭해도 닫히지 않도록 이벤트 버블링 방지
-  const handleBackgroundClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      onClick={handleBackgroundClick}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="bg-white p-6 rounded-lg shadow-xl w-80 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-        >
-          <X size={20} />
-        </button>
         <h3 className="text-lg font-bold mb-4 text-gray-800">
           사용자 삭제 확인
         </h3>
         <p className="mb-6 text-sm text-gray-600">
-          정말로 <span className="font-semibold text-red-600">{userName}</span>{" "}
-          님을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+          <span className="font-semibold text-red-600">{userName}</span> 님을
+          삭제하시겠습니까?
         </p>
         <div className="flex justify-end space-x-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 text-sm"
+            className="px-4 py-2 border rounded-md text-sm hover:bg-gray-50"
           >
             취소
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
+            className="px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
           >
             삭제
           </button>
@@ -105,37 +92,52 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
   );
 };
 
-// -----------------------------------------------------------------
-// ✨ 3. 메인 컴포넌트: UserManagementPage
-// -----------------------------------------------------------------
+// --------------------------------------------------------------------------
+// ✨ 메인 컴포넌트
+// --------------------------------------------------------------------------
 
 export const UserManagementPage: FC = () => {
-  // 1. 상태 관리
-  const [users, setUsers] = useState<User[]>(DUMMY_USERS);
+  // ✨ 1. Store 구독 (projects 추가)
+  const { departments, projects, fetchSystemData } = useSystemStore();
+  const { users, fetchUsers, deleteUser, updateUser } = useUserStore();
+
+  // ✨ 2. 초기 데이터 로드
+  useEffect(() => {
+    fetchSystemData();
+    fetchUsers();
+  }, [fetchSystemData, fetchUsers]);
+
+  // ✨ 3. 부서 필터 옵션 생성
+  const deptOptions: OptionItem<string>[] = useMemo(() => {
+    return [
+      { value: "ALL", label: "전체 부서" },
+      ...departments.map((dept) => ({ value: dept.name, label: dept.name })),
+    ];
+  }, [departments]);
+
+  // 상태 관리
   const [searchText, setSearchText] = useState<string>("");
+  const [roleFilter, setRoleFilter] = useState<string>("ALL");
+  const [deptFilter, setDeptFilter] = useState<string>("ALL");
+
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-
-  // 💡 필터 상태 추가
-  const [roleFilter, setRoleFilter] = useState<string>("전체 권한");
-  const [deptFilter, setDeptFilter] = useState<string>("전체 부서");
-
-  // 💡 페이지네이션 및 삭제 모달 상태
-  const [currentPage, setCurrentPage] = useState<number>(1);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
-  // 2. 검색 및 필터링 로직 (useMemo 활용)
+  // --------------------------------------------------------------------------
+  // 🔍 필터링 로직
+  // --------------------------------------------------------------------------
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
-      // 💡 1. 권한 필터
-      // 타입 캐스팅 없이 string으로 비교
-      if (roleFilter !== "전체 권한" && user.role !== roleFilter) {
+      // 1. 권한 필터
+      if (roleFilter !== "ALL" && user.role !== roleFilter) {
         return false;
       }
 
-      // 💡 2. 부서 필터
-      if (deptFilter !== "전체 부서") {
-        const userDeptName = DUMMY_DEPARTMENTS.find(
+      // 2. 부서 필터
+      if (deptFilter !== "ALL") {
+        const userDeptName = departments.find(
           (dept) => dept.id === user.departmentId
         )?.name;
         if (userDeptName !== deptFilter) {
@@ -143,81 +145,69 @@ export const UserManagementPage: FC = () => {
         }
       }
 
-      // 💡 3. 검색 필터
+      // 3. 검색 필터
       const searchLower = searchText.toLowerCase();
-      if (
-        !user.name.toLowerCase().includes(searchLower) &&
-        !user.email.toLowerCase().includes(searchLower)
-      ) {
+      const userName = user.userName.toLowerCase();
+      const accountId = user.accountId.toLowerCase();
+
+      if (!userName.includes(searchLower) && !accountId.includes(searchLower)) {
         return false;
       }
 
       return true;
     });
-  }, [users, searchText, roleFilter, deptFilter]);
+  }, [users, searchText, roleFilter, deptFilter, departments]);
 
-  // 3. 페이지네이션 계산
+  // --------------------------------------------------------------------------
+  // 📄 페이지네이션 계산
+  // --------------------------------------------------------------------------
   const totalItems: number = filteredUsers.length;
   const totalPages: number = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
-  // 4. 현재 페이지 데이터 슬라이싱
   const currentTableData: User[] = useMemo(() => {
     const firstPageIndex: number = (currentPage - 1) * ITEMS_PER_PAGE;
     const lastPageIndex: number = firstPageIndex + ITEMS_PER_PAGE;
     return filteredUsers.slice(firstPageIndex, lastPageIndex);
   }, [currentPage, filteredUsers]);
 
-  // 5. 필터/검색 변경 시 페이지 초기화
   useEffect(() => {
     setCurrentPage(1);
   }, [searchText, roleFilter, deptFilter]);
 
-  // 6. 핸들러 함수
+  // --------------------------------------------------------------------------
+  // ✋ 핸들러 함수
+  // --------------------------------------------------------------------------
   const handleEditUser = (user: User) => {
     setSelectedUser(user);
     setIsEditModalOpen(true);
   };
 
-  // 💡 권한 필터 변경 핸들러
-  const handleRoleChange = (value: string) => {
-    setRoleFilter(value);
-  };
-
-  // 💡 부서 필터 변경 핸들러
-  const handleDeptChange = (value: string) => {
-    setDeptFilter(value);
-  };
-
-  // 💡 삭제 버튼 클릭 시 모달 열기
   const handleDeleteClick = (user: User) => {
     setUserToDelete(user);
   };
 
-  // 💡 모달에서 삭제 확정 시 실행
   const handleConfirmDelete = () => {
     if (!userToDelete) return;
-
-    console.log(`사용자 ID ${userToDelete.id} 삭제 요청`);
-    setUsers(users.filter((u) => u.id !== userToDelete.id));
-    setUserToDelete(null); // 모달 닫기
-
-    // 삭제 후 현재 페이지의 사용자가 없으면 페이지를 뒤로 이동
+    deleteUser(userToDelete.id);
+    setUserToDelete(null);
     if (currentTableData.length === 1 && currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
   };
 
   const handleSaveUser = (updatedUser: User) => {
-    console.log("사용자 정보 저장:", updatedUser);
-    setUsers(users.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+    updateUser(updatedUser);
     setIsEditModalOpen(false);
   };
 
-  // 7. 컴포넌트 렌더링
+  const handleRoleChange = (value: string) => setRoleFilter(value);
+  const handleDeptChange = (value: string) => setDeptFilter(value);
+
   return (
     <div className="flex flex-col gap-4 page-layout">
       <h1 className="page-title"> 사용자 관리 </h1>
-      {/* 🔍 검색, 필터 및 액션 버튼 */}
+
+      {/* 검색 및 필터 영역 */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
           {/* 검색창 */}
@@ -225,74 +215,46 @@ export const UserManagementPage: FC = () => {
             <Search size={20} className="text-blue-400 mx-2" />
             <input
               type="text"
-              placeholder="사용자 이름 또는 이메일 검색"
+              placeholder="이름 또는 아이디 검색"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className="w-full p-1 focus:outline-none "
+              className="w-full p-1 focus:outline-none"
             />
           </div>
 
-          {/* 💡 권한 필터 드롭다운 */}
-          {/* <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="p-2 border border-blue-100 rounded-md bg-white text-sm  focus:outline-none cursor-pointer"
-          >
-            {ROLE_OPTIONS.map((role) => (
-              <option key={role} value={role}>
-                {role}
-              </option>
-            ))}
-          </select> */}
-
-          {/* 💡 소속 부서 필터 드롭다운 */}
-          {/* <select
-            value={deptFilter}
-            onChange={(e) => setDeptFilter(e.target.value)}
-            className="p-2 border border-blue-100 rounded-md bg-white text-sm  focus:outline-none cursor-pointer"
-          >
-            {DEPT_OPTIONS.map((deptName) => (
-              <option key={deptName} value={deptName}>
-                {deptName}
-              </option>
-            ))}
-          </select> */}
-
-          {/* 💡 권한 필터 드롭다운 (FilterCombobox 사용) */}
+          {/* 권한 필터 */}
           <FilterCombobox<string>
-            options={ROLE_OPTIONS}
+            options={ROLE_FILTER_OPTIONS}
             selectedValue={roleFilter}
             onValueChange={handleRoleChange}
             placeholder={"권한 필터"}
-            className=""
           />
 
-          {/* 💡 소속 부서 필터 드롭다운 (FilterCombobox 사용) */}
+          {/* 부서 필터 */}
           <FilterCombobox<string>
-            options={DEPT_OPTIONS}
+            options={deptOptions}
             selectedValue={deptFilter}
             onValueChange={handleDeptChange}
             placeholder={"부서 필터"}
-            className=""
           />
         </div>
       </div>
 
-      {/* 📋 사용자 목록 테이블 */}
-      <div className="overflow-x-auto  bg-white rounded-lg shadow-lg border-2xl border-blue-200">
+      {/* 테이블 영역 */}
+      <div className="overflow-x-auto bg-white rounded-lg shadow-lg border-2xl border-blue-200">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
-              <th className="w-3/12 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                이름
-              </th>
               <th className="w-3/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                이름 / 아이디
+              </th>
+              <th className="w-2/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 권한
               </th>
               <th className="w-3/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 소속 부서
               </th>
-              <th className="w-1/12  py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="w-1/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                 관리
               </th>
             </tr>
@@ -304,33 +266,29 @@ export const UserManagementPage: FC = () => {
                   bg: "bg-gray-100",
                   text: "text-gray-500",
                 };
+                const roleLabel = ROLE_LABELS[user.role] || user.role;
+                const deptName =
+                  departments.find((d) => d.id === user.departmentId)?.name ||
+                  "-";
+
                 return (
                   <tr key={user.id}>
-                    {/* 1. 이름 */}
-                    <td className="px-6  whitespace-nowrap text-sm text-gray-900">
-                      {user.name}
-                      <span className="block text-xs text-gray-500">
-                        {user.email}
-                      </span>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="font-medium">{user.userName}</div>
+                      <div className="text-xs text-gray-500">
+                        {user.accountId}
+                      </div>
                     </td>
-
-                    {/* 2. 권한 */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`p-1 text-xs rounded font-semibold ${roleStyle.bg} ${roleStyle.text}`}
                       >
-                        {user.role}
+                        {roleLabel}
                       </span>
                     </td>
-
-                    {/* 3. 소속 부서 */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {DUMMY_DEPARTMENTS.find(
-                        (dept) => dept.id === user.departmentId
-                      )?.name || "N/A"}
+                      {deptName}
                     </td>
-
-                    {/* 4. 관리 버튼 */}
                     <td className="px-6 py-4 whitespace-nowrap text-center space-x-2">
                       <button
                         onClick={() => handleEditUser(user)}
@@ -351,11 +309,7 @@ export const UserManagementPage: FC = () => {
             ) : (
               <tr>
                 <td colSpan={4} className="text-center py-8 text-gray-500">
-                  {searchText ||
-                  roleFilter !== "전체 권한" ||
-                  deptFilter !== "전체 부서"
-                    ? "검색/필터 결과에 해당하는 사용자가 없습니다."
-                    : "등록된 사용자가 없습니다."}
+                  사용자가 없습니다.
                 </td>
               </tr>
             )}
@@ -363,7 +317,7 @@ export const UserManagementPage: FC = () => {
         </table>
       </div>
 
-      {/* 💡 페이지네이션 컴포넌트 추가 */}
+      {/* 페이지네이션 */}
       {totalPages > 1 && (
         <Pagination
           currentPage={currentPage}
@@ -372,22 +326,22 @@ export const UserManagementPage: FC = () => {
         />
       )}
 
-      {/* ⚙️ 사용자 편집/권한 설정 모달 */}
+      {/* ✨ 사용자 수정 모달 (속성 전달 수정됨) */}
       {isEditModalOpen && selectedUser && (
         <UserEditModal
           user={selectedUser}
-          roles={ROLES}
-          departments={DUMMY_DEPARTMENTS}
-          projects={DUMMY_PROJECTS}
+          roles={EDIT_ROLES} // ✨ roles 전달
+          departments={departments} // ✨ departments 전달
+          projects={projects} // ✨ projects 전달
           onSave={handleSaveUser}
           onClose={() => setIsEditModalOpen(false)}
         />
       )}
 
-      {/* 💡 삭제 확인 모달 */}
+      {/* 삭제 확인 모달 */}
       {userToDelete && (
         <DeleteConfirmModal
-          userName={userToDelete.name}
+          userName={userToDelete.userName}
           onConfirm={handleConfirmDelete}
           onClose={() => setUserToDelete(null)}
         />

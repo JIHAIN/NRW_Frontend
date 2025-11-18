@@ -1,82 +1,125 @@
-// TableBody.tsx
 import type { FC } from "react";
-import { Download, Trash2 } from "lucide-react";
-import type { Document } from "../../../types/UserType";
+import { Download, Trash2, FileText } from "lucide-react";
+import type { Document } from "@/types/UserType"; // ✨ DocumentCategory 삭제 (상수에서 추론됨)
+
+// ✨ 상수 파일 임포트
+import {
+  STATUS_CONFIG,
+  CATEGORY_LABEL,
+  CATEGORY_COLOR,
+} from "@/constants/projectConstants";
 
 export interface TableBodyProps {
   data: Document[];
   onAction: (type: "download" | "delete", item: Document) => void;
-  // ✨ 체크박스 관련 props 추가 ✨
   selectedItemIds: Set<number>;
   onCheckboxChange: (itemId: number, isChecked: boolean) => void;
-  canManage: boolean; // ✨ 1. canManage prop 추가
+  canManage: boolean;
 }
 
-// 함수 컴포넌트(FC)에 TableBodyProps 타입을 적용
 const TableBody: FC<TableBodyProps> = ({
   data,
   onAction,
   selectedItemIds,
   onCheckboxChange,
-  canManage, // ✨ 2. canManage 비구조화 할당
+  canManage,
 }) => {
   return (
-    <div>
-      {data.map((item: Document) => (
-        <div
-          key={item.id}
-          className="flex items-center text-sm text-gray-800 border-b border-blue-100 hover:bg-gray-50 p-3"
-        >
-          {/* ✨ 체크박스 ✨ */}
-          <div className="w-1/12 text-center ">
-            <input
-              type="checkbox"
-              className="form-checkbox text-blue-600 rounded"
-              checked={selectedItemIds.has(item.id)} // 선택 여부 결정
-              onChange={(e) => onCheckboxChange(item.id, e.target.checked)} // 변경 핸들러
-            />
-          </div>
-          {/* 문서 이름 */}
-          <div className="w-3/12 truncate font-medium text-blue-600 cursor-pointer">
-            {item.name}
-          </div>
-          {/* 문서 위치 */}
-          <div className="w-2/12">{item.location}</div>
-          {/* 생성 일자 */}
-          <div className="w-[10%]">{item.created}</div>
-          {/* 상태 */}
-          <div className="w-[10%] flex items-center">
-            <span
-              className={`h-2 w-2 ${
-                item.status === "완료" ? "bg-blue-500" : "bg-yellow-500"
-              } rounded-full mr-1`}
-            ></span>
-            {item.status}
-          </div>
-          {/* 완료 일자 */}
-          <div className="w-[10%]">{item.completed}</div>
-          {/* ✨ 3. '관리' 섹션 수정 ✨ */}
-          <div className="w-2/12 flex justify-center space-x-3 text-gray-500">
-            {/* 다운로드 버튼 (항상 표시) */}
-            <button
-              onClick={() => onAction("download", item)}
-              className="hover:text-blue-500 cursor-pointer"
-            >
-              <Download size={18} />
-            </button>
+    <div className="bg-white divide-y divide-gray-100">
+      {data.map((item: Document) => {
+        // 상수 파일에서 설정 가져오기
+        const statusConfig =
+          STATUS_CONFIG[item.status] || STATUS_CONFIG["UPLOADED"];
+        const categoryLabel = CATEGORY_LABEL[item.category] || item.category;
+        const categoryStyle =
+          CATEGORY_COLOR[item.category] || CATEGORY_COLOR["GENERAL"];
 
-            {/* 'canManage'가 true일 때만 '삭제' 버튼 표시 */}
-            {canManage && (
-              <button
-                onClick={() => onAction("delete", item)}
-                className="hover:text-red-500 cursor-pointer" // (색상 변경)
+        return (
+          <div
+            key={item.id}
+            className="flex items-center text-sm text-gray-700 hover:bg-blue-50/50 transition-colors p-3 group"
+          >
+            {/* 1. 체크박스 */}
+            <div className="w-1/12 text-center">
+              <input
+                type="checkbox"
+                className="form-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                checked={selectedItemIds.has(item.id)}
+                onChange={(e) => onCheckboxChange(item.id, e.target.checked)}
+              />
+            </div>
+
+            {/* 2. 문서 이름 */}
+            <div className="w-3/12 flex items-center gap-2 overflow-hidden">
+              <FileText className="w-4 h-4 text-gray-400 shrink-0" />
+              <div className="flex flex-col overflow-hidden">
+                <span
+                  className="truncate font-medium text-gray-900 cursor-pointer hover:text-blue-600 hover:underline"
+                  title={item.originalFilename}
+                >
+                  {item.originalFilename}
+                </span>
+                {/* 파일 경로를 이름 아래에 작게 표시 */}
+                <span
+                  className="text-[10px] text-gray-400 truncate"
+                  title={item.storedPath}
+                >
+                  {item.storedPath}
+                </span>
+              </div>
+            </div>
+
+            {/* 3. 분류 (카테고리) */}
+            <div className="w-2/12">
+              <span
+                className={`px-2.5 py-0.5 rounded border text-xs font-medium ${categoryStyle}`}
               >
-                <Trash2 size={18} />
+                {categoryLabel}
+              </span>
+            </div>
+
+            {/* 4. 생성 일자 */}
+            <div className="w-[10%] text-xs text-gray-500">
+              {item.createdAt.split("T")[0]}
+            </div>
+
+            {/* 5. 상태 */}
+            <div className="w-[10%] flex items-center">
+              <span
+                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.color}`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full mr-1.5 ${statusConfig.dot}`}
+                ></span>
+                {statusConfig.label}
+              </span>
+            </div>
+
+            {/* 6. 업데이트 일자 */}
+            <div className="w-[10%] text-xs text-gray-500">
+              {item.updatedAt.split("T")[0]}
+            </div>
+
+            {/* 7. 관리 버튼 */}
+            <div className="w-2/12 flex justify-center items-center gap-2  transition-opacity">
+              <button
+                onClick={() => onAction("download", item)}
+                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
+              >
+                <Download size={16} />
               </button>
-            )}
+              {canManage && (
+                <button
+                  onClick={() => onAction("delete", item)}
+                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/authStore";
-import { DUMMY_DEPARTMENTS, DUMMY_PROJECTS } from "@/types/dummy_data";
-import { FlaskConical, X, GripHorizontal } from "lucide-react"; // ✨ Grip 아이콘 추가
+import { useSystemStore } from "@/store/systemStore"; // ✨ 시스템 스토어 임포트
+import { FlaskConical, X, GripHorizontal, Loader2 } from "lucide-react";
 
+// 내부용 Select 컴포넌트
 const TestSelect = ({ label, value, onChange, children }: any) => (
   <label className="flex items-center gap-2">
     <span className="text-xs font-bold text-blue-900">{label}:</span>
@@ -17,30 +18,36 @@ const TestSelect = ({ label, value, onChange, children }: any) => (
 );
 
 export function TestAuthPanel() {
+  // 1. 패널 열림/닫힘 상태
   const [isOpen, setIsOpen] = useState(false);
-  const { role, department, project, setAuth } = useAuthStore();
 
-  // ✨ 1. 위치 상태 관리 (초기값: 우측 하단 여백)
-  // (처음 렌더링 시에는 window 객체가 없을 수 있으므로 안전하게 처리)
+  // 2. Store 구독
+  const { role, department, project, setAuth } = useAuthStore();
+  const { departments, projects, isLoading, fetchSystemData } =
+    useSystemStore(); // ✨ 시스템 데이터 가져오기
+
+  // 3. 위치 상태 관리
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // ✨ 2. 드래그 여부 판별을 위한 Ref (드래그 중 클릭 이벤트 방지용)
+  // 4. 드래그 관련 Refs
   const isDragging = useRef(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
 
-  // 초기 위치 설정 (우측 하단)
+  // ✨ 초기화 Effect: 위치 설정 및 데이터 로드
   useEffect(() => {
     if (typeof window !== "undefined") {
       setPosition({
-        x: window.innerWidth - 80, // 오른쪽에서 80px
-        y: window.innerHeight - 80, // 아래쪽에서 80px
+        x: window.innerWidth - 80,
+        y: window.innerHeight - 80,
       });
       setIsInitialized(true);
     }
-  }, []);
+    // 컴포넌트 마운트 시 DB(Mock) 데이터 가져오기
+    fetchSystemData();
+  }, [fetchSystemData]);
 
-  // ✨ 3. 드래그 핸들러
+  // ✨ 드래그 핸들러 로직
   const handleMouseDown = (e: React.MouseEvent) => {
     isDragging.current = false;
     dragStartPos.current = { x: e.clientX, y: e.clientY };
@@ -49,7 +56,6 @@ export function TestAuthPanel() {
     const startY = e.clientY - position.y;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      // 조금이라도 움직이면 드래그로 간주
       const moveDistance = Math.hypot(
         moveEvent.clientX - dragStartPos.current.x,
         moveEvent.clientY - dragStartPos.current.y
@@ -74,50 +80,56 @@ export function TestAuthPanel() {
     window.addEventListener("mouseup", handleMouseUp);
   };
 
-  // ✨ 4. 클릭 핸들러 (드래그가 아닐 때만 열기/닫기)
+  // 클릭 핸들러 (드래그 아닐 때만 토글)
   const togglePanel = () => {
     if (!isDragging.current) {
       setIsOpen(!isOpen);
     }
   };
 
-  // 옵션 데이터 등 기존 로직
-  const departmentOptions = DUMMY_DEPARTMENTS.map((d) => ({
+  // ✨ 옵션 데이터 가공 (Store 데이터 사용)
+  const departmentOptions = departments.map((d) => ({
     value: d.name,
     label: d.name,
+    id: d.id,
   }));
-  const projectOptions = DUMMY_PROJECTS.filter(
-    (p) =>
-      p.departmentId ===
-      DUMMY_DEPARTMENTS.find((d) => d.name === department)?.id
-  ).map((p) => ({ value: p.name, label: p.name }));
 
+  // 선택된 부서에 맞는 프로젝트 필터링
+  const currentDeptId = departments.find((d) => d.name === department)?.id;
+
+  const projectOptions = projects
+    .filter((p) => p.dept_id === currentDeptId)
+    .map((p) => ({ value: p.name, label: p.name }));
+
+  // 핸들러들
   const handleRoleChange = (newRole: string) =>
     setAuth(newRole, department, project);
+
   const handleDeptChange = (newDept: string) => {
-    const newDeptId = DUMMY_DEPARTMENTS.find((d) => d.name === newDept)?.id;
+    const newDeptId = departments.find((d) => d.name === newDept)?.id;
+    // 해당 부서의 첫 번째 프로젝트로 자동 선택
     const firstProject =
-      DUMMY_PROJECTS.find((p) => p.departmentId === newDeptId)?.name || "";
+      projects.find((p) => p.dept_id === newDeptId)?.name || "";
+
     setAuth(role, newDept, firstProject);
   };
+
   const handleProjectChange = (newProject: string) =>
     setAuth(role, department, newProject);
 
-  // 아직 초기화 안 됐으면 렌더링 안 함 (깜빡임 방지)
+  // 초기화 전 렌더링 방지
   if (!isInitialized) return null;
 
   return (
     <div
-      // ✨ 5. 스타일 적용: fixed 위치를 state 값으로 제어
       style={{ left: `${position.x}px`, top: `${position.y}px` }}
-      className="fixed z-50 flex flex-col items-end select-none" // select-none: 텍스트 선택 방지
+      className="fixed z-50 flex flex-col items-end select-none"
     >
-      {/* 닫혀있을 때 (아이콘) */}
+      {/* 1. 닫혀있을 때 (아이콘 버튼) */}
       {!isOpen && (
         <button
           onMouseDown={handleMouseDown}
           onClick={togglePanel}
-          // ✨ cursor-move 추가
           className="rounded-full bg-blue-600 p-3 text-white shadow-lg transition-transform hover:scale-110 hover:bg-blue-700 cursor-move active:scale-95"
           title="드래그하여 이동 / 클릭하여 열기"
         >
@@ -125,21 +137,20 @@ export function TestAuthPanel() {
         </button>
       )}
 
-      {/* 열려있을 때 (패널) */}
+      {/* 2. 열려있을 때 (패널) */}
       {isOpen && (
-        <div className="flex flex-col gap-2 rounded-xl border-2 border-blue-500 bg-blue-50 p-4 shadow-xl animate-in fade-in zoom-in-95 duration-200 min-w-[200px]">
-          {/* 패널 헤더 (드래그 핸들 + 닫기) */}
+        <div className="flex flex-col gap-2 rounded-xl border-2 border-blue-500 bg-blue-50 p-4 shadow-xl animate-in fade-in zoom-in-95 duration-200 min-w-[220px]">
+          {/* 패널 헤더 */}
           <div
             className="flex items-center justify-between border-b border-blue-200 pb-2 mb-1 cursor-move"
-            onMouseDown={handleMouseDown} // ✨ 헤더를 잡고 드래그 가능하게 설정
+            onMouseDown={handleMouseDown}
           >
             <h4 className="text-sm font-bold text-blue-700 flex items-center gap-2 pointer-events-none">
               <GripHorizontal size={16} className="text-blue-400" />
-              개발 권한 제어
+              권한 제어 (DB)
             </h4>
             <button
               onClick={() => setIsOpen(false)}
-              // ✨ 마우스 다운 이벤트 전파 막기 (닫기 버튼 누를 때 드래그 시작 방지)
               onMouseDown={(e) => e.stopPropagation()}
               className="text-blue-400 hover:text-blue-700 transition-colors cursor-pointer"
             >
@@ -147,42 +158,51 @@ export function TestAuthPanel() {
             </button>
           </div>
 
-          {/* 컨텐츠 영역 (드래그 방지 - 마우스 이벤트 전파 중단) */}
-          <div
-            onMouseDown={(e) => e.stopPropagation()}
-            className="flex flex-col gap-2"
-          >
-            <TestSelect label="Role" value={role} onChange={handleRoleChange}>
-              <option value="user">일반 사용자</option>
-              <option value="manager">부서장 (Manager)</option>
-              <option value="super_admin">총괄 관리자</option>
-            </TestSelect>
-
-            <TestSelect
-              label="Dept"
-              value={department}
-              onChange={handleDeptChange}
+          {/* 컨텐츠 영역 */}
+          {isLoading ? (
+            // ✨ 로딩 중일 때 스피너 표시
+            <div className="flex justify-center items-center py-4 text-blue-500">
+              <Loader2 className="animate-spin" size={24} />
+            </div>
+          ) : (
+            // ✨ 데이터 로드 완료 시 컨트롤 표시
+            <div
+              onMouseDown={(e) => e.stopPropagation()}
+              className="flex flex-col gap-2"
             >
-              {departmentOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </TestSelect>
+              <TestSelect label="Role" value={role} onChange={handleRoleChange}>
+                <option value="user">일반 사용자</option>
+                <option value="manager">부서장 (Manager)</option>
+                <option value="super_admin">총괄 관리자</option>
+              </TestSelect>
 
-            <TestSelect
-              label="Proj"
-              value={project}
-              onChange={handleProjectChange}
-            >
-              {projectOptions.length === 0 && <option value="">-</option>}
-              {projectOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </TestSelect>
-          </div>
+              <TestSelect
+                label="Dept"
+                value={department}
+                onChange={handleDeptChange}
+              >
+                <option value="">부서 선택</option>
+                {departmentOptions.map((opt) => (
+                  <option key={opt.id} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </TestSelect>
+
+              <TestSelect
+                label="Proj"
+                value={project}
+                onChange={handleProjectChange}
+              >
+                {projectOptions.length === 0 && <option value="">-</option>}
+                {projectOptions.map((opt, idx) => (
+                  <option key={idx} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </TestSelect>
+            </div>
+          )}
         </div>
       )}
     </div>

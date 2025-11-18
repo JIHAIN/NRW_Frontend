@@ -58,48 +58,6 @@ const data = {
       ],
     },
   ],
-  projects: [
-    {
-      name: "이 문서 읽고 분석해줘",
-      url: "#",
-    },
-    {
-      name: "첨부한 파일을 요약해줘",
-      url: "#",
-    },
-    {
-      name: "이번 분기 할당된 목표 수치를 그래프로 보여줘",
-      url: "#",
-    },
-    {
-      name: "문서 읽고 보안사항 말해줘",
-      url: "#",
-    },
-    {
-      name: "이거 수정을 어떻게 할까",
-      url: "#",
-    },
-    {
-      name: "10월 예산안 찾아줘",
-      url: "#",
-    },
-    {
-      name: "채팅 예시4",
-      url: "#",
-    },
-    {
-      name: "채팅 예시 2",
-      url: "#",
-    },
-    {
-      name: "채팅 예시 3",
-      url: "#",
-    },
-    {
-      name: "채팅 예시4",
-      url: "#",
-    },
-  ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -128,7 +86,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <MainNavigation items={filteredNavMain} />
-        <ProjectsNavigation projects={data.projects} />
+        <ProjectsNavigation />
       </SidebarContent>
       <SidebarFooter>
         <UserNavigation user={currentUser} />

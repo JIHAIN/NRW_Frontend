@@ -32,7 +32,7 @@ export function TeamSwitcher() {
               className="flex justify-between data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <img
-                src="./newRun_noText.png"
+                src="/newRun_noText.png"
                 className=" w-6 h-6 rounded-full group-data-[collapsible=icon]:m-1 group-data-[collapsible=icon]:group-hover:hidden opacity-85"
               />
               <div className="grid flex-1 text-center text-sm leading-tight group-data-[collapsible=icon]:hidden">
@@ -44,7 +44,7 @@ export function TeamSwitcher() {
                 </span>
               </div>
               <Tooltip>
-                <TooltipTrigger>
+                <TooltipTrigger asChild>
                   <SidebarTrigger className="w-10 h-10  cursor-ew-resize hover:bg-blue-100 opacity-80 " />
                 </TooltipTrigger>
                 <TooltipContent>

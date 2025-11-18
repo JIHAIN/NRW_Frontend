@@ -1,9 +1,17 @@
+import { useQuery } from "@tanstack/react-query";
+import { fetchDocuments } from "@/services/documents.service";
 import { Ellipsis, FileText, Plus, Search, Settings } from "lucide-react";
 import { Dropdown } from "@/components/common/Dropdown";
 import { IconButton } from "@/components/common/IconButton";
 
 /* ---------------- Sidebar ---------------- */
 export function DocList() {
+  //  API 호출
+  const { data: documents, isLoading } = useQuery({
+    queryKey: ["documents"],
+    queryFn: fetchDocuments,
+  });
+
   return (
     <div className="h-full flex flex-col">
       <div className="p-3 flex-1 overflow-y-auto">
@@ -15,7 +23,7 @@ export function DocList() {
               className="w-full outline-none text-sm bg-transparent"
             />
           </div>
-          <IconButton label="새 노트북">
+          <IconButton label="새로 열기">
             <Plus className="size-4" />
           </IconButton>
         </div>
@@ -23,17 +31,21 @@ export function DocList() {
         <div className="mt-5 mb-2 text-xs font-semibold text-blue-900/70">
           최근 문서
         </div>
-        <div className="space-y-1">
-          {["업무지침_2409.pdf", "회의록_기관A.md", "내부규정_v12.docx"].map(
-            (f, i) => (
+
+        <div className="space-y-1 overflow-y-auto">
+          {isLoading ? (
+            <div className="p-3 text-xs text-gray-400">로딩 중...</div>
+          ) : (
+            //  진짜 데이터 매핑
+            documents?.map((doc: any) => (
               <div
-                key={i}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50/80"
+                key={doc.id} // 혹은 doc.doc_id
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50/80 cursor-pointer"
               >
                 <FileText className="size-4 text-blue-700" />
-                <span className="truncate">{f}</span>
+                <span className="truncate text-sm">{doc.filename}</span>
               </div>
-            )
+            ))
           )}
         </div>
       </div>
