@@ -7,7 +7,7 @@ import ChatPage from "@/pages/chat/ChatPage";
 import ProjectPage from "@/pages/project/ProjectPage";
 import { UserManagementPage } from "@/pages/admin/UserManagementPage";
 import { DeptProjectAdminPage } from "@/pages/admin/DeptProjectAdminPage";
-import DashboardPage from "@/pages/dashboard/DashboardPage";
+// import { DashboardPage } from "@/pages/dashboard/DashboardPage";
 
 // import ProtectedRoute from '../components/layout/ProtectedRoute'; // 가정
 // import Header from '../components/layout/Header'; // 가정
@@ -37,7 +37,7 @@ const AppRoutes = () => (
         {/*보호된 경로들*/}
     <Route path="/chat" element={<ChatPage />} />
 
-    <Route path="/admin/dashboard" element={<DashboardPage />} />
+    {/* <Route path="/admin/dashboard" element={<DashboardPage />} /> */}
     <Route path="/admin/docs" element={<ProjectPage />} />
     <Route path="/admin/user" element={<UserManagementPage />} />
     <Route path="/admin/project" element={<DeptProjectAdminPage />} />
