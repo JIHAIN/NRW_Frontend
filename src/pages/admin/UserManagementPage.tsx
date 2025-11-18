@@ -45,7 +45,11 @@ const ROLE_FILTER_OPTIONS: OptionItem<string>[] = [
 ];
 
 // ✨ 수정 모달용 권한 목록 (전체 제외)
-const EDIT_ROLES: UserRole[] = ["SUPER_ADMIN", "MANAGER", "USER"];
+const EDIT_ROLES: OptionItem<string>[] = [
+  { value: "SUPER_ADMIN", label: "총괄 관리자" },
+  { value: "MANAGER", label: "관리자" },
+  { value: "USER", label: "일반 사용자" },
+];
 
 // --------------------------------------------------------------------------
 // 💡 삭제 확인 모달
