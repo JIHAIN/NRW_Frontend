@@ -124,7 +124,7 @@ export const DeptProjectAdminPage: FC = () => {
     // ✨ 새로운 UserType에 맞춰 객체 생성
     const newProject: Project = {
       id: 0, // Store에서 ID 재할당됨
-      departmentId: departmentId, // dept_id -> departmentId 확인!
+      departmentId: departmentId, // departmentId -> departmentId 확인!
       name: name,
       description: "",
       status: "ACTIVE",

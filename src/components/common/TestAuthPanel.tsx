@@ -1,15 +1,22 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/authStore";
-import { useSystemStore } from "@/store/systemStore"; // ✨ 시스템 스토어 임포트
+import { useSystemStore } from "@/store/systemStore";
 import { FlaskConical, X, GripHorizontal, Loader2 } from "lucide-react";
 
-// 내부용 Select 컴포넌트
-const TestSelect = ({ label, value, onChange, children }: any) => (
+// ✨ 1. any 제거: Props 인터페이스 정의
+interface TestSelectProps {
+  label: string;
+  value: string | number;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; // 이벤트 타입 명시
+  children: React.ReactNode; // any -> ReactNode
+}
+
+const TestSelect = ({ label, value, onChange, children }: TestSelectProps) => (
   <label className="flex items-center gap-2">
     <span className="text-xs font-bold text-blue-900">{label}:</span>
     <select
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={onChange} // ✨ 타입 일치
       className="rounded border border-blue-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer bg-white"
     >
       {children}
@@ -18,23 +25,16 @@ const TestSelect = ({ label, value, onChange, children }: any) => (
 );
 
 export function TestAuthPanel() {
-  // 1. 패널 열림/닫힘 상태
   const [isOpen, setIsOpen] = useState(false);
-
-  // 2. Store 구독
   const { role, department, project, setAuth } = useAuthStore();
   const { departments, projects, isLoading, fetchSystemData } =
-    useSystemStore(); // ✨ 시스템 데이터 가져오기
+    useSystemStore();
 
-  // 3. 위치 상태 관리
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isInitialized, setIsInitialized] = useState(false);
-
-  // 4. 드래그 관련 Refs
   const isDragging = useRef(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
 
-  // ✨ 초기화 Effect: 위치 설정 및 데이터 로드
   useEffect(() => {
     if (typeof window !== "undefined") {
       setPosition({
@@ -43,15 +43,12 @@ export function TestAuthPanel() {
       });
       setIsInitialized(true);
     }
-    // 컴포넌트 마운트 시 DB(Mock) 데이터 가져오기
     fetchSystemData();
   }, [fetchSystemData]);
 
-  // ✨ 드래그 핸들러 로직
   const handleMouseDown = (e: React.MouseEvent) => {
     isDragging.current = false;
     dragStartPos.current = { x: e.clientX, y: e.clientY };
-
     const startX = e.clientX - position.x;
     const startY = e.clientY - position.y;
 
@@ -60,11 +57,7 @@ export function TestAuthPanel() {
         moveEvent.clientX - dragStartPos.current.x,
         moveEvent.clientY - dragStartPos.current.y
       );
-
-      if (moveDistance > 5) {
-        isDragging.current = true;
-      }
-
+      if (moveDistance > 5) isDragging.current = true;
       setPosition({
         x: moveEvent.clientX - startX,
         y: moveEvent.clientY - startY,
@@ -80,44 +73,49 @@ export function TestAuthPanel() {
     window.addEventListener("mouseup", handleMouseUp);
   };
 
-  // 클릭 핸들러 (드래그 아닐 때만 토글)
   const togglePanel = () => {
-    if (!isDragging.current) {
-      setIsOpen(!isOpen);
-    }
+    if (!isDragging.current) setIsOpen(!isOpen);
   };
 
-  // ✨ 옵션 데이터 가공 (Store 데이터 사용)
+  // ---------------------------------------------------------
+  // ✨ 타입 안전한 옵션 생성
+  // ---------------------------------------------------------
   const departmentOptions = departments.map((d) => ({
     value: d.name,
     label: d.name,
     id: d.id,
   }));
 
-  // 선택된 부서에 맞는 프로젝트 필터링
+  // 현재 선택된 부서의 ID 찾기
   const currentDeptId = departments.find((d) => d.name === department)?.id;
 
   const projectOptions = projects
-    .filter((p) => p.dept_id === currentDeptId)
+    // ✨ [수정] dept_id -> departmentId (타입 오류 해결)
+    .filter((p) => p.departmentId === currentDeptId)
     .map((p) => ({ value: p.name, label: p.name }));
 
-  // 핸들러들
-  const handleRoleChange = (newRole: string) =>
-    setAuth(newRole, department, project);
-
-  const handleDeptChange = (newDept: string) => {
-    const newDeptId = departments.find((d) => d.name === newDept)?.id;
-    // 해당 부서의 첫 번째 프로젝트로 자동 선택
-    const firstProject =
-      projects.find((p) => p.dept_id === newDeptId)?.name || "";
-
-    setAuth(role, newDept, firstProject);
+  // ---------------------------------------------------------
+  // ✨ 이벤트 핸들러 (ChangeEvent 타입 적용)
+  // ---------------------------------------------------------
+  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setAuth(e.target.value, department, project);
   };
 
-  const handleProjectChange = (newProject: string) =>
-    setAuth(role, department, newProject);
+  const handleDeptChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newDeptName = e.target.value;
+    const newDeptId = departments.find((d) => d.name === newDeptName)?.id;
 
-  // 초기화 전 렌더링 방지
+    // ✨ [수정] dept_id -> departmentId
+    const firstProject =
+      projects.find((p) => p.departmentId === newDeptId)?.name || "";
+
+    setAuth(role, newDeptName, firstProject);
+  };
+
+  const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setAuth(role, department, e.target.value);
+  };
+
   if (!isInitialized) return null;
 
   return (
@@ -125,22 +123,18 @@ export function TestAuthPanel() {
       style={{ left: `${position.x}px`, top: `${position.y}px` }}
       className="fixed z-50 flex flex-col items-end select-none"
     >
-      {/* 1. 닫혀있을 때 (아이콘 버튼) */}
       {!isOpen && (
         <button
           onMouseDown={handleMouseDown}
           onClick={togglePanel}
           className="rounded-full bg-blue-600 p-3 text-white shadow-lg transition-transform hover:scale-110 hover:bg-blue-700 cursor-move active:scale-95"
-          title="드래그하여 이동 / 클릭하여 열기"
         >
           <FlaskConical size={24} />
         </button>
       )}
 
-      {/* 2. 열려있을 때 (패널) */}
       {isOpen && (
         <div className="flex flex-col gap-2 rounded-xl border-2 border-blue-500 bg-blue-50 p-4 shadow-xl animate-in fade-in zoom-in-95 duration-200 min-w-[220px]">
-          {/* 패널 헤더 */}
           <div
             className="flex items-center justify-between border-b border-blue-200 pb-2 mb-1 cursor-move"
             onMouseDown={handleMouseDown}
@@ -158,18 +152,16 @@ export function TestAuthPanel() {
             </button>
           </div>
 
-          {/* 컨텐츠 영역 */}
           {isLoading ? (
-            // ✨ 로딩 중일 때 스피너 표시
             <div className="flex justify-center items-center py-4 text-blue-500">
               <Loader2 className="animate-spin" size={24} />
             </div>
           ) : (
-            // ✨ 데이터 로드 완료 시 컨트롤 표시
             <div
               onMouseDown={(e) => e.stopPropagation()}
               className="flex flex-col gap-2"
             >
+              {/* ✨ 핸들러 전달 시 함수 참조만 전달 (e 객체 자동 전달됨) */}
               <TestSelect label="Role" value={role} onChange={handleRoleChange}>
                 <option value="user">일반 사용자</option>
                 <option value="manager">부서장 (Manager)</option>

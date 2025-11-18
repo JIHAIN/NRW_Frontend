@@ -36,9 +36,9 @@ import { uploadDocument } from "@/services/documents.service";
 import type { DocumentCategory } from "@/types/UserType";
 import { CATEGORY_LABEL, CATEGORY_FILTERS } from "@/constants/projectConstants";
 
-// API 명세에 맞춘 메타데이터 타입 정의
+// ✨ [수정] API 명세에 맞춰 dept_id로 수정
 interface UploadMetadata {
-  dept_id: number;
+  dept_id: number; // departmentId -> dept_id
   project_id: number;
   user_id: number;
   category?: string;
@@ -69,9 +69,6 @@ export function UploadModal({
   // 업로드 성공 시 메시지에 표시할 파일 개수 저장용
   const [lastUploadedCount, setLastUploadedCount] = useState(0);
 
-  // 임시 유저 ID
-  // const currentUserId = 1; // (데모용 하드코딩 사용 시 미사용)
-
   const queryClient = useQueryClient();
 
   // 업로드 뮤테이션
@@ -90,7 +87,6 @@ export function UploadModal({
 
   // 파일 선택 핸들러
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    // 새로운 파일 선택 시 이전 상태(성공/실패 메시지) 초기화
     if (uploadMutation.isSuccess || uploadMutation.isError) {
       uploadMutation.reset();
     }
@@ -122,29 +118,33 @@ export function UploadModal({
     }
   };
 
-  // ✨ 제출 핸들러 (데모용 하드코딩 적용)
+  // ✨ 제출 핸들러
   const handleSubmit = async () => {
     if (!files.length) return;
 
-    // (ID 체크는 데모를 위해 잠시 생략 가능)
-    // if (!projectId || !departmentId) return;
+    // Props로 받은 값이 유효한지 확인 (데모용 주석 해제 시 사용)
+    /*
+    if (!projectId || !departmentId) {
+      console.warn("프로젝트 또는 부서 ID가 없습니다.");
+      return;
+    }
+    */
 
-    // 업로드 시작 전 개수 저장
     setLastUploadedCount(files.length);
 
     // 🧪 [데모용] 하드코딩된 메타데이터
-    // (백엔드 FK 오류 방지를 위해 확실한 ID 1, 1, 2 전송)
+    // ✨ 여기서 departmentId -> dept_id 로 수정
     const DEMO_METADATA: UploadMetadata = {
       user_id: 2,
-      dept_id: 1,
+      dept_id: 1, // ✨ 수정됨
       project_id: 1,
       category: category,
     };
 
-    /* [Original Code - 나중에 복구하세요]
+    /* [Original Code - 나중에 복구 시 참조]
     const metadata: UploadMetadata = {
-      user_id: currentUserId,
-      dept_id: departmentId!,
+      user_id: 1, // 실제 유저 ID
+      dept_id: departmentId!, // Props에서 받은 departmentId를 dept_id에 할당
       project_id: projectId!,
       category: category,
     };
@@ -161,11 +161,9 @@ export function UploadModal({
       setFiles([]);
     } catch (error) {
       console.error("Upload failed:", error);
-      // 에러 발생 시 파일 목록 유지
     }
   };
 
-  // 모달이 닫힐 때 상태 초기화
   const onOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
@@ -269,9 +267,8 @@ export function UploadModal({
           )}
         </div>
 
-        {/* 결과 메시지 표시 영역 (버튼 바로 위) */}
+        {/* 결과 메시지 표시 영역 */}
         <div className="w-full">
-          {/* 성공 메시지 */}
           {uploadMutation.isSuccess && (
             <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 animate-in fade-in slide-in-from-top-2">
               <CheckCircle2 className="size-5 shrink-0" />
@@ -282,7 +279,6 @@ export function UploadModal({
             </div>
           )}
 
-          {/* 실패 메시지 */}
           {uploadMutation.isError && (
             <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 animate-in fade-in slide-in-from-top-2">
               <AlertCircle className="size-5 shrink-0" />
@@ -295,9 +291,8 @@ export function UploadModal({
           )}
         </div>
 
-        {/* Footer: 버튼과 메시지를 수직으로 배치하기 위해 flex-col 사용 */}
+        {/* Footer */}
         <DialogFooter className="flex flex-col sm:justify-center gap-4">
-          {/* 버튼 그룹 (가운데 정렬) */}
           <div className="flex w-full justify-center gap-2">
             <Button
               variant="outline"

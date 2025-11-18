@@ -30,7 +30,7 @@ const data = {
         },
         {
           title: "문서 관리",
-          url: "/admin/Docs",
+          url: "/admin/docs",
         },
       ],
     },
@@ -44,7 +44,7 @@ const data = {
       items: [
         {
           title: "사용자 관리",
-          url: "/admin/User",
+          url: "/admin/user",
         },
         {
           title: "부서 및 프로젝트 관리",
@@ -72,7 +72,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     });
   }, [role]);
 
-  // ✨ 3. 사이드바 하단에 표시할 유저 정보 객체 생성
+  // 3. 사이드바 하단에 표시할 유저 정보 객체 생성
   const currentUser = {
     name: `${role} 계정`, // 실제 이름이 있다면 그것을 사용 (현재는 role로 대체)
     email: `${department} / ${project || "프로젝트 없음"}`, // 부서/프로젝트 표시

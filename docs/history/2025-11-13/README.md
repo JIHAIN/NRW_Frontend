@@ -72,7 +72,7 @@ src/
        * .hwp 또는 .hwpx 파일을 업로드하고 파싱(분석)하는 기능을 담당합니다.
    * 입력 (프론트엔드에서 보내야 할 데이터):
        * file: UploadFile = File(...): 업로드할 실제 파일입니다.
-       * dept_id: str | None = Form(None)
+       * departmentId: str | None = Form(None)
        * project_id: str | None = Form(None)
        * user_id: str | None = Form(None)
        * 이들은 파일과 함께 보낼 수 있는 선택적인 폼(form) 데이터입니다.
@@ -89,7 +89,7 @@ src/
       있으며, 심지어 직접 테스트도 해볼 수 있습니다.
    3. 구체적인 연동 예시 (`/api/v1/upload-and-parse`):
        * 프론트엔드에서는 이 엔드포인트로 HTTP POST 요청을 보내야 합니다.
-       * 요청 본문(body)에는 FormData 객체를 사용하여 file 필드에 업로드할 파일을 담고, 필요하다면 dept_id,
+       * 요청 본문(body)에는 FormData 객체를 사용하여 file 필드에 업로드할 파일을 담고, 필요하다면 departmentId,
          project_id, user_id 필드에 해당 값들을 담아 보냅니다.
        * 예를 들어, JavaScript의 fetch API나 axios 라이브러리를 사용하여
          http://localhost:8000/api/v1/upload-and-parse로 요청을 보낼 수 있습니다.

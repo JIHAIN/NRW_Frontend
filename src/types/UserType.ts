@@ -53,7 +53,7 @@ export interface Department {
  */
 export interface Project {
   id: number;
-  departmentId: number; // 소속 부서 ID (FK: dept_id)
+  departmentId: number; // 소속 부서 ID (FK: departmentId)
   name: string; // 프로젝트명
   description?: string; // 프로젝트 설명
   startDate?: string; // 시작일 (YYYY-MM-DD)
@@ -73,7 +73,7 @@ export interface User {
   employeeId?: string; // 사번 (NULL 가능)
   profileImagePath?: string; // 프로필 이미지 URL (NULL 가능)
 
-  departmentId?: number; // 소속 부서 ID (FK: dept_id)
+  departmentId?: number; // 소속 부서 ID (FK: departmentId)
   projectId?: number; // 소속 프로젝트 ID (FK: project_id, 일반 유저용)
 
   role: UserRole; // 권한 (SUPER_ADMIN, MANAGER, USER)

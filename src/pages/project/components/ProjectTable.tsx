@@ -63,7 +63,7 @@ export function ProjectTable({
     let result = documents;
 
     // 2. 부서/프로젝트 필터링 (선택된 경우만)
-    // 주의: 현재 API가 dept_id, project_id를 안 줘서(0으로 설정됨),
+    // 주의: 현재 API가 departmentId, project_id를 안 줘서(0으로 설정됨),
     //       '전체 보기'가 아니면 데이터가 안 나올 수 있습니다.
     //       일단 필터링 로직은 유지하되, 데이터가 없어서 안 나오는 건 정상입니다.
     const deptId = departments.find((d) => d.name === selectedDepartment)?.id;

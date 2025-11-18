@@ -14,7 +14,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
+// ✨ 상수 및 타입 임포트
 import { CATEGORY_LABEL } from "@/constants/projectConstants";
+import type { DocumentCategory } from "@/types/UserType";
 
 // -------------------------------------------------------------
 // Props 정의
@@ -27,10 +30,11 @@ interface TableControlsProps {
   onStatusFilterChange: (status: string) => void;
   statusOptions: string[];
 
-  // ✨ 분류(Category) 필터로 변경
+  // ✨ 분류(Category) 필터
   categoryFilter: string;
   onCategoryFilterChange: (category: string) => void;
-  categoryOptions: string[];
+  // ✨ [수정] string[] -> DocumentCategory[] 로 구체화
+  categoryOptions: DocumentCategory[];
 
   hasSelection: boolean;
   onBulkDownload: () => void;
@@ -48,7 +52,7 @@ interface OptionItem {
 interface FilterDropdownProps {
   currentFilter: string;
   onFilterChange: (value: string) => void;
-  options: OptionItem[]; // ✨ 객체 배열로 받도록 수정
+  options: OptionItem[];
   defaultLabel: string;
   widthClass?: string;
 }
@@ -148,10 +152,11 @@ const TableControls: FC<TableControlsProps> = (props) => {
     label: s,
   }));
 
-  // 카테고리는 한글 변환 적용
+  // ✨ 카테고리는 한글 변환 적용
+  // c가 DocumentCategory 타입이므로 CATEGORY_LABEL[c] 접근 시 any 불필요
   const formattedCategoryOptions = props.categoryOptions.map((c) => ({
     value: c,
-    label: (CATEGORY_LABEL as any)[c] || c,
+    label: CATEGORY_LABEL[c] || c,
   }));
 
   return (

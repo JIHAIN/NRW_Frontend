@@ -38,8 +38,8 @@ const AppRoutes = () => (
     <Route path="/chat" element={<ChatPage />} />
 
     <Route path="/admin/dashboard" element={<DashboardPage />} />
-    <Route path="/admin/Docs" element={<ProjectPage />} />
-    <Route path="/admin/User" element={<UserManagementPage />} />
+    <Route path="/admin/docs" element={<ProjectPage />} />
+    <Route path="/admin/user" element={<UserManagementPage />} />
     <Route path="/admin/project" element={<DeptProjectAdminPage />} />
 
     {/*  <Route path="/upload" element={<UploadPage />} /> */}

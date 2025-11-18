@@ -1,221 +1,194 @@
-// src/pages/admin/components/UserEditModal.tsx
-import React, { useState, type FC } from "react";
-import type { Department, Project, User, UserRole } from "@/types/UserType";
+import React, { useState } from "react";
+import { X } from "lucide-react";
+import type { User, UserRole, Department, Project } from "@/types/UserType";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface OptionItem {
+  value: string;
+  label: string;
+}
 
 interface UserEditModalProps {
   user: User;
-  roles: UserRole[];
+  // OptionItem 배열로 명시 (UserManagementPage와 맞춰야 함)
+  roles: OptionItem[];
   departments: Department[];
   projects: Project[];
   onSave: (updatedUser: User) => void;
   onClose: () => void;
 }
 
-const UserEditModal: FC<UserEditModalProps> = ({
+export default function UserEditModal({
   user,
   roles,
   departments,
   projects,
   onSave,
   onClose,
-}) => {
-  // 모달 내에서 편집 중인 상태
-  const [editingUser, setEditingUser] = useState<User>(user);
+}: UserEditModalProps) {
+  // 상태 초기화 (undefined일 경우 0으로 처리)
+  const [formData, setFormData] = useState<User>({
+    ...user,
+    departmentId: user.departmentId || 0,
+    projectId: user.projectId || 0,
+  });
 
-  // 현재 선택된 권한에 따라 편집 필드 구조가 달라져야 합니다.
-  const isDeptAdmin = editingUser.role === "관리자";
-  const isRegularUser = editingUser.role === "일반 사용자";
+  // 부서 선택 시 해당 부서의 프로젝트만 필터링
+  const filteredProjects = projects.filter(
+    (p) => p.departmentId === formData.departmentId
+  );
 
-  // 권한 변경 핸들러
-  const handleRoleChange = (newRole: UserRole) => {
-    // 권한이 변경될 때 관련된 부서/프로젝트 상태를 초기화합니다.
-    setEditingUser({
-      ...editingUser,
-      role: newRole,
-      managedDepartmentIds: [], // 관리자 권한 변경 시 초기화
-      departmentId: departments[0]?.id || 0, // 일반 사용자 권한 변경 시 기본값 설정
-      projectIds: [], // 프로젝트 목록 초기화
-    });
+  // 변경 핸들러 (any 제거, 구체적 타입 명시)
+  const handleChange = (
+    field: keyof User,
+    value: string | number | boolean | UserRole
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isRegularUser && !editingUser.departmentId) {
-      alert("일반 사용자는 소속 부서가 반드시 지정되어야 합니다.");
-      return;
-    }
-    // API에 저장 요청 후 성공 시 onSave 호출
-    onSave(editingUser);
+    onSave(formData);
   };
 
   return (
-    // 모달 배경 (border-2xl border-blue-100 스타일 적용)
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg border-2xl border-blue-100">
-        <h3 className="text-2xl font-bold mb-6 text-gray-800">
-          사용자 권한 및 배정 설정: {user.name}
-        </h3>
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex justify-between items-center p-4 border-b">
+          <h2 className="text-lg font-bold text-gray-800">사용자 정보 수정</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-        <form onSubmit={handleSave}>
-          {/* 1. 권한 설정 드롭다운 */}
-          <div className="mb-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* 1. 이름 */}
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              권한 (Role)
+              이름
             </label>
-            <select
-              value={editingUser.role}
-              onChange={(e) => handleRoleChange(e.target.value as UserRole)}
-              className="w-full border rounded-md p-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
-            >
-              {roles.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
+            <Input
+              value={formData.userName}
+              onChange={(e) => handleChange("userName", e.target.value)}
+            />
           </div>
 
-          {/* 2. 부서 관리자 설정 필드 */}
-          {isDeptAdmin && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-md">
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                관리할 부서 선택 (다중 선택 가능)
-              </label>
-              <div className="max-h-32 overflow-y-auto space-y-1">
-                {departments.map((dept) => (
-                  <div key={dept.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={`dept-${dept.id}`}
-                      checked={editingUser.managedDepartmentIds.includes(
-                        dept.id
-                      )}
-                      onChange={(e) => {
-                        const newIds = e.target.checked
-                          ? [...editingUser.managedDepartmentIds, dept.id]
-                          : editingUser.managedDepartmentIds.filter(
-                              (id) => id !== dept.id
-                            );
-                        setEditingUser({
-                          ...editingUser,
-                          managedDepartmentIds: newIds,
-                        });
-                      }}
-                      className="form-checkbox text-blue-600 rounded cursor-pointer"
-                    />
-                    <label
-                      htmlFor={`dept-${dept.id}`}
-                      className="ml-2 text-sm text-gray-600 cursor-pointer"
-                    >
-                      {dept.name}
-                    </label>
-                  </div>
+          {/* 2. 아이디 (수정 불가) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              아이디
+            </label>
+            <Input
+              value={formData.accountId}
+              onChange={(e) => handleChange("accountId", e.target.value)}
+              disabled
+              className="bg-gray-100"
+            />
+          </div>
+
+          {/* 3. 권한 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              권한
+            </label>
+            <Select
+              value={formData.role}
+              onValueChange={(val) => handleChange("role", val as UserRole)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="권한 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {roles.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
                 ))}
-              </div>
-            </div>
-          )}
+              </SelectContent>
+            </Select>
+          </div>
 
-          {/* 3. 일반 사용자 소속 설정 필드 (부서 + 프로젝트) */}
-          {isRegularUser && (
-            <div className="mb-4 p-3 bg-green-50 rounded-md">
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                소속 부서 및 프로젝트 배정
+          {/* 4. 소속 부서 (관리자/일반사용자용) */}
+          {(formData.role === "MANAGER" || formData.role === "USER") && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                소속 부서
               </label>
-
-              {/* 소속 부서 (하나만 선택) */}
-              <select
-                value={editingUser.departmentId || ""}
-                onChange={(e) =>
-                  setEditingUser({
-                    ...editingUser,
-                    departmentId: Number(e.target.value),
-                  })
-                }
-                className="w-full border rounded-md p-2 mb-3 focus:ring-green-500 focus:border-green-500 cursor-pointer"
+              <Select
+                value={String(formData.departmentId || "")}
+                onValueChange={(val) => {
+                  const deptId = Number(val);
+                  // 부서가 바뀌면 프로젝트는 초기화
+                  setFormData((prev) => ({
+                    ...prev,
+                    departmentId: deptId,
+                    projectId: 0,
+                  }));
+                }}
               >
-                <option value="" disabled>
-                  소속 부서 선택
-                </option>
-                {departments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </option>
-                ))}
-              </select>
-
-              {/* 소속 프로젝트 (다중 선택 가능) */}
-              <div className="mt-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  참여 프로젝트
-                </label>
-                <div className="max-h-24 overflow-y-auto space-y-1 border p-2 bg-white rounded-md">
-                  {projects
-                    .filter((p) => p.departmentId === editingUser.departmentId) // 선택된 부서의 프로젝트만 필터링
-                    .map((proj) => (
-                      <div key={proj.id} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id={`proj-${proj.id}`}
-                          checked={editingUser.projectIds.includes(proj.id)}
-                          onChange={(e) => {
-                            const newIds = e.target.checked
-                              ? [...editingUser.projectIds, proj.id]
-                              : editingUser.projectIds.filter(
-                                  (id) => id !== proj.id
-                                );
-                            setEditingUser({
-                              ...editingUser,
-                              projectIds: newIds,
-                            });
-                          }}
-                          className="form-checkbox text-green-600 rounded cursor-pointer"
-                        />
-                        <label
-                          htmlFor={`proj-${proj.id}`}
-                          className="ml-2 text-sm text-gray-600 cursor-pointer"
-                        >
-                          {proj.name}
-                        </label>
-                      </div>
-                    ))}
-                  {editingUser.departmentId &&
-                    projects.filter(
-                      (p) => p.departmentId === editingUser.departmentId
-                    ).length === 0 && (
-                      <p className="text-xs text-gray-400">
-                        선택된 부서에 프로젝트가 없습니다.
-                      </p>
-                    )}
-                  {!editingUser.departmentId && (
-                    <p className="text-xs text-gray-400">
-                      소속 부서를 먼저 선택해주세요.
-                    </p>
-                  )}
-                </div>
-              </div>
+                <SelectTrigger>
+                  <SelectValue placeholder="부서 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={String(dept.id)}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
-          {/* 4. 액션 버튼 */}
-          <div className="flex justify-end space-x-3 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer"
-            >
+          {/* 5. 소속 프로젝트 (일반사용자용) */}
+          {formData.role === "USER" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                소속 프로젝트
+              </label>
+              <Select
+                value={String(formData.projectId || "")}
+                onValueChange={(val) => handleChange("projectId", Number(val))}
+                disabled={!formData.departmentId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="프로젝트 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredProjects.map((proj) => (
+                    <SelectItem key={proj.id} value={String(proj.id)}>
+                      {proj.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-2 mt-6 pt-4 border-t">
+            <Button variant="outline" type="button" onClick={onClose}>
               취소
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              설정 저장
-            </button>
+              저장
+            </Button>
           </div>
         </form>
       </div>
     </div>
   );
-};
-
-export default UserEditModal;
+}

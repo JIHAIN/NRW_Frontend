@@ -112,7 +112,7 @@ export default function ProjectPage() {
       return [];
     }
 
-    //  dept_id(DB컬럼명)를 사용하여 필터링
+    //  departmentId(DB컬럼명)를 사용하여 필터링
     return projects
       .filter((p) => p.departmentId === selectedDeptId)
       .map((p) => ({
@@ -131,7 +131,7 @@ export default function ProjectPage() {
     }
   }, [selectedDepartment, isUser]);
 
-  //  현재 선택된 부서 정보 (ID 필요 - 업로드 시 dept_id 전송용)
+  //  현재 선택된 부서 정보 (ID 필요 - 업로드 시 departmentId 전송용)
   const currentDeptData = useMemo(() => {
     return departments.find((d) => d.name === selectedDepartment);
   }, [departments, selectedDepartment]);
