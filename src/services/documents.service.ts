@@ -48,7 +48,7 @@ const mapApiToDocument = (data: BackendDocument, index: number): Document => {
 // 1. 문서 목록 조회
 // --------------------------------------------------------------------------
 export const fetchDocuments = async (): Promise<Document[]> => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/documents`);
+  const response = await fetch(`${API_BASE_URL}/api/v1/documents/`);
   if (!response.ok) {
     throw new Error("Failed to fetch documents");
   }
@@ -67,7 +67,7 @@ export const fetchDocumentContent = async (
 ): Promise<string> => {
   const encodedDocId = encodeURIComponent(docId);
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/documents/${userId}/${encodedDocId}`
+    `${API_BASE_URL}/api/v1/documents/${userId}/${encodedDocId}/`
   );
 
   if (!response.ok) throw new Error("Failed to fetch document content");
@@ -123,7 +123,7 @@ export const downloadDocument = async (
   const encodedDocId = encodeURIComponent(docId);
   // ✨ 경로 수정: /download/ 추가됨
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/documents/download/${userId}/${encodedDocId}`
+    `${API_BASE_URL}/api/v1/documents/download/${userId}/${encodedDocId}/`
   );
 
   // 저 위에 /original.hwp 이거 나중에 지워줘야함 지금 구조가 이상해서 그럼
