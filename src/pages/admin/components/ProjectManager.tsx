@@ -2,10 +2,10 @@
 
 import React, { useState, type FC, useMemo, useEffect } from "react";
 import { Trash2, Plus, Search } from "lucide-react";
-import type { Department, Project } from "@/types/UserType";
+import type { Department, Project, UserRole } from "@/types/UserType";
 import Pagination from "../../project/components/Pagination";
 import { FilterCombobox } from "@/components/common/FilterCombobox";
-// 💡 FilterCombobox 임포트
+// ===== FilterCombobox 임포트
 
 // FilterCombobox에서 사용될 OptionItem 타입 (number|null 값으로 사용)
 interface OptionItem<T> {
@@ -20,6 +20,8 @@ interface ProjectManagerProps {
   onDeleteClick: (project: Project) => void; // 모달을 띄우기 위해 Project 객체를 받음
   selectedDeptId: number | null; // 상위 컴포넌트에서 선택된 부서 ID
   onSelectDept: (id: number | null) => void; // 드롭다운 변경 시 상위 컴포넌트 상태 업데이트
+  currentUserRole?: UserRole;
+  currentUserDeptId?: number;
 }
 
 const ITEMS_PER_PAGE: number = 10;
@@ -31,6 +33,8 @@ const ProjectManager: FC<ProjectManagerProps> = ({
   onDeleteClick,
   selectedDeptId,
   onSelectDept,
+  currentUserRole,
+  currentUserDeptId,
 }) => {
   const [newProjectName, setNewProjectName] = useState("");
   // 프로젝트 추가 시 선택할 부서 ID (기본값은 부서 목록의 첫 ID)
@@ -38,12 +42,25 @@ const ProjectManager: FC<ProjectManagerProps> = ({
     departments[0]?.id || 0 // 0이 '전체'가 아닌 실제 부서 ID여야 함 (추가 폼이므로)
   );
 
-  // 💡 프로젝트 검색 상태 및 페이지 상태 추가
+  // ===== 프로젝트 검색 상태 및 페이지 상태 추가
   const [searchText, setSearchText] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
+  const isManager = currentUserRole === "MANAGER";
+
+  // 컴포넌트 마운트/업데이트 시 초기값 설정 (권한에 따라)
+  useEffect(() => {
+    if (isManager && currentUserDeptId) {
+      // 관리자면 추가 폼의 부서 ID를 자기 부서로 고정
+      setNewProjectDeptId(currentUserDeptId);
+    } else if (!isManager && departments.length > 0) {
+      // 총괄 관리자면 목록의 첫 번째 부서 혹은 현재 선택된 부서로 초기화
+      setNewProjectDeptId(selectedDeptId || departments[0]?.id || 0);
+    }
+  }, [isManager, currentUserDeptId, departments, selectedDeptId]);
+
   // -----------------------------------------------------------------------
-  // 💡 FilterCombobox 옵션 정의
+  // ===== FilterCombobox 옵션 정의
   // -----------------------------------------------------------------------
   // 1. 추가 폼 옵션 (ID: number, '전체 부서' 옵션 제외)
   const addFormDeptOptions: OptionItem<number>[] = useMemo(
@@ -62,16 +79,16 @@ const ProjectManager: FC<ProjectManagerProps> = ({
   );
 
   // -----------------------------------------------------------------------
-  // 💡 핸들러 정의
+  // 핸들러 정의
   // -----------------------------------------------------------------------
 
-  // 💡 프로젝트 추가 폼 드롭다운 변경 핸들러
+  // 프로젝트 추가 폼 드롭다운 변경 핸들러
   const handleAddFormDeptChange = (value: number) => {
     // 폼에서는 '전체 부서' 선택이 없다고 가정하고, ID만 업데이트
     setNewProjectDeptId(value);
   };
 
-  // 💡 필터 드롭다운 변경 핸들러
+  // 필터 드롭다운 변경 핸들러
   const handleFilterDropdownChange = (value: number) => {
     // value가 0이면 null을, 아니면 해당 ID를 상위 상태로 전달
     onSelectDept(value === 0 ? null : value);
@@ -92,7 +109,7 @@ const ProjectManager: FC<ProjectManagerProps> = ({
     setNewProjectName("");
   };
 
-  // 💡 1. 필터링 및 검색 로직 (기존 로직 유지)
+  // ===== 1. 필터링 및 검색 로직 (기존 로직 유지)
   const filteredProjects = useMemo(() => {
     let result = projects;
 
@@ -112,43 +129,47 @@ const ProjectManager: FC<ProjectManagerProps> = ({
     return result;
   }, [projects, selectedDeptId, searchText]);
 
-  // 💡 2. 페이지네이션 계산 (기존 로직 유지)
+  // ===== 2. 페이지네이션 계산 (기존 로직 유지)
   const totalItems = filteredProjects.length;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
-  // 💡 3. 현재 페이지 데이터 슬라이싱 (기존 로직 유지)
+  // ===== 3. 현재 페이지 데이터 슬라이싱 (기존 로직 유지)
   const currentTableData = useMemo(() => {
     const firstPageIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const lastPageIndex = firstPageIndex + ITEMS_PER_PAGE;
     return filteredProjects.slice(firstPageIndex, lastPageIndex);
   }, [currentPage, filteredProjects]);
 
-  // 💡 4. 필터/검색 변경 시 페이지 초기화 (기존 로직 유지)
+  // ===== 4. 필터/검색 변경 시 페이지 초기화 (기존 로직 유지)
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedDeptId, searchText]);
 
   return (
-    <div className=" flex flex-col h-full">
+    <div className="flex flex-col h-full">
       <h2 className="text-[1.1rem] font-bold text-gray-800 mb-2">
         프로젝트 관리
       </h2>
 
       {/* 프로젝트 추가 폼 */}
       <form onSubmit={handleSubmit} className="flex gap-4 mb-4 ">
-        {/* 💡 부서 선택 드롭다운 (추가용) - FilterCombobox 적용 */}
-        <FilterCombobox<number> // 💡 제네릭 타입 명시
+        {/* ✨ 관리자일 경우 disabled 처리하여 부서 변경 불가 */}
+        <FilterCombobox<number>
           options={addFormDeptOptions}
           selectedValue={newProjectDeptId}
           onValueChange={handleAddFormDeptChange}
           placeholder={"팀 선택"}
-          className="max-w-[130px] text-sm" // 스타일 유지
+          className="max-w-[130px] text-sm"
+          disabled={isManager} // 관리자 비활성화
         />
 
-        {/* 프로젝트 이름 입력 */}
         <input
           type="text"
-          placeholder="팀 선택후 추가할 프로젝트 이름을 입력 해주세요."
+          placeholder={
+            isManager
+              ? "프로젝트 이름을 입력하세요."
+              : "팀 선택 후 프로젝트 이름을 입력하세요."
+          }
           value={newProjectName}
           onChange={(e) => setNewProjectName(e.target.value)}
           className="w-full p-2 focus:outline-none text-sm border border-blue-200 rounded-md"
@@ -161,15 +182,16 @@ const ProjectManager: FC<ProjectManagerProps> = ({
         </button>
       </form>
 
-      {/* 💡 필터링 드롭다운 및 검색 필드 */}
+      {/* 필터링 드롭다운 및 검색 필드 */}
       <div className="flex gap-4 mb-4">
-        {/* 💡 필터 드롭다운 - FilterCombobox 적용 */}
-        <FilterCombobox<number> // 💡 제네릭 타입 명시
+        {/* ✨ 관리자일 경우 disabled 처리 (상위에서 이미 selectedDeptId가 고정됨) */}
+        <FilterCombobox<number>
           options={filterDeptOptions}
           selectedValue={currentSelectedDeptForFilter}
           onValueChange={handleFilterDropdownChange}
           placeholder={"전체 부서"}
-          className="max-w-[130px] text-sm" // 스타일 유지
+          className="max-w-[130px] text-sm"
+          disabled={isManager} // 관리자 비활성화
         />
 
         <div className="flex items-center border border-blue-200 rounded-md p-1 bg-white grow">
@@ -222,7 +244,6 @@ const ProjectManager: FC<ProjectManagerProps> = ({
         )}
       </div>
 
-      {/* 💡 페이지네이션 */}
       {totalPages > 1 && (
         <Pagination
           currentPage={currentPage}

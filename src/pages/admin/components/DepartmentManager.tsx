@@ -12,6 +12,7 @@ interface DepartmentManagerProps {
   onDeleteClick: (dept: Department) => void;
   onSelectDept: (id: number | null) => void;
   selectedDeptId: number | null;
+  readOnly?: boolean;
 }
 
 const ITEMS_PER_PAGE: number = 10;
@@ -22,6 +23,7 @@ const DepartmentManager: FC<DepartmentManagerProps> = ({
   onDeleteClick,
   onSelectDept,
   selectedDeptId,
+  readOnly,
 }) => {
   const [newDeptName, setNewDeptName] = useState("");
   const [searchText, setSearchText] = useState("");
@@ -64,34 +66,43 @@ const DepartmentManager: FC<DepartmentManagerProps> = ({
 
   // 5. 부서 목록 클릭 시 핸들러 (선택 토글)
   const handleDepartmentClick = (id: number) => {
+    if (readOnly) return;
     // 이미 선택된 부서를 다시 클릭하면 '전체 부서'(null)로 필터 해제
     const newId = selectedDeptId === id ? null : id;
     onSelectDept(newId);
   };
 
   return (
-    // 'flex-grow'와 'h-[600px]'는 상위 ManagePage.tsx에서 관리
-    <div className=" flex flex-col h-full ">
-      <h2 className="text-[1.1rem] font-bold text-gray-800 mb-2">부서 관리</h2>
+    <div className="flex flex-col h-full">
+      <div className="flex justify-between items-end mb-2">
+        <h2 className="text-[1.1rem] font-bold text-gray-800">부서 관리</h2>
+        {/* readOnly일 때 안내 문구 표시 (선택사항) */}
+        {readOnly && (
+          <span className="text-xs text-gray-500">
+            * 부서 생성 및 삭제는 총괄 관리자만 가능합니다.
+          </span>
+        )}
+      </div>
 
-      {/* 부서 추가 폼 */}
-      <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
-        <input
-          type="text"
-          placeholder="추가할 부서 이름을 작성해 주세요."
-          value={newDeptName}
-          onChange={(e) => setNewDeptName(e.target.value)}
-          className="w-full p-2 focus:outline-none text-sm border border-blue-200 rounded-md"
-        />
-        <button
-          type="submit"
-          className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 flex items-center cursor-pointer min-w-[70px] justify-center"
-        >
-          <Plus size={18} className="mr-1" /> 추가
-        </button>
-      </form>
+      {/* ✨ readOnly가 아닐 때(총괄 관리자)만 추가 폼 표시 */}
+      {!readOnly && (
+        <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
+          <input
+            type="text"
+            placeholder="추가할 부서 이름을 작성해 주세요."
+            value={newDeptName}
+            onChange={(e) => setNewDeptName(e.target.value)}
+            className="w-full p-2 focus:outline-none text-sm border border-blue-200 rounded-md"
+          />
+          <button
+            type="submit"
+            className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 flex items-center cursor-pointer min-w-[70px] justify-center"
+          >
+            <Plus size={18} className="mr-1" /> 추가
+          </button>
+        </form>
+      )}
 
-      {/* 부서 검색 필드 */}
       <div className="flex items-center border border-blue-200 rounded-md p-1 bg-white mb-4">
         <Search size={18} className="text-gray-400 mx-2" />
         <input
@@ -103,49 +114,59 @@ const DepartmentManager: FC<DepartmentManagerProps> = ({
         />
       </div>
 
-      {/* 부서 목록 (페이지네이션 적용) */}
       <div className="grow overflow-y-auto">
         <ul className="space-y-2">
-          {/* 💡 (수정) currentTableData 사용: 현재 페이지의 데이터만 렌더링 */}
-          {currentTableData.map((dept) => (
-            <li
-              key={dept.id}
-              onClick={() => handleDepartmentClick(dept.id)}
-              className={`flex justify-between items-center p-3 rounded-md cursor-pointer transition-colors border border-blue-50 ${
-                selectedDeptId === dept.id
-                  ? "bg-blue-500 text-white border-blue-500 font-bold"
-                  : "bg-blue-50 text-gray-800 hover:bg-blue-100"
-              }`}
-            >
-              <span className="font-medium">
-                {dept.name}
-                <span
-                  className={`text-xs ml-2 ${
-                    selectedDeptId === dept.id
-                      ? "text-blue-200"
-                      : "text-gray-500"
-                  }`}
-                >
-                  (ID: {dept.id})
-                </span>
-              </span>
-              <button
-                // 삭제 버튼 클릭 시 모달 열기
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteClick(dept);
-                }}
-                className={`p-1 rounded-full hover:bg-red-50 transition-colors cursor-pointer ${
-                  selectedDeptId === dept.id
-                    ? "text-red-300 hover:text-white hover:bg-red-600"
-                    : "text-red-500"
-                }`}
-                title="부서 삭제"
+          {currentTableData.map((dept) => {
+            // 관리자 모드일 때: 선택된 부서(자기 부서)는 파랗게, 나머지는 회색 처리
+            // 총괄 관리자일 때: 선택 자유
+            const isSelected = selectedDeptId === dept.id;
+            const isDisabled = readOnly && !isSelected; // 관리자는 자기 부서 외엔 비활성 느낌
+
+            return (
+              <li
+                key={dept.id}
+                onClick={() => handleDepartmentClick(dept.id)}
+                className={`flex justify-between items-center p-3 rounded-md transition-colors border border-blue-50 
+                ${
+                  isSelected
+                    ? "bg-blue-500 text-white border-blue-500 font-bold"
+                    : "bg-blue-50 text-gray-800 hover:bg-blue-100"
+                }
+                ${readOnly ? "cursor-default" : "cursor-pointer"}
+                ${isDisabled ? "opacity-50" : ""}
+                `}
               >
-                <Trash2 size={18} />
-              </button>
-            </li>
-          ))}
+                <span className="font-medium">
+                  {dept.name}
+                  <span
+                    className={`text-xs ml-2 ${
+                      isSelected ? "text-blue-200" : "text-gray-500"
+                    }`}
+                  >
+                    (ID: {dept.id})
+                  </span>
+                </span>
+
+                {/* ✨ readOnly가 아닐 때만 삭제 버튼 표시 */}
+                {!readOnly && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteClick(dept);
+                    }}
+                    className={`p-1 rounded-full hover:bg-red-50 transition-colors cursor-pointer ${
+                      isSelected
+                        ? "text-red-300 hover:text-white hover:bg-red-600"
+                        : "text-red-500"
+                    }`}
+                    title="부서 삭제"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+              </li>
+            );
+          })}
         </ul>
         {totalItems === 0 && (
           <div className="text-center py-8 text-gray-500">
@@ -156,7 +177,6 @@ const DepartmentManager: FC<DepartmentManagerProps> = ({
         )}
       </div>
 
-      {/* 💡 (수정) 페이지네이션 컴포넌트 추가: 목록 DIV 바깥, 컴포넌트 최하단에 위치 */}
       {totalPages > 1 && (
         <Pagination
           currentPage={currentPage}

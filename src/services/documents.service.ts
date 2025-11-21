@@ -57,18 +57,22 @@ export const fetchDocuments = async (): Promise<Document[]> => {
 };
 
 // --------------------------------------------------------------------------
-// 2. 문서 내용 조회
+// 2. 문서 내용 조회 (API 명세 반영)
+// GET /api/v1/documents/{user_id}/{doc_id} -> Returns "string"
 // --------------------------------------------------------------------------
-// 리턴 타입은 실제 내용 구조에 따라 다르므로 unknown이나 구체적 타입 지정
+
 export const fetchDocumentContent = async (
-  userId: string,
+  userId: string | number,
   docId: string
-): Promise<unknown> => {
+): Promise<string> => {
   const encodedDocId = encodeURIComponent(docId);
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/documents/${userId}/${encodedDocId}`
+    `${API_BASE_URL}/api/v1/documents/${userId}/${encodedDocId}/`
   );
+
   if (!response.ok) throw new Error("Failed to fetch document content");
+
+  // Swagger 명세상 Response가 "string"이므로 텍스트로 반환
   return response.json();
 };
 
@@ -108,17 +112,22 @@ export const uploadDocument = async (
 };
 
 // --------------------------------------------------------------------------
-// 4. 문서 다운로드
+// 4. 문서 다운로드 (API 명세 반영)
+// GET /api/v1/documents/download/{user_id}/{doc_id}
 // --------------------------------------------------------------------------
 export const downloadDocument = async (
-  userId: string,
+  userId: string | number,
   docId: string,
   filename: string
 ): Promise<void> => {
   const encodedDocId = encodeURIComponent(docId);
+  // ✨ 경로 수정: /download/ 추가됨
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/documents/${userId}/${encodedDocId}`
+    `${API_BASE_URL}/api/v1/documents/download/${userId}/${encodedDocId}`
   );
+
+  // 저 위에 /original.hwp 이거 나중에 지워줘야함 지금 구조가 이상해서 그럼
+
   if (!response.ok) throw new Error("Download failed");
 
   const blob = await response.blob();

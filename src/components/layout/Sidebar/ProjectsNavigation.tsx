@@ -14,17 +14,17 @@ import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar";
 
-// ✨ 스토어 임포트
+// ===== 스토어 임포트
 import { useChatStore } from "@/store/chatStore";
 import { Link } from "react-router-dom";
+import { useSidebar } from "@/hooks/useSidebar";
 
 export function ProjectsNavigation() {
   const { isMobile } = useSidebar();
 
-  // ✨ 스토어에서 데이터와 액션 가져오기
+  // ===== 스토어에서 데이터와 액션 가져오기
   const {
     sessions,
     currentSessionId,
@@ -64,7 +64,7 @@ export function ProjectsNavigation() {
                 className="w-full text-left truncate cursor-pointer"
               >
                 {" "}
-                <MessageSquare className="text-slate-400" />
+                <MessageSquare />
                 <span className="truncate">{session.title}</span>
               </Link>
             </SidebarMenuButton>

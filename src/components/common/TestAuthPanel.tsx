@@ -1,23 +1,32 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useSystemStore } from "@/store/systemStore";
 import { FlaskConical, X, GripHorizontal, Loader2 } from "lucide-react";
+import type { User, UserRole } from "@/types/UserType";
 
-// ✨ 1. any 제거: Props 인터페이스 정의
+// ✨ Select 컴포넌트 (재사용)
 interface TestSelectProps {
   label: string;
   value: string | number;
-  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; // 이벤트 타입 명시
-  children: React.ReactNode; // any -> ReactNode
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  children: React.ReactNode;
+  disabled?: boolean;
 }
 
-const TestSelect = ({ label, value, onChange, children }: TestSelectProps) => (
-  <label className="flex items-center gap-2">
-    <span className="text-xs font-bold text-blue-900">{label}:</span>
+const TestSelect = ({
+  label,
+  value,
+  onChange,
+  children,
+  disabled,
+}: TestSelectProps) => (
+  <label className={`flex items-center gap-2 ${disabled ? "opacity-50" : ""}`}>
+    <span className="text-xs font-bold text-blue-900 w-10">{label}:</span>
     <select
       value={value}
-      onChange={onChange} // ✨ 타입 일치
-      className="rounded border border-blue-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer bg-white"
+      onChange={onChange}
+      disabled={disabled}
+      className="flex-1 rounded border border-blue-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer bg-white disabled:cursor-not-allowed"
     >
       {children}
     </select>
@@ -26,26 +35,103 @@ const TestSelect = ({ label, value, onChange, children }: TestSelectProps) => (
 
 export function TestAuthPanel() {
   const [isOpen, setIsOpen] = useState(false);
-  const { role, department, project, setAuth } = useAuthStore();
+
+  // ✨ authStore에서 user 정보와 로그인 함수 가져오기
+  const { user, login } = useAuthStore();
   const { departments, projects, isLoading, fetchSystemData } =
     useSystemStore();
 
+  // 드래그 관련 상태
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isInitialized, setIsInitialized] = useState(false);
   const isDragging = useRef(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
 
+  // ---------------------------------------------------------
+  // 🏗️ Mock User 생성 및 로그인 로직 (useCallback 적용)
+  // ---------------------------------------------------------
+  // ✨ useCallback으로 감싸서 useEffect 의존성 문제 해결
+  const createAndLoginUser = useCallback(
+    (newRole: UserRole, newDeptId: number, newProjId: number) => {
+      // ✨ deptName 변수 활용 (userName에 포함시켜서 미사용 오류 해결)
+      const deptName =
+        departments.find((d) => d.id === newDeptId)?.name || "본사";
+
+      // 가상의 User 객체 생성
+      const mockUser: User = {
+        id: 999, // 테스트용 고정 ID
+        accountId: "test_admin",
+        // 이름에 부서명을 넣어서 변수를 사용함
+        userName: `[Test] ${newRole} (${deptName})`,
+        role: newRole,
+        departmentId: newDeptId || undefined,
+        projectId: newProjId || undefined,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      console.log("🧪 Test Login:", mockUser);
+      login(mockUser);
+    },
+    [departments, login] // departments나 login함수가 바뀌면 재생성
+  );
+
+  // ---------------------------------------------------------
+  // 초기화 및 데이터 로드
+  // ---------------------------------------------------------
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setPosition({
-        x: window.innerWidth - 80,
-        y: window.innerHeight - 80,
-      });
+      setPosition({ x: window.innerWidth - 240, y: window.innerHeight - 200 });
       setIsInitialized(true);
     }
     fetchSystemData();
   }, [fetchSystemData]);
 
+  // 초기 로딩 시, 로그인이 안 되어 있다면 기본값으로 로그인 시도
+  useEffect(() => {
+    // departments가 로드되었고, 아직 유저가 없다면 로그인 실행
+    if (!isLoading && !user && departments.length > 0) {
+      // 기본값: SUPER_ADMIN, 부서 ID 0, 프로젝트 ID 0
+      createAndLoginUser("SUPER_ADMIN", 0, 0);
+    }
+  }, [isLoading, user, departments, createAndLoginUser]); // ✨ 의존성 배열 오류 해결
+
+  // ---------------------------------------------------------
+  // ✋ 이벤트 핸들러
+  // ---------------------------------------------------------
+
+  // 1. 권한 변경
+  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newRole = e.target.value as UserRole;
+    const nextDeptId =
+      newRole === "SUPER_ADMIN"
+        ? 0
+        : user?.departmentId || departments[0]?.id || 0;
+    const nextProjId = 0;
+
+    createAndLoginUser(newRole, nextDeptId, nextProjId);
+  };
+
+  // 2. 부서 변경
+  const handleDeptChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newDeptId = Number(e.target.value);
+    createAndLoginUser(user?.role || "USER", newDeptId, 0);
+  };
+
+  // 3. 프로젝트 변경
+  const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newProjId = Number(e.target.value);
+    createAndLoginUser(
+      user?.role || "USER",
+      user?.departmentId || 0,
+      newProjId
+    );
+  };
+
+  // ---------------------------------------------------------
+  // 🎨 드래그 앤 드롭 로직
+  // ---------------------------------------------------------
   const handleMouseDown = (e: React.MouseEvent) => {
     isDragging.current = false;
     dragStartPos.current = { x: e.clientX, y: e.clientY };
@@ -77,46 +163,12 @@ export function TestAuthPanel() {
     if (!isDragging.current) setIsOpen(!isOpen);
   };
 
-  // ---------------------------------------------------------
-  // ✨ 타입 안전한 옵션 생성
-  // ---------------------------------------------------------
-  const departmentOptions = departments.map((d) => ({
-    value: d.name,
-    label: d.name,
-    id: d.id,
-  }));
-
-  // 현재 선택된 부서의 ID 찾기
-  const currentDeptId = departments.find((d) => d.name === department)?.id;
-
-  const projectOptions = projects
-    // ✨ [수정] dept_id -> departmentId (타입 오류 해결)
-    .filter((p) => p.departmentId === currentDeptId)
-    .map((p) => ({ value: p.name, label: p.name }));
-
-  // ---------------------------------------------------------
-  // ✨ 이벤트 핸들러 (ChangeEvent 타입 적용)
-  // ---------------------------------------------------------
-  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setAuth(e.target.value, department, project);
-  };
-
-  const handleDeptChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newDeptName = e.target.value;
-    const newDeptId = departments.find((d) => d.name === newDeptName)?.id;
-
-    // ✨ [수정] dept_id -> departmentId
-    const firstProject =
-      projects.find((p) => p.departmentId === newDeptId)?.name || "";
-
-    setAuth(role, newDeptName, firstProject);
-  };
-
-  const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setAuth(role, department, e.target.value);
-  };
-
   if (!isInitialized) return null;
+
+  // 현재 선택된 부서에 속한 프로젝트만 필터링
+  const filteredProjects = projects.filter(
+    (p) => p.departmentId === user?.departmentId
+  );
 
   return (
     <div
@@ -134,14 +186,14 @@ export function TestAuthPanel() {
       )}
 
       {isOpen && (
-        <div className="flex flex-col gap-2 rounded-xl border-2 border-blue-500 bg-blue-50 p-4 shadow-xl animate-in fade-in zoom-in-95 duration-200 min-w-[220px]">
+        <div className="flex flex-col gap-2 rounded-xl border-2 border-blue-500 bg-blue-50 p-4 shadow-xl animate-in fade-in zoom-in-95 duration-200 min-w-60">
           <div
             className="flex items-center justify-between border-b border-blue-200 pb-2 mb-1 cursor-move"
             onMouseDown={handleMouseDown}
           >
             <h4 className="text-sm font-bold text-blue-700 flex items-center gap-2 pointer-events-none">
               <GripHorizontal size={16} className="text-blue-400" />
-              권한 제어 (DB)
+              권한 시뮬레이션
             </h4>
             <button
               onClick={() => setIsOpen(false)}
@@ -161,38 +213,53 @@ export function TestAuthPanel() {
               onMouseDown={(e) => e.stopPropagation()}
               className="flex flex-col gap-2"
             >
-              {/* ✨ 핸들러 전달 시 함수 참조만 전달 (e 객체 자동 전달됨) */}
-              <TestSelect label="Role" value={role} onChange={handleRoleChange}>
-                <option value="user">일반 사용자</option>
-                <option value="manager">부서장 (Manager)</option>
-                <option value="super_admin">총괄 관리자</option>
+              {/* 1. Role 선택 */}
+              <TestSelect
+                label="Role"
+                value={user?.role || "USER"}
+                onChange={handleRoleChange}
+              >
+                <option value="SUPER_ADMIN">총괄 관리자</option>
+                <option value="MANAGER">부서 관리자</option>
+                <option value="USER">일반 사용자</option>
               </TestSelect>
 
+              {/* 2. Department 선택 */}
               <TestSelect
                 label="Dept"
-                value={department}
+                value={user?.departmentId || 0}
                 onChange={handleDeptChange}
+                disabled={user?.role === "SUPER_ADMIN"}
               >
-                <option value="">부서 선택</option>
-                {departmentOptions.map((opt) => (
-                  <option key={opt.id} value={opt.value}>
-                    {opt.label}
+                <option value={0}>전체 / 선택 안함</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
                   </option>
                 ))}
               </TestSelect>
 
+              {/* 3. Project 선택 */}
               <TestSelect
                 label="Proj"
-                value={project}
+                value={user?.projectId || 0}
                 onChange={handleProjectChange}
+                disabled={user?.role !== "USER" || !user?.departmentId}
               >
-                {projectOptions.length === 0 && <option value="">-</option>}
-                {projectOptions.map((opt, idx) => (
-                  <option key={idx} value={opt.value}>
-                    {opt.label}
+                <option value={0}>선택 안함</option>
+                {filteredProjects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
                   </option>
                 ))}
               </TestSelect>
+
+              {/* 디버깅용 텍스트 */}
+              <div className="mt-2 p-2 bg-blue-100 rounded text-[10px] text-blue-800 font-mono">
+                ID: {user?.id} <br />
+                Name: {user?.userName} <br />
+                DeptID: {user?.departmentId}
+              </div>
             </div>
           )}
         </div>

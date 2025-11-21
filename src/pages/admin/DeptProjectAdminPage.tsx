@@ -7,11 +7,12 @@ import DeleteConfirmationModal from "./components/DeleteConfirmationModal";
 import type { Department, Project } from "@/types/UserType";
 import { X } from "lucide-react";
 
-// ✨ 시스템 스토어 임포트
+//  시스템 스토어 임포트
 import { useSystemStore } from "@/store/systemStore";
+import { useAuthStore } from "@/store/authStore";
 
 // --------------------------------------------------------------------------
-// 💡 부서/프로젝트 삭제를 위한 간단한 확인 모달
+//  부서/프로젝트 삭제를 위한 간단한 확인 모달
 // --------------------------------------------------------------------------
 interface SimpleConfirmModalProps {
   name: string;
@@ -62,11 +63,11 @@ const SimpleConfirmModal: FC<SimpleConfirmModalProps> = ({
 };
 
 // --------------------------------------------------------------------------
-// 💡 메인 컴포넌트: DeptProjectAdminPage
+// === 메인 컴포넌트: DeptProjectAdminPage
 // --------------------------------------------------------------------------
 
 export const DeptProjectAdminPage: FC = () => {
-  // ✨ 1. 시스템 스토어 구독
+  // 시스템 스토어 구독
   const {
     departments,
     projects,
@@ -77,7 +78,13 @@ export const DeptProjectAdminPage: FC = () => {
     deleteProject,
   } = useSystemStore();
 
-  // ✨ 2. 초기 데이터 로드
+  // 현재 로그인한 유저 정보 구독
+  const { user } = useAuthStore();
+
+  // 권한 체크
+  const isManager = user?.role === "MANAGER";
+
+  // 초기 데이터 로드
   useEffect(() => {
     fetchSystemData();
   }, [fetchSystemData]);
@@ -95,25 +102,31 @@ export const DeptProjectAdminPage: FC = () => {
   const [isDeptModalOpen, setIsDeptModalOpen] = useState<boolean>(false);
   const [deptToDelete, setDeptToDelete] = useState<Department | null>(null);
 
+  // 권한에 따른 부서 선택 상태 초기화 (매우 중요)
+  useEffect(() => {
+    if (user?.role && "MANAGER") {
+      // 관리자는 본인 부서 ID로 강제 고정
+      setSelectedDepartmentId(user?.departmentId || null);
+    }
+  }, [user, isManager]);
+
   // -------------------------
-  // 💡 핸들러 함수 (Store 액션 호출)
+  //  핸들러 함수 (Store 액션 호출)
   // -------------------------
 
   // 1. 부서 추가
   const handleAddDepartment = (name: string) => {
+    if (isManager) return; // 보안 강화
     addDepartment(name);
   };
 
   // 2. 부서 삭제
   const handleDeleteDepartment = () => {
-    if (!deptToDelete) return;
-
+    if (isManager || !deptToDelete) return; // 보안 강화
     deleteDepartment(deptToDelete.id);
-
     setIsDeptModalOpen(false);
     setDeptToDelete(null);
 
-    // 현재 보고 있던 부서가 삭제되면 선택 해제
     if (selectedDepartmentId === deptToDelete.id) {
       setSelectedDepartmentId(null);
     }
@@ -121,17 +134,21 @@ export const DeptProjectAdminPage: FC = () => {
 
   // 3. 프로젝트 추가
   const handleAddProject = (name: string, departmentId: number) => {
-    // ✨ 새로운 UserType에 맞춰 객체 생성
+    // 관리자가 다른 부서 ID를 보내려 하면 차단 (물론 UI에서 막지만 이중 검증)
+    if (isManager && departmentId !== user?.departmentId) {
+      alert("본인 부서의 프로젝트만 생성할 수 있습니다.");
+      return;
+    }
+
     const newProject: Project = {
-      id: 0, // Store에서 ID 재할당됨
-      departmentId: departmentId, // departmentId -> departmentId 확인!
+      id: 0,
+      departmentId: departmentId,
       name: name,
       description: "",
       status: "ACTIVE",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-
     addProject(newProject);
   };
 
@@ -155,6 +172,7 @@ export const DeptProjectAdminPage: FC = () => {
 
   // 부서 선택 핸들러
   const handleSelectDepartment = (deptId: number | null) => {
+    if (isManager) return;
     setSelectedDepartmentId(deptId);
   };
 
@@ -173,6 +191,7 @@ export const DeptProjectAdminPage: FC = () => {
           }}
           onSelectDept={handleSelectDepartment}
           selectedDeptId={selectedDepartmentId}
+          readOnly={isManager}
         />
 
         {/* 우측: 프로젝트 관리 */}
@@ -186,6 +205,9 @@ export const DeptProjectAdminPage: FC = () => {
           }}
           selectedDeptId={selectedDepartmentId}
           onSelectDept={handleSelectDepartment}
+          // 유저 정보 전달 (드롭다운 제어용)
+          currentUserRole={user?.role}
+          currentUserDeptId={user?.departmentId}
         />
       </div>
 

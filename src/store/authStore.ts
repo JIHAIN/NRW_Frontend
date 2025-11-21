@@ -1,29 +1,29 @@
-// src/store/authStore.ts
-
-//  1. (변경) '기본 내보내기(default)'가 아닌 '명명된(named)' import로 변경
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-// 1. 스토어의 상태(State)와 액션(Actions) 타입 정의
+import type { User } from "@/types/UserType";
+
 interface AuthState {
-  role: string;
-  department: string;
-  project: string;
-  setAuth: (role: string, department: string, project: string) => void;
+  user: User | null; // 로그인한 유저 객체 전체
+  isAuthenticated: boolean;
+
+  // 로그인 (User 객체를 받아서 저장)
+  login: (userInfo: User) => void;
+  // 로그아웃
+  logout: () => void;
 }
 
-// 2. 스토어 생성
 export const useAuthStore = create(
   persist<AuthState>(
     (set) => ({
-      role: "user",
-      department: "개발팀",
-      project: "Project_A",
-      setAuth: (role, department, project) =>
-        set({ role, department, project }),
+      user: null,
+      isAuthenticated: false,
+
+      login: (userInfo) => set({ user: userInfo, isAuthenticated: true }),
+      logout: () => set({ user: null, isAuthenticated: false }),
     }),
     {
-      name: "auth-storage", // localStorage에 저장될 키 이름
-      storage: createJSONStorage(() => sessionStorage), // 기본은 localStorage, 원하면 sessionStorage로 변경 가능
+      name: "auth-storage",
+      storage: createJSONStorage(() => sessionStorage), // 세션 스토리지 (새로고침 유지, 탭 닫으면 삭제)
     }
   )
 );

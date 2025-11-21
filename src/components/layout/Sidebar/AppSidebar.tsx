@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Home, NotepadText } from "lucide-react";
+import { Home, UserCog2 } from "lucide-react";
 
 import { MainNavigation } from "@/components/layout/Sidebar/MainNavigation";
 import { ProjectsNavigation } from "@/components/layout/Sidebar/ProjectsNavigation";
@@ -38,7 +38,7 @@ const data = {
     {
       title: "관리자 메뉴",
       url: "#",
-      icon: NotepadText,
+      icon: UserCog2,
       // 관리자만 열람 가능
       roles: ["manager", "super_admin"],
       items: [
@@ -51,31 +51,34 @@ const data = {
           url: "/admin/project",
         },
 
-        {
-          title: "대시보드",
-          url: "/admin/dashboard",
-        },
+        // {
+        //   title: "대시보드",
+        //   url: "/admin/dashboard",
+        // },
       ],
     },
   ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { role, department, project } = useAuthStore();
+  const { user } = useAuthStore();
+
+  // 1. user.role이 있으면 소문자로 변환(toLowerCase), 없으면 "user"
+  const userRole = user?.role ? user.role.toLowerCase() : "user";
 
   // useMemo를 사용하여 role이 바뀔 때만 다시 계산
   const filteredNavMain = React.useMemo(() => {
     return data.navMain.filter((item) => {
       // 데이터에 정의된 roles 배열에 현재 내 role이 포함되어 있는지 확인
       // (만약 데이터에 roles가 없다면 기본적으로 보여줌)
-      return item.roles ? item.roles.includes(role) : true;
+      return item.roles ? item.roles.includes(userRole) : true;
     });
-  }, [role]);
+  }, [userRole]);
 
   // 3. 사이드바 하단에 표시할 유저 정보 객체 생성
   const currentUser = {
-    name: `${role} 계정`, // 실제 이름이 있다면 그것을 사용 (현재는 role로 대체)
-    email: `${department} / ${project || "프로젝트 없음"}`, // 부서/프로젝트 표시
+    name: `${user?.accountId} 계정`, // 실제 이름이 있다면 그것을 사용 (현재는 role로 대체)
+    email: `${user?.departmentId} / ${user?.projectId || "프로젝트 없음"}`, // 부서/프로젝트 표시
     avatar: "/bat.gif", // 아바타는 고정 (나중에 DB에서 가져오면 변경)
   };
 

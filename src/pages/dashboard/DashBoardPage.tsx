@@ -12,7 +12,7 @@ import StatsChart from "./components/StatsChart";
  * - 아래 mock 데이터 타입을 유지하고 fetch 결과를 주입하세요.
  * - 실시간 새로고침이 필요하면 SWR/React Query 등을 적용하세요.
  */
-const DashboardPage = () => {
+export const DashboardPage = () => {
   /* ===========================
    * 1) 타입 정의
    * ===========================
@@ -451,5 +451,3 @@ const DashboardPage = () => {
     </section>
   );
 };
-
-export default DashboardPage;

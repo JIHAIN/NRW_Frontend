@@ -1,20 +1,21 @@
 import { DocList } from "./layout/DocList";
 import { DocViewer } from "./layout/DocViewer";
 import { ChatPanel } from "./layout/ChatPanel";
-import { useState } from "react";
+// import { useState } from "react";
 import { IterationCcwIcon } from "lucide-react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
+import { useChatStore } from "@/store/chatStore"; // 스토어
 
 export default function ChatPage() {
-  // 페이지 전환기능용
-  const [SidevarOn, setSidevarOn] = useState(true);
+  // 전역 상태 사용
+  const { viewMode, setViewMode } = useChatStore();
 
   const handleSwap = () => {
-    setSidevarOn((prev) => !prev);
+    // 토글 기능
+    setViewMode(viewMode === "list" ? "viewer" : "list");
   };
 
-  const mainContent = SidevarOn ? <DocViewer /> : <DocList />;
-  // 여기까지 페이지 전환기능
+  const mainContent = viewMode === "viewer" ? <DocViewer /> : <DocList />;
 
   return (
     <div className="flex-1 overflow-hidden w-full h-full max-w-full text-[14px] ">
@@ -36,7 +37,7 @@ export default function ChatPage() {
                   <IterationCcwIcon size={15} />
                 </button>
               </div>
-              <div className="flex-1 overflow-hidden px-4">{mainContent}</div>
+              <div className="flex-1 overflow-hidden">{mainContent}</div>
             </section>
           </Panel>
 
@@ -63,5 +64,3 @@ export default function ChatPage() {
     </div>
   );
 }
-
-

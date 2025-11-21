@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import type { Document } from "@/types/UserType";
 
 export interface Message {
   id: string;
@@ -22,6 +23,10 @@ interface ChatState {
   currentSessionId: string | null;
   selectedReference: { sourceName: string; text: string } | null;
 
+  // 뷰어 관련 상태
+  viewMode: "list" | "viewer"; // 사이드바 모드 (리스트 vs 뷰어)
+  selectedDocument: Document | null; // 현재 보고 있는 문서
+
   createSession: () => string; // ID 반환 필수
   selectSession: (sessionId: string) => void;
   addMessage: (sessionId: string, message: Message) => void;
@@ -31,6 +36,11 @@ interface ChatState {
   setSelectedReference: (
     data: { sourceName: string; text: string } | null
   ) => void;
+
+  // 문서 뷰어 액션
+  setViewMode: (mode: "list" | "viewer") => void;
+  openDocument: (doc: Document) => void; // 문서를 열고 뷰어 모드로 전환
+  closeDocument: () => void; // 뷰어 닫고 리스트로 전환
 }
 
 export const useChatStore = create(
@@ -39,6 +49,10 @@ export const useChatStore = create(
       sessions: [],
       currentSessionId: null,
       selectedReference: null,
+
+      // 초기값
+      viewMode: "list",
+      selectedDocument: null,
 
       createSession: () => {
         const newId = Date.now().toString();
@@ -90,6 +104,22 @@ export const useChatStore = create(
       clearCurrentSession: () => set({ currentSessionId: null }),
 
       setSelectedReference: (data) => set({ selectedReference: data }),
+
+      // 구현
+      setViewMode: (mode) => set({ viewMode: mode }),
+
+      openDocument: (doc) =>
+        set({
+          selectedDocument: doc,
+          viewMode: "viewer", // 문서 열면 자동으로 뷰어 모드 전환
+          selectedReference: null, // 일반 문서 열 때 RAG 참조 닫기
+        }),
+
+      closeDocument: () =>
+        set({
+          selectedDocument: null,
+          viewMode: "list",
+        }),
     }),
     {
       name: "chat-storage",

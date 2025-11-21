@@ -8,7 +8,7 @@ import type { User } from "@/types/UserType";
 const MOCK_DB_USERS: User[] = [
   {
     id: 1,
-    accountId: "super_admin", // email 대신 accountId 사용
+    accountId: "사원번호를 부여할 예정입니다.", // email 대신 accountId 사용
     userName: "총괄관리자", // name 대신 userName 사용
     role: "SUPER_ADMIN", // 한글 대신 ENUM 코드 사용
     departmentId: 1, // DT 본부
@@ -18,8 +18,8 @@ const MOCK_DB_USERS: User[] = [
   },
   {
     id: 2,
-    accountId: "manager_dt",
-    userName: "김DT부장",
+    accountId: "202511232",
+    userName: "김부장",
     role: "MANAGER",
     departmentId: 1, // DT 본부
     isActive: true,
@@ -28,8 +28,8 @@ const MOCK_DB_USERS: User[] = [
   },
   {
     id: 3,
-    accountId: "user_dt",
-    userName: "이AI사원",
+    accountId: "202553432",
+    userName: "이사원",
     role: "USER",
     departmentId: 1, // DT 본부
     projectId: 1, // 차세대 AI 프로젝트 소속
@@ -39,7 +39,7 @@ const MOCK_DB_USERS: User[] = [
   },
   {
     id: 4,
-    accountId: "hr_manager",
+    accountId: "202563463",
     userName: "박인사",
     role: "USER",
     departmentId: 2, // 경영지원본부
@@ -59,7 +59,7 @@ interface UserState {
   fetchUsers: () => Promise<void>;
   updateUser: (updatedUser: User) => void;
   deleteUser: (userId: number) => void;
-  addUser: (newUser: User) => void; // ✨ 관리자가 유저 추가할 때 필요
+  addUser: (newUser: User) => void; // 관리자가 유저 추가할 때 필요
 }
 
 export const useUserStore = create<UserState>((set) => ({

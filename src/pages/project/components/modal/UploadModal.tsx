@@ -136,7 +136,7 @@ export function UploadModal({
     // ✨ 여기서 departmentId -> dept_id 로 수정
     const DEMO_METADATA: UploadMetadata = {
       user_id: 2,
-      dept_id: 1, // ✨ 수정됨
+      dept_id: 1,
       project_id: 1,
       category: category,
     };

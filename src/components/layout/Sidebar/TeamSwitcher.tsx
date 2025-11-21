@@ -9,13 +9,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useSidebar } from "@/hooks/useSidebar";
 
 export function TeamSwitcher() {
   const { open: isSidebarOpen } = useSidebar();
