@@ -204,6 +204,22 @@ export function ProjectTable({
         onBulkDownload={() => handleBulkAction("download")}
         onBulkDelete={canManage ? () => handleBulkAction("delete") : undefined}
       />
+      <header className="flex items-center text-sm font-semibold text-gray-600 bg-gray-50 p-3">
+        <div className="w-1/12 text-center">
+          <input
+            type="checkbox"
+            className="form-checkbox"
+            checked={isAllSelected}
+            onChange={(e) => handleSelectAllChange(e.target.checked)}
+          />
+        </div>
+        <div className="w-3/12">문서 이름</div>
+        <div className="w-2/12">분류</div>
+        <div className="w-[10%] cursor-pointer">생성 일자</div>
+        <div className="w-[10%]">상태</div>
+        <div className="w-[10%]">업데이트</div>
+        <div className="w-2/12 text-center">관리</div>
+      </header>
 
       {/* ✨ 로딩 상태 표시 */}
       {isLoading ? (
@@ -212,24 +228,6 @@ export function ProjectTable({
         </div>
       ) : (
         <>
-          <header className="flex items-center text-sm font-semibold text-gray-600 bg-gray-50 p-3">
-            {/* ... 헤더 동일 ... */}
-            <div className="w-1/12 text-center">
-              <input
-                type="checkbox"
-                className="form-checkbox"
-                checked={isAllSelected}
-                onChange={(e) => handleSelectAllChange(e.target.checked)}
-              />
-            </div>
-            <div className="w-3/12">문서 이름</div>
-            <div className="w-2/12">분류</div>
-            <div className="w-[10%] cursor-pointer">생성 일자</div>
-            <div className="w-[10%]">상태</div>
-            <div className="w-[10%]">업데이트</div>
-            <div className="w-2/12 text-center">관리</div>
-          </header>
-
           {currentTableData.length > 0 ? (
             <TableBody
               data={currentTableData}

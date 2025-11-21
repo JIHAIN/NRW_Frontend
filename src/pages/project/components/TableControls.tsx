@@ -15,7 +15,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-// ✨ 상수 및 타입 임포트
+//  상수 및 타입 임포트
 import { CATEGORY_LABEL } from "@/constants/projectConstants";
 import type { DocumentCategory } from "@/types/UserType";
 
@@ -26,14 +26,20 @@ interface TableControlsProps {
   searchText: string;
   onSearchChange: (text: string) => void;
 
+  // 권한 필터
+  // authFilter: string;
+  // authFilterChange: (status: string) => void;
+  // authOptions: string[];
+
+  // 상태 필터
   statusFilter: string;
   onStatusFilterChange: (status: string) => void;
   statusOptions: string[];
 
-  // ✨ 분류(Category) 필터
+  //  분류(Category) 필터
   categoryFilter: string;
   onCategoryFilterChange: (category: string) => void;
-  // ✨ [수정] string[] -> DocumentCategory[] 로 구체화
+  //  [수정] string[] -> DocumentCategory[] 로 구체화
   categoryOptions: DocumentCategory[];
 
   hasSelection: boolean;
@@ -146,13 +152,13 @@ const FilterDropdown: FC<FilterDropdownProps> = ({
 };
 
 const TableControls: FC<TableControlsProps> = (props) => {
-  // ✨ 옵션 데이터를 {value, label} 형태로 변환
+  //  옵션 데이터를 {value, label} 형태로 변환
   const formattedStatusOptions = props.statusOptions.map((s) => ({
     value: s,
     label: s,
   }));
 
-  // ✨ 카테고리는 한글 변환 적용
+  //  카테고리는 한글 변환 적용
   // c가 DocumentCategory 타입이므로 CATEGORY_LABEL[c] 접근 시 any 불필요
   const formattedCategoryOptions = props.categoryOptions.map((c) => ({
     value: c,
@@ -169,7 +175,7 @@ const TableControls: FC<TableControlsProps> = (props) => {
             placeholder="문서 이름 검색..."
             value={props.searchText}
             onChange={(e) => props.onSearchChange(e.target.value)}
-            className="w-full p-1 focus:outline-none"
+            className="w-full p-1 focus:outline-none text-sm text-gray-500"
           />
         </div>
 
@@ -196,7 +202,18 @@ const TableControls: FC<TableControlsProps> = (props) => {
         )}
       </div>
 
-      <div className="flex items-center gap-12">
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
+          <label className="text-sm font-medium text-gray-700">권한:</label>
+          <FilterDropdown
+            currentFilter={props.statusFilter}
+            onFilterChange={props.onStatusFilterChange}
+            options={formattedStatusOptions}
+            defaultLabel="전체 보기"
+            widthClass="w-[7.5rem]"
+          />
+        </div>
+
         <div className="flex items-center gap-4">
           <label className="text-sm font-medium text-gray-700">상태:</label>
           <FilterDropdown
@@ -204,19 +221,19 @@ const TableControls: FC<TableControlsProps> = (props) => {
             onFilterChange={props.onStatusFilterChange}
             options={formattedStatusOptions}
             defaultLabel="전체 상태"
-            widthClass="w-[10rem]"
+            widthClass="w-[7.5rem]"
           />
         </div>
 
         <div className="flex items-center gap-4">
-          {/* ✨ 위치 -> 분류 */}
+          {/*  위치 -> 분류 */}
           <label className="text-sm font-medium text-gray-700">분류:</label>
           <FilterDropdown
             currentFilter={props.categoryFilter}
             onFilterChange={props.onCategoryFilterChange}
             options={formattedCategoryOptions}
             defaultLabel="전체 분류"
-            widthClass="w-[10rem]"
+            widthClass="w-[7.5rem]"
           />
         </div>
       </div>

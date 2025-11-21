@@ -92,7 +92,7 @@ export default function ProjectPage() {
   }, [selectedDeptId, isUser]);
 
   // ---------------------------------------------------------
-  // ✨ 옵션 데이터 생성 (Value = ID string, Label = Name)
+  // 옵션 데이터 생성 (Value = ID string, Label = Name)
   // ---------------------------------------------------------
 
   // 부서 옵션
@@ -118,7 +118,7 @@ export default function ProjectPage() {
   }, [selectedDeptId, projects]);
 
   // ---------------------------------------------------------
-  // ✨ 현재 선택된 객체 찾기 (ID 기반 검색 - 훨씬 빠르고 안전함)
+  // 현재 선택된 객체 찾기 (ID 기반 검색 - 훨씬 빠르고 안전함)
   // ---------------------------------------------------------
   const currentDeptData = departments.find(
     (d) => String(d.id) === selectedDeptId
@@ -187,12 +187,9 @@ export default function ProjectPage() {
 
       {/* 테이블 영역 */}
       <div>
-        {/* ✨ 주의: ProjectTable도 이제 이름이 아닌 ID(혹은 이름)를 받도록 수정되어야 할 수 있습니다.
+        {/* 주의: ProjectTable도 이제 이름이 아닌 ID(혹은 이름)를 받도록 수정되어야 할 수 있습니다.
            만약 ProjectTable이 '이름'을 원한다면 여기서 변환해서 내려주면 되고,
            'ID'를 원한다면 그대로 내려주면 됩니다.
-           
-           현재 ProjectTable 내부 로직을 알 수 없지만,
-           일반적으로 이름으로 필터링한다면 아래처럼 'currentDeptData?.name'을 넘기는 것이 안전합니다.
         */}
         <ProjectTable
           selectedDepartment={currentDeptData?.name || ""} // ID로 찾은 객체의 이름을 전달
