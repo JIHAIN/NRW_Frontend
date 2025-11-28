@@ -1,8 +1,8 @@
 import type { FC } from "react";
 import { Download, Trash2, FileText } from "lucide-react";
-import type { Document } from "@/types/UserType"; // ✨ DocumentCategory 삭제 (상수에서 추론됨)
+import type { Document } from "@/types/UserType";
 
-// ✨ 상수 파일 임포트
+// 상수 파일 임포트
 import {
   STATUS_CONFIG,
   CATEGORY_LABEL,
@@ -15,6 +15,7 @@ export interface TableBodyProps {
   selectedItemIds: Set<number>;
   onCheckboxChange: (itemId: number, isChecked: boolean) => void;
   canManage: boolean;
+  onTitleClick: (item: Document) => void; // ✨ [추가] 클릭 핸들러 타입 정의
 }
 
 const TableBody: FC<TableBodyProps> = ({
@@ -23,6 +24,7 @@ const TableBody: FC<TableBodyProps> = ({
   selectedItemIds,
   onCheckboxChange,
   canManage,
+  onTitleClick, // ✨ [추가] 핸들러 받기
 }) => {
   return (
     <div className="bg-white divide-y divide-gray-100">
@@ -54,7 +56,8 @@ const TableBody: FC<TableBodyProps> = ({
               <FileText className="w-4 h-4 text-gray-400 shrink-0" />
               <div className="flex flex-col overflow-hidden">
                 <span
-                  className="truncate font-medium text-gray-900 cursor-pointer hover:text-blue-600 hover:underline"
+                  onClick={() => onTitleClick(item)} // ✨ [추가] 클릭 이벤트 연결
+                  className="truncate font-medium text-gray-900 cursor-pointer hover:text-blue-600 hover:underline decoration-blue-600 underline-offset-2"
                   title={item.originalFilename}
                 >
                   {item.originalFilename}

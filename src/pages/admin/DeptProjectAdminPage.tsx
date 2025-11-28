@@ -1,5 +1,3 @@
-// src/pages/admin/DeptProjectAdminPage.tsx
-
 import { useState, type FC, useEffect } from "react";
 import DepartmentManager from "./components/DepartmentManager";
 import ProjectManager from "./components/ProjectManager";
@@ -7,7 +5,7 @@ import DeleteConfirmationModal from "./components/DeleteConfirmationModal";
 import type { Department, Project } from "@/types/UserType";
 import { X } from "lucide-react";
 
-//  시스템 스토어 임포트
+// 시스템 스토어 & 인증 스토어 임포트
 import { useSystemStore } from "@/store/systemStore";
 import { useAuthStore } from "@/store/authStore";
 
@@ -71,6 +69,7 @@ export const DeptProjectAdminPage: FC = () => {
   const {
     departments,
     projects,
+    isLoading, //  로딩 상태 구독
     fetchSystemData,
     addDepartment,
     deleteDepartment,
@@ -102,28 +101,30 @@ export const DeptProjectAdminPage: FC = () => {
   const [isDeptModalOpen, setIsDeptModalOpen] = useState<boolean>(false);
   const [deptToDelete, setDeptToDelete] = useState<Department | null>(null);
 
-  // 권한에 따른 부서 선택 상태 초기화 (매우 중요)
+  // 권한에 따른 부서 선택 상태 초기화
   useEffect(() => {
-    if (user?.role && "MANAGER") {
+    if (user?.role === "MANAGER") {
       // 관리자는 본인 부서 ID로 강제 고정
       setSelectedDepartmentId(user?.departmentId || null);
     }
-  }, [user, isManager]);
+  }, [user]); // 의존성 배열 수정
 
   // -------------------------
-  //  핸들러 함수 (Store 액션 호출)
+  //  핸들러 함수 (Async 적용)
   // -------------------------
 
   // 1. 부서 추가
-  const handleAddDepartment = (name: string) => {
-    if (isManager) return; // 보안 강화
-    addDepartment(name);
+  const handleAddDepartment = async (name: string) => {
+    if (isManager) return;
+    await addDepartment(name);
   };
 
   // 2. 부서 삭제
-  const handleDeleteDepartment = () => {
-    if (isManager || !deptToDelete) return; // 보안 강화
-    deleteDepartment(deptToDelete.id);
+  const handleDeleteDepartment = async () => {
+    if (isManager || !deptToDelete) return;
+
+    await deleteDepartment(deptToDelete.id);
+
     setIsDeptModalOpen(false);
     setDeptToDelete(null);
 
@@ -133,13 +134,13 @@ export const DeptProjectAdminPage: FC = () => {
   };
 
   // 3. 프로젝트 추가
-  const handleAddProject = (name: string, departmentId: number) => {
-    // 관리자가 다른 부서 ID를 보내려 하면 차단 (물론 UI에서 막지만 이중 검증)
+  const handleAddProject = async (name: string, departmentId: number) => {
     if (isManager && departmentId !== user?.departmentId) {
       alert("본인 부서의 프로젝트만 생성할 수 있습니다.");
       return;
     }
 
+    // ID는 서버가 생성하므로 0으로 전송
     const newProject: Project = {
       id: 0,
       departmentId: departmentId,
@@ -149,21 +150,19 @@ export const DeptProjectAdminPage: FC = () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    addProject(newProject);
+    await addProject(newProject);
   };
 
   // 4. 프로젝트 삭제
-  const handleConfirmProjectDelete = (keepDocuments: boolean) => {
+  const handleConfirmProjectDelete = async (keepDocuments: boolean) => {
     if (!projectToDelete) return;
 
-    deleteProject(projectToDelete.id);
+    await deleteProject(projectToDelete.id);
 
     if (!keepDocuments) {
       console.log(
         `[API 요청 필요] 프로젝트 ID ${projectToDelete.id} 관련 문서 삭제 로직 실행`
       );
-    } else {
-      console.log(`[정보] 프로젝트 문서는 보관됩니다.`);
     }
 
     setIsProjectModalOpen(false);
@@ -192,6 +191,7 @@ export const DeptProjectAdminPage: FC = () => {
           onSelectDept={handleSelectDepartment}
           selectedDeptId={selectedDepartmentId}
           readOnly={isManager}
+          isLoading={isLoading} //  로딩 상태 전달
         />
 
         {/* 우측: 프로젝트 관리 */}
@@ -205,9 +205,9 @@ export const DeptProjectAdminPage: FC = () => {
           }}
           selectedDeptId={selectedDepartmentId}
           onSelectDept={handleSelectDepartment}
-          // 유저 정보 전달 (드롭다운 제어용)
           currentUserRole={user?.role}
           currentUserDeptId={user?.departmentId}
+          isLoading={isLoading} //  로딩 상태 전달
         />
       </div>
 
@@ -226,7 +226,7 @@ export const DeptProjectAdminPage: FC = () => {
       {/* 부서 삭제 모달 */}
       {isDeptModalOpen && deptToDelete && (
         <SimpleConfirmModal
-          name={deptToDelete.name}
+          name={deptToDelete.dept_name}
           type="부서"
           onConfirm={handleDeleteDepartment}
           onClose={() => {

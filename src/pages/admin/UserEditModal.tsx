@@ -148,7 +148,7 @@ export default function UserEditModal({
                 <SelectContent>
                   {departments.map((dept) => (
                     <SelectItem key={dept.id} value={String(dept.id)}>
-                      {dept.name}
+                      {dept.dept_name}
                     </SelectItem>
                   ))}
                 </SelectContent>

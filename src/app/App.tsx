@@ -4,12 +4,13 @@ import GlobalProvider from "./providers"; // 전역 상태/쿼리 관리 Provide
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/Sidebar/AppSidebar";
 import { TestAuthPanel } from "@/components/common/TestAuthPanel";
+import { UploadStatusBox } from "@/pages/project/components/modal/UploadStatusBox";
 
 function App() {
   return (
     <GlobalProvider>
       <SidebarProvider>
-        <div className="min-h-screen flex flex-1">
+        <div className="h-screen flex flex-1">
           <AppSidebar className="bg-slate-50" />
           <div className="w-full flex flex-col ">
             {/* 헤더 고정 높이는 46px */}
@@ -20,6 +21,7 @@ function App() {
               </div>
             </main>
             {/* 나중에 이거 지우기*/}
+            <UploadStatusBox />
             <TestAuthPanel />
           </div>
         </div>

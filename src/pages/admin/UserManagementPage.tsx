@@ -102,7 +102,10 @@ export const UserManagementPage: FC = () => {
   const deptOptions: OptionItem<string>[] = useMemo(() => {
     return [
       { value: "ALL", label: "전체 부서" },
-      ...departments.map((dept) => ({ value: dept.name, label: dept.name })),
+      ...departments.map((dept) => ({
+        value: dept.dept_name,
+        label: dept.dept_name,
+      })),
     ];
   }, [departments]);
 
@@ -141,7 +144,7 @@ export const UserManagementPage: FC = () => {
       if (deptFilter !== "ALL") {
         const userDeptName = departments.find(
           (dept) => dept.id === user.departmentId
-        )?.name;
+        )?.dept_name;
         if (userDeptName !== deptFilter) {
           return false;
         }
@@ -289,8 +292,8 @@ export const UserManagementPage: FC = () => {
                 };
                 const roleLabel = ROLE_LABELS[user.role] || user.role;
                 const deptName =
-                  departments.find((d) => d.id === user.departmentId)?.name ||
-                  "-";
+                  departments.find((d) => d.id === user.departmentId)
+                    ?.dept_name || "-";
 
                 // ✨ [수정 4] 수정/삭제 권한 로직
                 let canEdit = false;

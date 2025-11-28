@@ -1,10 +1,9 @@
-// src/components/FilterCombobox.tsx
-
+import * as React from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-
+import { Button } from "@/components/ui/button";
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandItem,
   CommandList,
@@ -14,23 +13,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useState } from "react";
-import { Button } from "../ui/button";
-import { Check, ChevronRight } from "lucide-react";
 
-// --------------------------------------------------------------------------
-// ✨ 제네릭 타입 정의
-// T는 string, number, null 중 하나일 수 있어 ProjectManager의 number|null을 수용
-// --------------------------------------------------------------------------
+// 제네릭 타입 정의
 type ComboboxValue = string | number | null;
 
-// 💡 OptionItem에 제네릭 T 적용
 interface OptionItem<T extends ComboboxValue> {
   value: T;
   label: string;
 }
 
-// 💡 Props에도 제네릭 T 적용 및 className 추가
 interface FilterComboboxProps<T extends ComboboxValue> {
   options: OptionItem<T>[];
   selectedValue: T;
@@ -40,94 +31,76 @@ interface FilterComboboxProps<T extends ComboboxValue> {
   disabled?: boolean;
 }
 
-// 💡 컴포넌트에도 제네릭 T 적용
 export function FilterCombobox<T extends ComboboxValue>({
-  options,
+  options = [], // 기본값 방어
   selectedValue,
   onValueChange,
   placeholder,
-  className, // 클래스 받기
+  className,
   disabled = false,
 }: FilterComboboxProps<T>) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = React.useState(false);
 
-  // selectedValue가 null일 때도 처리 가능
-  const displayLabel =
-    options.find((option) => option.value === selectedValue)?.label ||
-    placeholder;
+  // 현재 선택된 라벨 찾기 (null/undefined 안전 처리)
+  const selectedLabel = React.useMemo(() => {
+    const found = options.find((op) => op.value === selectedValue);
+    return found ? found.label : placeholder;
+  }, [options, selectedValue, placeholder]);
 
   return (
     <div className={cn("w-full", className)}>
-      {/* className 적용 */}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
+            variant="outline"
             role="combobox"
             aria-expanded={open}
+            disabled={disabled}
             className={cn(
-              "w-full justify-between border-blue-200 bg-white hover:bg-blue-50/50 text-gray-700 min-w-[130px] p-2 h-auto text-sm opacity-80 cursor-pointer",
-              // ✨ 3. disabled 상태일 때 스타일 적용
-              disabled && "opacity-60 cursor-not-allowed bg-gray-100"
+              "w-full justify-between bg-white border-blue-100 hover:bg-blue-50 text-left font-normal",
+              !selectedValue && selectedValue !== 0 && "text-muted-foreground", // 0은 유효한 값으로 처리
+              className
             )}
-            disabled={disabled} // ✨ 4. Button에 disabled 속성 전달
           >
-            {displayLabel}
-            <ChevronRight
-              className={cn(
-                "transition-transform duration-200",
-                open ? "rotate-90" : "", // 💡 open 상태에 따라 회전
-                "ml-auto h-4 w-4 shrink-0 opacity-50"
-              )}
-            />
+            <span className="truncate">{selectedLabel}</span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        {/* 💡 PopoverContent의 너비를 Trigger와 동일하게 설정 */}
-        <PopoverContent
-          className="w-full p-0 border border-blue-100"
-          style={{ width: "var(--radix-popover-trigger-width)" }}
-        >
-          <Command className="bg-white">
-            <CommandList className="p-0">
-              <CommandEmpty>옵션이 없습니다.</CommandEmpty>
+
+        <PopoverContent className="w-[200px] p-0 bg-white" align="start">
+          <Command>
+            <CommandList>
               <CommandGroup>
-                {options.map((option) => (
-                  <CommandItem
-                    // T 타입의 value를 string으로 변환하여 key와 CommandItem value로 사용
-                    key={String(option.value)}
-                    value={String(option.value)}
-                    onSelect={(currentValueStr) => {
-                      // 💡 옵션 배열에서 문자열 값을 기준으로 실제 T 타입의 option을 찾습니다.
-                      const selectedOption = options.find(
-                        (opt) => String(opt.value) === currentValueStr
-                      );
+                {options.map((option, index) => {
+                  // 1. Key 생성: value가 없거나 중복될 경우를 대비해 index를 붙여 유니크하게 만듦
+                  const uniqueKey = `combo-item-${option.value}-${index}`;
 
-                      if (selectedOption) {
-                        // 선택된 값과 현재 값이 같으면 (필터 해제), 첫 번째 옵션 (전체) 값으로 리셋
-                        // 첫 번째 옵션이 필터 리셋 옵션이라고 가정합니다.
-                        const resetValue = options[0].value;
+                  // 2. Value 생성: 검색 라이브러리(cmdk)가 식별할 수 있도록 "라벨 + 값" 조합 사용
+                  const cmdValue = `${option.label} ${option.value}`;
 
-                        // onSelect 로직: 값이 같으면 첫 번째 옵션으로 리셋하거나, 새로운 값 선택
-                        const newValue =
-                          selectedOption.value === selectedValue
-                            ? (resetValue as T) // 선택 해제 시 첫 번째 옵션 (전체) 값으로 리셋
-                            : selectedOption.value;
+                  // 3. 선택 여부 확인
+                  const isSelected = selectedValue === option.value;
 
-                        onValueChange(newValue);
-                      }
-                      setOpen(false);
-                    }}
-                  >
-                    {option.label}
-                    <Check
-                      className={cn(
-                        "ml-auto h-4 w-4",
-                        selectedValue === option.value
-                          ? "opacity-100"
-                          : "opacity-0"
-                      )}
-                    />
-                  </CommandItem>
-                ))}
+                  return (
+                    <CommandItem
+                      key={uniqueKey}
+                      value={cmdValue}
+                      onSelect={() => {
+                        onValueChange(option.value);
+                        setOpen(false);
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <Check
+                        className={cn(
+                          "",
+                          isSelected ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {option.label}
+                    </CommandItem>
+                  );
+                })}
               </CommandGroup>
             </CommandList>
           </Command>

@@ -15,31 +15,34 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-//  상수 및 타입 임포트
 import { CATEGORY_LABEL } from "@/constants/projectConstants";
 import type { DocumentCategory } from "@/types/UserType";
 
 // -------------------------------------------------------------
 // Props 정의
 // -------------------------------------------------------------
+export interface OptionItem {
+  value: string;
+  label: string;
+}
+
 interface TableControlsProps {
   searchText: string;
   onSearchChange: (text: string) => void;
 
-  // 권한 필터
-  // authFilter: string;
-  // authFilterChange: (status: string) => void;
-  // authOptions: string[];
+  //  [수정] 권한 필터 삭제 -> 프로젝트 필터 추가
+  projectFilter: string; // 프로젝트 ID (string)
+  onProjectFilterChange: (projectId: string) => void;
+  projectOptions: OptionItem[]; // { value: id, label: name }
 
   // 상태 필터
   statusFilter: string;
   onStatusFilterChange: (status: string) => void;
   statusOptions: string[];
 
-  //  분류(Category) 필터
+  // 분류(Category) 필터
   categoryFilter: string;
   onCategoryFilterChange: (category: string) => void;
-  //  [수정] string[] -> DocumentCategory[] 로 구체화
   categoryOptions: DocumentCategory[];
 
   hasSelection: boolean;
@@ -48,13 +51,8 @@ interface TableControlsProps {
 }
 
 // -------------------------------------------------------------
-// FilterDropdown
+// FilterDropdown (재사용 컴포넌트)
 // -------------------------------------------------------------
-interface OptionItem {
-  value: string;
-  label: string;
-}
-
 interface FilterDropdownProps {
   currentFilter: string;
   onFilterChange: (value: string) => void;
@@ -81,35 +79,40 @@ const FilterDropdown: FC<FilterDropdownProps> = ({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
+            variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between opacity-70 border border-blue-100 rounded-2xl p-1.5 focus:outline-none cursor-pointer text-center text-[0.9rem] bg-white"
+            className="w-full justify-between opacity-70 border border-blue-100 rounded-2xl p-1.5 px-3 focus:outline-none cursor-pointer text-center text-[0.8rem] bg-white h-9"
           >
-            {currentLabel}
+            <span className="truncate">{currentLabel}</span>
             <ChevronRight
-              className={`ml-auto transition-transform duration-200 ${
+              className={`ml-2 transition-transform duration-200 ${
                 open ? "rotate-90" : ""
-              } w-4 h-4 text-gray-500`}
+              } w-4 h-4 text-gray-500 shrink-0`}
             />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-40 p-0 border border-blue-100">
+        <PopoverContent
+          className="w-[200px] p-0 border border-blue-100"
+          align="start"
+        >
           <Command className="bg-white">
-            <CommandList className="p-0">
+            <CommandList className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
               <CommandEmpty>옵션이 없습니다.</CommandEmpty>
               <CommandGroup>
                 {/* 전체 옵션 */}
                 <CommandItem
-                  value=""
+                  value="all_reset_option" // 고유한 값 사용
                   onSelect={() => {
                     onFilterChange("");
                     setOpen(false);
                   }}
+                  className="cursor-pointer"
                 >
                   {defaultLabel}
                   <Check
                     className={cn(
-                      "ml-auto",
+                      "ml-auto h-4 w-4",
                       currentFilter === "" ? "opacity-100" : "opacity-0"
                     )}
                   />
@@ -119,22 +122,17 @@ const FilterDropdown: FC<FilterDropdownProps> = ({
                 {options.map((option) => (
                   <CommandItem
                     key={option.value}
-                    value={option.value}
-                    onSelect={(currentValue) => {
-                      // CommandItem은 value를 소문자로 리턴하는 경우가 있어, 원래 값을 찾아서 전달
-                      const selected =
-                        options.find(
-                          (o) =>
-                            o.value.toLowerCase() === currentValue.toLowerCase()
-                        )?.value || currentValue;
-                      onFilterChange(selected);
+                    value={option.label} // 검색을 위해 label 사용 (Shadcn Command 특성)
+                    onSelect={() => {
+                      onFilterChange(option.value);
                       setOpen(false);
                     }}
+                    className="cursor-pointer"
                   >
                     {option.label}
                     <Check
                       className={cn(
-                        "ml-auto",
+                        "ml-auto h-4 w-4",
                         currentFilter === option.value
                           ? "opacity-100"
                           : "opacity-0"
@@ -152,30 +150,28 @@ const FilterDropdown: FC<FilterDropdownProps> = ({
 };
 
 const TableControls: FC<TableControlsProps> = (props) => {
-  //  옵션 데이터를 {value, label} 형태로 변환
+  // 옵션 데이터 변환
   const formattedStatusOptions = props.statusOptions.map((s) => ({
     value: s,
     label: s,
   }));
 
-  //  카테고리는 한글 변환 적용
-  // c가 DocumentCategory 타입이므로 CATEGORY_LABEL[c] 접근 시 any 불필요
   const formattedCategoryOptions = props.categoryOptions.map((c) => ({
     value: c,
     label: CATEGORY_LABEL[c] || c,
   }));
 
   return (
-    <div className="flex justify-between items-center py-2 px-10 ">
+    <div className="flex justify-between items-center py-2 px-4 mb-2">
       <div className="flex items-center gap-3">
-        <div className="flex items-center border border-blue-100 rounded-2xl p-1 bg-white w-80">
-          <Search size={20} className="text-blue-400 mx-2" />
+        <div className="flex items-center border border-blue-100 rounded-2xl p-1 bg-white w-72 shadow-sm">
+          <Search size={18} className="text-blue-400 mx-2 " />
           <input
             type="text"
             placeholder="문서 이름 검색..."
             value={props.searchText}
             onChange={(e) => props.onSearchChange(e.target.value)}
-            className="w-full p-1 focus:outline-none text-sm text-gray-500"
+            className="w-full p-1 focus:outline-none text-sm text-gray-500 bg-transparent "
           />
         </div>
 
@@ -183,57 +179,57 @@ const TableControls: FC<TableControlsProps> = (props) => {
           <>
             <Button
               onClick={props.onBulkDownload}
-              className="gap-1 border border-blue-100 rounded-2xl px-3 py-1 text-blue-900/70 point-hover bg-white hover:bg-gray-100 text-sm"
+              className="gap-1 border border-blue-100 rounded-2xl px-3 py-1 text-blue-900/70 point-hover bg-white hover:bg-gray-100 text-xs h-8"
             >
-              <Download size={16} className="text-blue-500" />
-              일괄 다운로드
+              <Download size={14} className="text-blue-500" />
+              다운로드
             </Button>
 
             {props.onBulkDelete && (
               <Button
                 onClick={props.onBulkDelete}
-                className="gap-1 border border-blue-100 rounded-2xl px-3 py-1 text-red-700/70 point-hover bg-white hover:bg-gray-100 text-sm"
+                className="gap-1 border border-blue-100 rounded-2xl px-3 py-1 text-red-700/70 point-hover bg-white hover:bg-gray-100 text-xs h-8"
               >
-                <Trash2 size={16} className="text-red-500" />
-                일괄 삭제
+                <Trash2 size={14} className="text-red-500" />
+                삭제
               </Button>
             )}
           </>
         )}
       </div>
 
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-4">
-          <label className="text-sm font-medium text-gray-700">권한:</label>
+      <div className="flex items-center gap-4">
+        {/*  권한 -> 프로젝트 필터로 변경 */}
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-bold text-gray-500">프로젝트:</label>
           <FilterDropdown
-            currentFilter={props.statusFilter}
-            onFilterChange={props.onStatusFilterChange}
-            options={formattedStatusOptions}
-            defaultLabel="전체 보기"
-            widthClass="w-[7.5rem]"
+            currentFilter={props.projectFilter}
+            onFilterChange={props.onProjectFilterChange}
+            options={props.projectOptions} // 상위에서 전달받음
+            defaultLabel="전체 프로젝트"
+            widthClass="w-40"
           />
         </div>
 
-        <div className="flex items-center gap-4">
-          <label className="text-sm font-medium text-gray-700">상태:</label>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-bold text-gray-500">상태:</label>
           <FilterDropdown
             currentFilter={props.statusFilter}
             onFilterChange={props.onStatusFilterChange}
             options={formattedStatusOptions}
             defaultLabel="전체 상태"
-            widthClass="w-[7.5rem]"
+            widthClass="w-32"
           />
         </div>
 
-        <div className="flex items-center gap-4">
-          {/*  위치 -> 분류 */}
-          <label className="text-sm font-medium text-gray-700">분류:</label>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-bold text-gray-500">분류:</label>
           <FilterDropdown
             currentFilter={props.categoryFilter}
             onFilterChange={props.onCategoryFilterChange}
             options={formattedCategoryOptions}
             defaultLabel="전체 분류"
-            widthClass="w-[7.5rem]"
+            widthClass="w-32"
           />
         </div>
       </div>

@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useSystemStore } from "@/store/systemStore";
 import { FlaskConical, X, GripHorizontal, Loader2 } from "lucide-react";
@@ -38,8 +44,8 @@ export function TestAuthPanel() {
 
   // ✨ authStore에서 user 정보와 로그인 함수 가져오기
   const { user, login } = useAuthStore();
-  const { departments, projects, isLoading, fetchSystemData } =
-    useSystemStore();
+  // ✨ [수정 1] fetchSystemData 제거 (사용하지 않음)
+  const { departments, projects, isLoading } = useSystemStore();
 
   // 드래그 관련 상태
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -47,25 +53,32 @@ export function TestAuthPanel() {
   const isDragging = useRef(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
 
+  // 내부 상태로 선택값 관리
+  const [localDeptId, setLocalDeptId] = useState<number>(0);
+
+  // user 정보가 바뀌면 로컬 상태도 동기화
+  useEffect(() => {
+    if (user?.departmentId) {
+      setLocalDeptId(user.departmentId);
+    }
+  }, [user?.departmentId]);
+
   // ---------------------------------------------------------
-  // 🏗️ Mock User 생성 및 로그인 로직 (useCallback 적용)
+  // 🏗️ Mock User 생성 및 로그인 로직
   // ---------------------------------------------------------
-  // ✨ useCallback으로 감싸서 useEffect 의존성 문제 해결
   const createAndLoginUser = useCallback(
     (newRole: UserRole, newDeptId: number, newProjId: number) => {
-      // ✨ deptName 변수 활용 (userName에 포함시켜서 미사용 오류 해결)
       const deptName =
-        departments.find((d) => d.id === newDeptId)?.name || "본사";
+        departments.find((d) => d.id === newDeptId)?.dept_name || "본사";
 
       // 가상의 User 객체 생성
       const mockUser: User = {
-        id: 999, // 테스트용 고정 ID
+        id: 1,
         accountId: "test_admin",
-        // 이름에 부서명을 넣어서 변수를 사용함
         userName: `[Test] ${newRole} (${deptName})`,
         role: newRole,
-        departmentId: newDeptId || undefined,
-        projectId: newProjId || undefined,
+        departmentId: newDeptId || 1,
+        projectId: newProjId || 0,
         isActive: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -74,7 +87,7 @@ export function TestAuthPanel() {
       console.log("🧪 Test Login:", mockUser);
       login(mockUser);
     },
-    [departments, login] // departments나 login함수가 바뀌면 재생성
+    [departments, login]
   );
 
   // ---------------------------------------------------------
@@ -85,48 +98,43 @@ export function TestAuthPanel() {
       setPosition({ x: window.innerWidth - 240, y: window.innerHeight - 200 });
       setIsInitialized(true);
     }
-    fetchSystemData();
-  }, [fetchSystemData]);
+  }, []);
 
-  // 초기 로딩 시, 로그인이 안 되어 있다면 기본값으로 로그인 시도
+  const hasAutoLoggedIn = useRef(false);
+
   useEffect(() => {
-    // departments가 로드되었고, 아직 유저가 없다면 로그인 실행
-    if (!isLoading && !user && departments.length > 0) {
-      // 기본값: SUPER_ADMIN, 부서 ID 0, 프로젝트 ID 0
-      createAndLoginUser("SUPER_ADMIN", 0, 0);
-    }
-  }, [isLoading, user, departments, createAndLoginUser]); // ✨ 의존성 배열 오류 해결
+    if (isLoading) return;
+    if (user || departments.length === 0 || hasAutoLoggedIn.current) return;
+
+    // ✨ [수정 2] initialDeptId 변수 삭제 (바로 값 사용)
+    // 초기 로그인 (총괄 관리자는 부서 0)
+    createAndLoginUser("SUPER_ADMIN", 0, 0);
+    setLocalDeptId(0);
+    hasAutoLoggedIn.current = true;
+  }, [isLoading, user, departments, createAndLoginUser]);
 
   // ---------------------------------------------------------
   // ✋ 이벤트 핸들러
   // ---------------------------------------------------------
 
-  // 1. 권한 변경
   const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newRole = e.target.value as UserRole;
     const nextDeptId =
-      newRole === "SUPER_ADMIN"
-        ? 0
-        : user?.departmentId || departments[0]?.id || 0;
-    const nextProjId = 0;
+      newRole === "SUPER_ADMIN" ? 0 : localDeptId || departments[0]?.id || 0;
 
-    createAndLoginUser(newRole, nextDeptId, nextProjId);
+    setLocalDeptId(nextDeptId);
+    createAndLoginUser(newRole, nextDeptId, 0);
   };
 
-  // 2. 부서 변경
   const handleDeptChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newDeptId = Number(e.target.value);
+    setLocalDeptId(newDeptId);
     createAndLoginUser(user?.role || "USER", newDeptId, 0);
   };
 
-  // 3. 프로젝트 변경
   const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newProjId = Number(e.target.value);
-    createAndLoginUser(
-      user?.role || "USER",
-      user?.departmentId || 0,
-      newProjId
-    );
+    createAndLoginUser(user?.role || "USER", localDeptId, newProjId);
   };
 
   // ---------------------------------------------------------
@@ -163,12 +171,12 @@ export function TestAuthPanel() {
     if (!isDragging.current) setIsOpen(!isOpen);
   };
 
-  if (!isInitialized) return null;
+  const filteredProjects = useMemo(() => {
+    if (!localDeptId) return [];
+    return projects.filter((p) => p.departmentId === localDeptId);
+  }, [projects, localDeptId]);
 
-  // 현재 선택된 부서에 속한 프로젝트만 필터링
-  const filteredProjects = projects.filter(
-    (p) => p.departmentId === user?.departmentId
-  );
+  if (!isInitialized) return null;
 
   return (
     <div
@@ -227,14 +235,14 @@ export function TestAuthPanel() {
               {/* 2. Department 선택 */}
               <TestSelect
                 label="Dept"
-                value={user?.departmentId || 0}
+                value={localDeptId}
                 onChange={handleDeptChange}
                 disabled={user?.role === "SUPER_ADMIN"}
               >
                 <option value={0}>전체 / 선택 안함</option>
                 {departments.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.name}
+                    {d.dept_name}
                   </option>
                 ))}
               </TestSelect>
@@ -244,7 +252,7 @@ export function TestAuthPanel() {
                 label="Proj"
                 value={user?.projectId || 0}
                 onChange={handleProjectChange}
-                disabled={user?.role !== "USER" || !user?.departmentId}
+                disabled={user?.role !== "USER" || !localDeptId}
               >
                 <option value={0}>선택 안함</option>
                 {filteredProjects.map((p) => (
@@ -254,11 +262,11 @@ export function TestAuthPanel() {
                 ))}
               </TestSelect>
 
-              {/* 디버깅용 텍스트 */}
               <div className="mt-2 p-2 bg-blue-100 rounded text-[10px] text-blue-800 font-mono">
                 ID: {user?.id} <br />
                 Name: {user?.userName} <br />
-                DeptID: {user?.departmentId}
+                DeptID: {localDeptId} <br />
+                ProjID: {user?.projectId}
               </div>
             </div>
           )}

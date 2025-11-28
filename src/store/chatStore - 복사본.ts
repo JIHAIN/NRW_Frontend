@@ -4,7 +4,7 @@ import type { Document } from "@/types/UserType";
 
 export interface Message {
   id: string;
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant";
   content: string;
   createdAt: string;
   sources?: string[];
@@ -12,7 +12,7 @@ export interface Message {
 }
 
 export interface ChatSession {
-  id: string;
+  id: string; // 서버 DB의 ID (숫자형이지만 처리는 string으로 통일)
   title: string;
   messages: Message[];
   createdAt: string;
@@ -27,11 +27,11 @@ interface ChatState {
   viewMode: "list" | "viewer";
   selectedDocument: Document | null;
 
+  //  [수정 1] createSession이 매개변수(id, title)를 받을 수 있게 변경
   createSession: (id: string, title: string) => void;
+
   selectSession: (sessionId: string) => void;
   addMessage: (sessionId: string, message: Message) => void;
-  // [추가] API에서 가져온 메시지로 교체하는 함수
-  setMessages: (sessionId: string, messages: Message[]) => void;
   updateSessionTitle: (sessionId: string, title: string) => void;
   deleteSession: (sessionId: string) => void;
   clearCurrentSession: () => void;
@@ -42,9 +42,6 @@ interface ChatState {
   setViewMode: (mode: "list" | "viewer") => void;
   openDocument: (doc: Document) => void;
   closeDocument: () => void;
-
-  // [추가] 마지막 메시지에 내용(스트림 청크)을 이어 붙이는 함수
-  streamTokenToLastMessage: (sessionId: string, token: string) => void;
 }
 
 export const useChatStore = create(
@@ -56,6 +53,7 @@ export const useChatStore = create(
       viewMode: "list",
       selectedDocument: null,
 
+      //  [수정 구현] 외부(API)에서 만든 ID와 제목을 받아서 세션 생성
       createSession: (id, title) => {
         const newSession: ChatSession = {
           id: id,
@@ -65,7 +63,7 @@ export const useChatStore = create(
         };
         set((state) => ({
           sessions: [newSession, ...state.sessions],
-          currentSessionId: id,
+          currentSessionId: id, // 생성 즉시 선택
         }));
       },
 
@@ -79,17 +77,6 @@ export const useChatStore = create(
                 ...session,
                 messages: [...session.messages, message],
               };
-            }
-            return session;
-          }),
-        })),
-
-      // [추가 구현] API 로드 시 메시지 덮어쓰기
-      setMessages: (sessionId, messages) =>
-        set((state) => ({
-          sessions: state.sessions.map((session) => {
-            if (session.id === sessionId) {
-              return { ...session, messages };
             }
             return session;
           }),
@@ -125,28 +112,6 @@ export const useChatStore = create(
           selectedDocument: null,
           viewMode: "list",
         }),
-
-      // 이어붙이기용 기능
-      streamTokenToLastMessage: (sessionId, token) => {
-        set((state) => ({
-          sessions: state.sessions.map((session) => {
-            if (session.id === sessionId) {
-              const lastMsgIndex = session.messages.length - 1;
-              if (lastMsgIndex < 0) return session;
-
-              // 불변성을 지키며 마지막 메시지의 content만 업데이트
-              const updatedMessages = [...session.messages];
-              updatedMessages[lastMsgIndex] = {
-                ...updatedMessages[lastMsgIndex],
-                content: updatedMessages[lastMsgIndex].content + token, // 기존 내용 + 새 글자
-              };
-
-              return { ...session, messages: updatedMessages };
-            }
-            return session;
-          }),
-        }));
-      },
     }),
     {
       name: "chat-storage",

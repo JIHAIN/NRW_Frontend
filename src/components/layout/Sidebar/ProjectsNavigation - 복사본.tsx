@@ -24,7 +24,6 @@ import { useEffect } from "react";
 
 export function ProjectsNavigation() {
   const queryClient = useQueryClient();
-  // store의 createSession 대신, 상태를 직접 제어하거나 동기화 로직 사용
   const {
     currentSessionId,
     selectSession,
@@ -32,7 +31,7 @@ export function ProjectsNavigation() {
     createSession,
     sessions: storeSessions,
   } = useChatStore();
-  const USER_ID = 1;
+  const USER_ID = 1; // 임시 ID
 
   // 1. API 목록 가져오기
   const { data: apiSessions, isLoading } = useQuery({
@@ -40,28 +39,29 @@ export function ProjectsNavigation() {
     queryFn: () => getChatSessions(USER_ID),
   });
 
-  // [수정] API 목록을 Store와 강력 동기화
+  // [추가] API에서 가져온 세션 목록을 Store와 동기화 (최초 로드 시 등)
   useEffect(() => {
-    if (apiSessions && apiSessions.length > 0) {
+    if (apiSessions) {
       apiSessions.forEach((s) => {
-        const strId = String(s.id);
-        const exists = storeSessions.some((local) => local.id === strId);
-        // 스토어에 없는 방이면 새로 생성해둡니다.
+        // 이미 스토어에 없는 경우만 추가 (단순화된 로직)
+        const exists = storeSessions.some((local) => local.id === String(s.id));
         if (!exists) {
-          createSession(strId, s.title);
+          createSession(String(s.id), s.title);
         }
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiSessions]);
-  // storeSessions를 의존성에 넣으면 무한루프 돌 수 있으므로 뺍니다.
 
   // 2. 삭제 기능
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteChatSession(id),
     onSuccess: (_, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
+
+      // Store에서도 삭제
       useChatStore.getState().deleteSession(String(deletedId));
+
       if (currentSessionId === String(deletedId)) {
         clearCurrentSession();
       }
@@ -89,19 +89,18 @@ export function ProjectsNavigation() {
           <Loader2 className="animate-spin mx-auto my-4 text-slate-400" />
         )}
 
+        {/* API 데이터를 기준으로 리스트 렌더링 */}
         {apiSessions?.map((session) => (
           <SidebarMenuItem key={session.id}>
-            {/* [수정] asChild 제거 및 span으로 감싸서 버튼 중첩 오류 해결 */}
             <SidebarMenuButton
+              asChild
               isActive={String(session.id) === currentSessionId}
-              className="data-[active=true]:bg-blue-100 data-[active=true]:text-blue-700"
             >
               <Link
                 to="/chat"
                 onClick={() => selectSession(String(session.id))}
-                className="flex items-center gap-2 w-full overflow-hidden"
               >
-                <MessageSquare size={12} className="shrink-0" />
+                <MessageSquare />
                 <span className="truncate">{session.title}</span>
               </Link>
             </SidebarMenuButton>

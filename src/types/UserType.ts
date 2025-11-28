@@ -43,7 +43,7 @@ export type RequestStatus = "PENDING" | "APPROVED" | "REJECTED";
  */
 export interface Department {
   id: number;
-  name: string; // 부서명
+  dept_name: string; // 부서명
   description?: string; // 부서 설명 (NULL 가능)
   createdAt: string; // 생성일 (ISO Date string)
 }
@@ -90,6 +90,8 @@ export interface User {
  */
 export interface Document {
   id: number;
+  title: string;
+  content: string;
 
   // 관계 정보
   userId: number; // 업로더 ID (FK)

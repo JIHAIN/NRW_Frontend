@@ -4,13 +4,17 @@ import { FileText, Plus, Search } from "lucide-react";
 import { IconButton } from "@/components/common/IconButton";
 import type { Document } from "@/types/UserType"; // ✨ 타입 임포트
 import { useChatStore } from "@/store/chatStore";
+import { useAuthStore } from "@/store/authStore";
 
 export function DocList() {
   const { openDocument } = useChatStore();
-
-  const { data: documents, isLoading } = useQuery({
-    queryKey: ["documents"],
-    queryFn: fetchDocuments,
+  const { user } = useAuthStore();
+  const { data: documents = [], isLoading } = useQuery({
+    queryKey: ["documents", user?.departmentId, user?.projectId],
+    queryFn: () =>
+      fetchDocuments(user?.departmentId || 0, user?.projectId || 0),
+    // 유저 정보가 있을 때만 실행
+    enabled: !!user?.departmentId,
   });
 
   return (
