@@ -15,8 +15,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-import { CATEGORY_LABEL } from "@/constants/projectConstants";
-import type { DocumentCategory } from "@/types/UserType";
+import { CATEGORY_LABEL, STATUS_LABEL } from "@/constants/projectConstants";
+import type { DocumentCategory, DocumentStatus } from "@/types/UserType";
 
 // -------------------------------------------------------------
 // Props 정의
@@ -38,7 +38,7 @@ interface TableControlsProps {
   // 상태 필터
   statusFilter: string;
   onStatusFilterChange: (status: string) => void;
-  statusOptions: string[];
+  statusOptions: DocumentStatus[];
 
   // 분류(Category) 필터
   categoryFilter: string;
@@ -153,7 +153,7 @@ const TableControls: FC<TableControlsProps> = (props) => {
   // 옵션 데이터 변환
   const formattedStatusOptions = props.statusOptions.map((s) => ({
     value: s,
-    label: s,
+    label: STATUS_LABEL[s] || s,
   }));
 
   const formattedCategoryOptions = props.categoryOptions.map((c) => ({

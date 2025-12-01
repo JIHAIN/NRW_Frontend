@@ -22,10 +22,6 @@ export type DocumentCategory =
 
 /** 문서 처리 상태 (DB: status) */
 export type DocumentStatus =
-  | "UPLOADED" // 업로드됨 (초기)
-  | "PARSING" // 텍스트 추출 중
-  | "EMBEDDING" // 벡터화 진행 중
-  | "COMPLETED" // 완료 (검색 가능)
   | "PARSED" // (완료)
   | "FAILED"; // 실패
 

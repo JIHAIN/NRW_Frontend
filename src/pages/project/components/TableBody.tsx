@@ -15,7 +15,7 @@ export interface TableBodyProps {
   selectedItemIds: Set<number>;
   onCheckboxChange: (itemId: number, isChecked: boolean) => void;
   canManage: boolean;
-  onTitleClick: (item: Document) => void; // ✨ [추가] 클릭 핸들러 타입 정의
+  onTitleClick: (item: Document) => void; //  [추가] 클릭 핸들러 타입 정의
 }
 
 const TableBody: FC<TableBodyProps> = ({
@@ -24,14 +24,14 @@ const TableBody: FC<TableBodyProps> = ({
   selectedItemIds,
   onCheckboxChange,
   canManage,
-  onTitleClick, // ✨ [추가] 핸들러 받기
+  onTitleClick, //  [추가] 핸들러 받기
 }) => {
   return (
     <div className="bg-white divide-y divide-gray-100">
       {data.map((item: Document) => {
         // 상수 파일에서 설정 가져오기
         const statusConfig =
-          STATUS_CONFIG[item.status] || STATUS_CONFIG["UPLOADED"];
+          STATUS_CONFIG[item.status] || STATUS_CONFIG["PARSED"];
         const categoryLabel = CATEGORY_LABEL[item.category] || item.category;
         const categoryStyle =
           CATEGORY_COLOR[item.category] || CATEGORY_COLOR["GENERAL"];
@@ -56,7 +56,7 @@ const TableBody: FC<TableBodyProps> = ({
               <FileText className="w-4 h-4 text-gray-400 shrink-0" />
               <div className="flex flex-col overflow-hidden">
                 <span
-                  onClick={() => onTitleClick(item)} // ✨ [추가] 클릭 이벤트 연결
+                  onClick={() => onTitleClick(item)} //  [추가] 클릭 이벤트 연결
                   className="truncate font-medium text-gray-900 cursor-pointer hover:text-blue-600 hover:underline decoration-blue-600 underline-offset-2"
                   title={item.originalFilename}
                 >

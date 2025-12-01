@@ -7,7 +7,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Download, FileText, Calendar, Tag } from "lucide-react";
+import {
+  Loader2,
+  Download,
+  FileText,
+  Calendar,
+  Tag,
+  BadgeCheckIcon,
+} from "lucide-react";
 
 import type { Document } from "@/types/UserType";
 import {
@@ -58,7 +65,9 @@ export function DocumentDetailModal({
   };
 
   const statusConfig =
-    STATUS_CONFIG[document.status] || STATUS_CONFIG["UPLOADED"];
+    // STATUS_CONFIG[document.status] || STATUS_CONFIG["PARSED"];
+    STATUS_CONFIG[document.status] || document.status;
+
   const categoryLabel = CATEGORY_LABEL[document.category] || document.category;
 
   return (
@@ -78,7 +87,11 @@ export function DocumentDetailModal({
           {/* 메타데이터 카드 */}
           <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 text-sm">
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-bold text-slate-400">파일명</span>
+              <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                {" "}
+                <FileText size={10} />
+                파일명
+              </span>
               <span
                 className="font-medium text-slate-800 truncate"
                 title={document.originalFilename}
@@ -87,7 +100,10 @@ export function DocumentDetailModal({
               </span>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-bold text-slate-400">상태</span>
+              <span className="text-xs font-bold flex items-center gap-1 text-slate-400">
+                <BadgeCheckIcon size={11} />
+                상태
+              </span>
               <div className="flex items-center gap-2">
                 <span
                   className={`inline-block w-2 h-2 rounded-full ${statusConfig.dot}`}

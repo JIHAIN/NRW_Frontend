@@ -145,7 +145,7 @@ export default function RequestAdminPage() {
     }
   };
 
-  // 상태 뱃지 "CREATE" | "UPDATE" | "DELETE";
+  // 타입 뱃지 "CREATE" | "UPDATE" | "DELETE";
   const renderTypeBadge = (status: string) => {
     switch (status) {
       case "CREATE":

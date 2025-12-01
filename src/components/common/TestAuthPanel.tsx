@@ -131,7 +131,7 @@ export function TestAuthPanel() {
   const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newRole = e.target.value as UserRole | "NONE";
 
-    // ✨ "로그인 안함" 선택 시 로그아웃 처리
+    //  "로그인 안함" 선택 시 로그아웃 처리
     if (newRole === "NONE") {
       setSelectedRole("NONE");
       setSelectedDeptId(0);
@@ -269,7 +269,7 @@ export function TestAuthPanel() {
                 <option value="SUPER_ADMIN">총괄 관리자</option>
                 <option value="MANAGER">부서 관리자</option>
                 <option value="USER">일반 사용자</option>
-                {/* ✨ 로그인 안함 옵션 추가 */}
+                {/*  로그인 안함 옵션 추가 */}
                 <option value="NONE" className="text-red-500 font-bold">
                   로그인 안함
                 </option>
@@ -280,7 +280,7 @@ export function TestAuthPanel() {
                 label="Dept"
                 value={selectedDeptId}
                 onChange={handleDeptChange}
-                // ✨ NONE일 때도 비활성화
+                //  NONE일 때도 비활성화
                 disabled={
                   selectedRole === "SUPER_ADMIN" || selectedRole === "NONE"
                 }

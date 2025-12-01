@@ -58,7 +58,7 @@ export default function UserEditModal({
     onSave(formData);
   };
 
-  // ✨ MANAGER인지 확인 (부서 수정 잠금을 위함)
+  //  MANAGER인지 확인 (부서 수정 잠금을 위함)
   const isManager = currentRole === "MANAGER";
 
   return (
@@ -139,7 +139,7 @@ export default function UserEditModal({
                     projectId: 0,
                   }));
                 }}
-                // ✨ MANAGER라면 부서 변경 비활성화 (자신 부서 고정)
+                //  MANAGER라면 부서 변경 비활성화 (자신 부서 고정)
                 disabled={isManager}
               >
                 <SelectTrigger className={isManager ? "bg-gray-100" : ""}>

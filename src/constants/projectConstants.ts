@@ -3,13 +3,13 @@
 import type { DocumentCategory, DocumentStatus } from "@/types/UserType";
 
 // 1. 필터링용 옵션 목록
-export const STATUS_FILTERS: DocumentStatus[] = [
-  "UPLOADED",
-  "PARSING",
-  "EMBEDDING",
-  "COMPLETED",
-  "FAILED",
-];
+export const STATUS_FILTERS: DocumentStatus[] = ["PARSED", "FAILED"];
+
+// 필터링용 한글 매핑 (UI 표시용)
+export const STATUS_LABEL: Record<DocumentStatus, string> = {
+  PARSED: "완료",
+  FAILED: "실패",
+};
 
 export const CATEGORY_FILTERS: DocumentCategory[] = [
   "CONTRACT",
@@ -48,25 +48,10 @@ export const STATUS_CONFIG: Record<
   DocumentStatus,
   { label: string; color: string; dot: string }
 > = {
-  UPLOADED: {
-    label: "업로드됨",
+  PARSED: {
+    label: "완료",
     color: "text-gray-600 bg-gray-100",
     dot: "bg-gray-400",
-  },
-  PARSING: {
-    label: "처리 중",
-    color: "text-blue-600 bg-blue-100",
-    dot: "bg-blue-400 animate-pulse",
-  },
-  EMBEDDING: {
-    label: "AI 분석 중",
-    color: "text-purple-600 bg-purple-100",
-    dot: "bg-purple-400 animate-pulse",
-  },
-  COMPLETED: {
-    label: "완료",
-    color: "text-green-600 bg-green-100",
-    dot: "bg-green-500",
   },
   FAILED: {
     label: "실패",

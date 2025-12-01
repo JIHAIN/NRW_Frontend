@@ -21,7 +21,7 @@ export function DocList() {
   // 2. 초기 마운트 시 로드
   useEffect(() => {
     fetchDocuments();
-  }, [fetchDocuments]); // ✨ 의존성 배열 추가 (ESLint 해결)
+  }, [fetchDocuments]); //  의존성 배열 추가 (ESLint 해결)
 
   return (
     <div className="h-full flex flex-col">
@@ -35,7 +35,7 @@ export function DocList() {
               className="w-full outline-none text-sm bg-transparent placeholder:text-gray-400"
             />
           </div>
-          {/* ✨ className 오류 해결: div로 감싸서 마진 적용 */}
+          {/*  className 오류 해결: div로 감싸서 마진 적용 */}
           <div className="mt-3">
             <IconButton label="새로 열기">
               <Plus className="size-4" />
@@ -73,20 +73,20 @@ export function DocList() {
                     {doc.originalFilename}
                   </span>
                   <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5">
-                    {/* ✨ fileSize undefined 오류 해결 */}
+                    {/*  fileSize undefined 오류 해결 */}
                     <span>{((doc.fileSize || 0) / 1024).toFixed(0)} KB</span>
                     <span className="w-0.5 h-0.5 bg-gray-300 rounded-full" />
                     <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
 
                     {/* 파싱 상태 표시 */}
-                    {(doc.status === "PARSING" ||
+                    {/* {(doc.status === "PARSING" ||
                       doc.status === "EMBEDDING") && (
                       <span className="ml-auto text-blue-500 font-medium flex items-center gap-1">
                         <Loader2 className="size-3 animate-spin" />
                         처리중
                       </span>
-                    )}
-                    {/* ✨ ERROR -> FAILED 로 수정 (타입 일치) */}
+                    )} */}
+                    {/*  ERROR -> FAILED 로 수정 (타입 일치) */}
                     {doc.status === "FAILED" && (
                       <span className="ml-auto text-red-500 font-medium">
                         오류
