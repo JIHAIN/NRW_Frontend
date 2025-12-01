@@ -26,7 +26,7 @@ export function DocViewer() {
     queryFn: () => {
       if (!selectedDocument) return null;
       // userId 제거, docId(파일명)만 전달 (API 변경 반영)
-      return fetchDocumentContent(selectedDocument.originalFilename);
+      return fetchDocumentContent(selectedDocument.id);
     },
     enabled: !!selectedDocument && !selectedReference,
     staleTime: 1000 * 60 * 5,
@@ -48,7 +48,7 @@ export function DocViewer() {
 
   return (
     // [전체 컨테이너] h-full과 overflow-hidden으로 부모 높이 상속 및 넘침 방지
-    <div className="h-full flex flex-col bg-white border-l border-blue-50 overflow-hidden">
+    <div className="h-full flex flex-col bg-white overflow-hidden">
       {/* ------------------------------------------------------- */}
       {/* 1. 고정 헤더 (flex-none으로 크기 고정) */}
       {/* ------------------------------------------------------- */}
@@ -112,7 +112,8 @@ export function DocViewer() {
       {/* ------------------------------------------------------- */}
       {/* 2. 스크롤 가능한 컨텐츠 영역 (flex-1, overflow-y-auto) */}
       {/* ------------------------------------------------------- */}
-      <div className="flex-1 overflow-y-auto min-h-0 bg-slate-50/50 p-2 custom-scrollbar">
+
+      <div className=" overflow-y-auto  bg-slate-50  custom-scrollbar ">
         {selectedReference ? (
           // [Mode 1] RAG 참고 문맥 표시
           <div className="bg-white p-6 rounded-xl border border-blue-200 shadow-sm max-w-4xl mx-auto">
@@ -128,7 +129,7 @@ export function DocViewer() {
           </div>
         ) : selectedDocument ? (
           // [Mode 2] 전체 문서 내용
-          <div className=" bg-white rounded-xl border border-slate-200 shadow-sm min-h-0 h-full p-6 md:p-10 max-w-4xl mx-auto">
+          <div className=" min-h-0 h-full p-2 md:p-10 max-w-6xl ">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center h-145 gap-3 text-slate-400">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-500" />

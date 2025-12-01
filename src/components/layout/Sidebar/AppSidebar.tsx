@@ -51,10 +51,10 @@ const data = {
           url: "/admin/project",
         },
 
-        // {
-        //   title: "대시보드",
-        //   url: "/admin/dashboard",
-        // },
+        {
+          title: "요청 목록",
+          url: "/admin/request",
+        },
       ],
     },
   ],

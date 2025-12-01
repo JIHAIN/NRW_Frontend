@@ -27,5 +27,6 @@ export const DOC_STATUS_LABEL: Record<DocumentStatus, string> = {
   PARSING: "텍스트 추출 중...",
   EMBEDDING: "AI 분석 중...",
   COMPLETED: "처리 완료",
+  PARSED: "파싱 완료",
   FAILED: "처리 실패",
 };

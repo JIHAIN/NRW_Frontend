@@ -36,7 +36,7 @@ export function DocumentDetailModal({
     queryKey: ["docContent", document?.id], // 키는 ID 유지
     queryFn: () =>
       // [수정] user_id 제거, doc_id(파일명)만 전달
-      fetchDocumentContent(document!.originalFilename),
+      fetchDocumentContent(document!.id),
 
     enabled: open && !!document,
     staleTime: 1000 * 60 * 5,

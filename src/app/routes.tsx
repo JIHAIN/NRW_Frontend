@@ -2,11 +2,13 @@
 
 import { Routes, Route } from "react-router-dom";
 import AuthPage from "@/pages/auth/AuthPage";
-import MainHome from "@/pages";
+// import MainHome from "@/pages";
 import ChatPage from "@/pages/chat/ChatPage";
 import ProjectPage from "@/pages/project/ProjectPage";
 import { UserManagementPage } from "@/pages/admin/UserManagementPage";
 import { DeptProjectAdminPage } from "@/pages/admin/DeptProjectAdminPage";
+import RequestAdminPage from "@/pages/admin/Request/RequestAdminPage";
+import LandingPage from "@/pages/about";
 // import { DashboardPage } from "@/pages/dashboard/DashboardPage";
 
 // import ProtectedRoute from '../components/layout/ProtectedRoute'; // 가정
@@ -23,7 +25,8 @@ import { DeptProjectAdminPage } from "@/pages/admin/DeptProjectAdminPage";
 const AppRoutes = () => (
   <Routes>
     {/* 0. 홈 화면 라우트 */}
-    <Route path="/" element={<MainHome />} />
+    {/* <Route path="/" element={<MainHome />} /> */}
+    <Route path="/" element={<LandingPage />} />
     {/* 1. 인증 관련 라우트 */}
     <Route path="/auth/login_signup" element={<AuthPage />} />
     {/* <Route path="/auth/signup" element={<div><Header/>SignUp<Footer/></div>} /> */}
@@ -41,6 +44,7 @@ const AppRoutes = () => (
     <Route path="/admin/docs" element={<ProjectPage />} />
     <Route path="/admin/user" element={<UserManagementPage />} />
     <Route path="/admin/project" element={<DeptProjectAdminPage />} />
+    <Route path="/admin/request" element={<RequestAdminPage />} />
 
     {/*  <Route path="/upload" element={<UploadPage />} /> */}
     {/*  <Route index element={<ChatPage />} /> */}

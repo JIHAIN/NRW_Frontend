@@ -26,13 +26,8 @@ export type DocumentStatus =
   | "PARSING" // 텍스트 추출 중
   | "EMBEDDING" // 벡터화 진행 중
   | "COMPLETED" // 완료 (검색 가능)
+  | "PARSED" // (완료)
   | "FAILED"; // 실패
-
-/** 요청 종류 (DB: request_type) */
-export type RequestType = "CREATE" | "UPDATE" | "DELETE";
-
-/** 요청 승인 상태 (DB: status) */
-export type RequestStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 // =============================================================================
 // 2. Interfaces (DB 테이블 구조 반영)
@@ -73,7 +68,7 @@ export interface User {
   employeeId?: string; // 사번 (NULL 가능)
   profileImagePath?: string; // 프로필 이미지 URL (NULL 가능)
 
-  departmentId?: number; // 소속 부서 ID (FK: departmentId)
+  departmentId: number; // 소속 부서 ID (FK: departmentId)
   projectId?: number; // 소속 프로젝트 ID (FK: project_id, 일반 유저용)
 
   role: UserRole; // 권한 (SUPER_ADMIN, MANAGER, USER)
@@ -124,25 +119,6 @@ export interface Document {
   updatedAt: string;
 }
 
-/** * 문서 변경 요청 정보
- * Table: requests
- */
-export interface Request {
-  id: number;
-  requesterId: number; // 요청자 ID (FK)
-  projectId: number; // 관련 프로젝트 ID (FK)
-  targetDocumentId?: number; // 대상 문서 ID (신규 생성 요청시 NULL)
-
-  requestType: RequestType; // CREATE, UPDATE, DELETE
-  status: RequestStatus; // PENDING, APPROVED, REJECTED
-
-  content?: string; // 요청 사유
-  rejectionReason?: string; // 반려 사유
-
-  createdAt: string;
-  updatedAt: string;
-}
-
 /** * 채팅 세션 정보 (사이드바용)
  * Table: chat_sessions
  */
@@ -153,4 +129,30 @@ export interface ChatSession {
   isDeleted: boolean; // 삭제 여부
   createdAt: string;
   updatedAt: string;
+}
+
+export type RequestType = "CREATE" | "UPDATE" | "DELETE";
+export type RequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+// 실제 API 응답 구조 반영
+export interface RequestItem {
+  id: number;
+  requester_id: number;
+  project_id: number;
+  target_document_id: number | null;
+  request_type: RequestType;
+  status: RequestStatus;
+  content: string | null;
+  rejection_reason: string | null;
+  created_at: string;
+  updated_at: string;
+
+  // 추가된 필드
+  user_name: string; // 요청자 이름
+  celery_task_id?: string;
+  error_message?: string;
+
+  // 아직 백엔드에서 안 주지만, 나중을 위해 남겨둠 (화면엔 ID로 표시됨)
+  project_name?: string;
+  document_name?: string;
 }

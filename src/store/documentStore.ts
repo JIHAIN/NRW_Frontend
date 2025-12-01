@@ -26,16 +26,12 @@ interface DocumentState {
   isLoading: boolean;
   pollingIntervalId: number | null;
 
-  // [추가] 현재 조회 중인 부서/프로젝트 ID (기본값 설정 필요)
   currentDeptId: number;
   currentProjectId: number;
 
   uploadQueue: UploadProgress[];
 
-  // [수정] 인자 없이 호출하되, 내부 상태(currentDeptId)를 사용
   fetchDocuments: () => Promise<void>;
-
-  // [추가] 부서/프로젝트 변경 시 호출
   setContext: (deptId: number, projectId: number) => void;
 
   startPolling: () => void;
@@ -62,38 +58,37 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   isLoading: false,
   pollingIntervalId: null,
 
-  // 기본값 (앱 진입 시 적절히 초기화 필요)
-  currentDeptId: 1,
-  currentProjectId: 1,
+  currentDeptId: 0,
+  currentProjectId: 0,
 
   uploadQueue: [],
 
-  // [추가] 컨텍스트 변경 함수
   setContext: (deptId, projectId) => {
-    set({ currentDeptId: deptId, currentProjectId: projectId });
-    get().fetchDocuments(); // 컨텍스트 바뀌면 목록 새로고침
+    const { currentDeptId, currentProjectId } = get();
+    if (currentDeptId !== deptId || currentProjectId !== projectId) {
+      set({ currentDeptId: deptId, currentProjectId: projectId });
+      get().fetchDocuments();
+    }
   },
 
-  // 1. 문서 목록 조회 & 폴링
+  // 1. 문서 목록 조회 & 폴링 로직
   fetchDocuments: async () => {
-    // 폴링 중이 아닐 때만 로딩 표시 (깜빡임 방지)
-    if (!get().pollingIntervalId) set({ isLoading: true });
+    const { currentDeptId, currentProjectId, pollingIntervalId } = get();
 
-    const { currentDeptId, currentProjectId } = get();
+    if (!currentDeptId) return;
+    if (!pollingIntervalId) set({ isLoading: true });
 
     try {
-      // [수정] 서비스 함수에 현재 ID 전달
       const docs = await fetchDocuments(currentDeptId, currentProjectId);
       set({ documents: docs });
 
-      // 선택된 문서 최신화 (업데이트 반영)
       const currentSelected = get().selectedDocument;
       if (currentSelected) {
         const updated = docs.find((d) => d.id === currentSelected.id);
         if (updated) set({ selectedDocument: updated });
       }
 
-      // 업로드/파싱 완료 체크 로직
+      // 업로드 큐 완료 체크 및 동기화
       get().uploadQueue.forEach((item) => {
         if (item.status === "PARSING") {
           const foundDoc = docs.find(
@@ -101,15 +96,17 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
           );
 
           if (foundDoc) {
-            // 서버 상태가 COMPLETED/PARSED면 완료 처리
+            // ✨ [수정] PARSED 제거, COMPLETED만 확인
             if (
               foundDoc.status === "COMPLETED" ||
-              foundDoc.status === "PARSING"
+              foundDoc.status === "PARSED" // 👈 여기 추가!
             ) {
               get().clearSimulation(item.fileName);
               get().updateUploadProgress(item.fileName, 100);
               get().updateUploadStatus(item.fileName, "COMPLETED");
-            } else if (foundDoc.status === "FAILED") {
+            }
+            // ✨ [수정] ERROR -> FAILED (Document 타입에 맞춤)
+            else if (foundDoc.status === "FAILED") {
               get().clearSimulation(item.fileName);
               get().updateUploadStatus(
                 item.fileName,
@@ -121,17 +118,19 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         }
       });
 
-      // 파싱 중인 문서가 있으면 폴링 유지
-      const hasPending = docs.some(
+      // 폴링 유지 조건 확인
+      // 1. 서버 목록에 처리 중인 문서가 있거나
+      // ✨ [수정] UPLOADING 제거 (Document 타입에 없음)
+      const hasServerPending = docs.some(
         (d) => d.status === "PARSING" || d.status === "EMBEDDING"
       );
 
-      // 업로드 큐에 "PARSING" 중인 항목이 있어도 폴링 유지
+      // 2. 내 업로드 큐에 처리 중인 항목이 있을 때
       const hasQueuePending = get().uploadQueue.some(
-        (q) => q.status === "PARSING"
+        (q) => q.status === "PARSING" || q.status === "UPLOADING"
       );
 
-      if (hasPending || hasQueuePending) {
+      if (hasServerPending || hasQueuePending) {
         get().startPolling();
       } else {
         get().stopPolling();
@@ -188,8 +187,12 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       get().startSimulatedProgress(fileName);
 
       await get().fetchDocuments();
-    } catch (error) {
-      const errMsg = error instanceof Error ? error.message : "업로드 실패";
+      // ✨ [수정] any 제거하고 타입 안전하게 처리
+    } catch (error: unknown) {
+      let errMsg = "업로드 실패";
+      if (error instanceof Error) {
+        errMsg = error.message;
+      }
       get().clearSimulation(fileName);
       get().updateUploadStatus(fileName, "ERROR", errMsg);
     }

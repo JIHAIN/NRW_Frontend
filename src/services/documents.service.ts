@@ -1,26 +1,29 @@
 import { API_BASE_URL } from "@/lib/constants";
-import type { Document } from "@/types/UserType";
+import type { Document, DocumentStatus } from "@/types/UserType";
 
 // --------------------------------------------------------------------------
-// 📝 타입 정의 (기존 유지)
+// 📝 타입 정의
 // --------------------------------------------------------------------------
+
+// 백엔드에서 오는 실제 문서 데이터 모양
 export interface BackendDocument {
   id: number;
-  external_doc_id: string;
   user_id: number;
   dept_id: number;
   project_id: number;
-  category: string;
-  version: string;
+
   original_filename: string;
   stored_path: string;
   file_ext: string;
   file_size: number | null;
   status: string;
+
   created_at: string;
   updated_at: string;
+  version: string;
 }
 
+// 문서 상세 내용 (content)
 interface DocumentContentResponse {
   doc_id: string;
   total_chunks: number;
@@ -35,7 +38,7 @@ export interface UploadMetadata {
 }
 
 // --------------------------------------------------------------------------
-// 🔄 데이터 변환 헬퍼 (기존 유지)
+// 🔄 데이터 변환 헬퍼
 // --------------------------------------------------------------------------
 const mapApiToDocument = (data: BackendDocument): Document => {
   return {
@@ -43,61 +46,67 @@ const mapApiToDocument = (data: BackendDocument): Document => {
     userId: data.user_id,
     departmentId: data.dept_id,
     projectId: data.project_id,
-    title: data.original_filename || data.external_doc_id,
-    originalFilename: data.original_filename || data.external_doc_id,
+
+    // ✨ [수정 1] title 필드 추가 (파일명 사용)
+    title: data.original_filename,
+
+    // ✨ [수정 2] content 필드 추가 (목록에서는 빈 값, 상세 조회 시 채움)
+    content: "",
+
+    originalFilename: data.original_filename,
     storedPath: data.stored_path,
-    fileExt: data.file_ext || "unknown",
+    fileExt: data.file_ext.replace(".", ""),
     fileSize: data.file_size || 0,
-    category: (data.category as Document["category"]) || "GENERAL",
-    status: (data.status as Document["status"]) || "PARSING",
-    version: data.version || "1.0",
+
+    category: "GENERAL",
+
+    // string -> DocumentStatus로 타입 단언
+    status: (data.status as DocumentStatus) || "COMPLETED",
+
+    version: data.version,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
-    content: "",
   };
 };
 
 // --------------------------------------------------------------------------
-// 1. 문서 목록 조회 (기존 유지)
+// 1. 문서 목록 조회
 // --------------------------------------------------------------------------
 export const fetchDocuments = async (
   deptId: number,
   projectId: number
 ): Promise<Document[]> => {
   const params = new URLSearchParams();
-  params.append("dept_id", String(deptId));
-  params.append("project_id", String(projectId));
+  if (deptId) params.append("dept_id", String(deptId));
+  if (projectId) params.append("project_id", String(projectId));
 
   const response = await fetch(
     `${API_BASE_URL}/api/v1/documents/?${params.toString()}`
   );
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch documents: ${response.status}`);
+    throw new Error("Failed to fetch documents");
   }
 
   const list = (await response.json()) as BackendDocument[];
-  return list.map((item) => mapApiToDocument(item));
+
+  return list.map(mapApiToDocument);
 };
 
 // --------------------------------------------------------------------------
-// 2. 문서 내용 조회 (기존 유지)
+// 2. 문서 내용 조회
 // --------------------------------------------------------------------------
-export const fetchDocumentContent = async (
-  docId: string | number
-): Promise<string> => {
-  const encodedDocId = encodeURIComponent(String(docId));
-  const response = await fetch(
-    `${API_BASE_URL}/api/v1/documents/${encodedDocId}`
-  );
+export const fetchDocumentContent = async (docId: number): Promise<string> => {
+  const response = await fetch(`${API_BASE_URL}/api/v1/documents/${docId}`);
 
   if (!response.ok) throw new Error("Failed to fetch document content");
+
   const data = (await response.json()) as DocumentContentResponse;
   return data.content;
 };
 
 // --------------------------------------------------------------------------
-// 3. 문서 업로드 (기존 유지 - 관리자용 파싱 포함)
+// 3. 문서 업로드
 // --------------------------------------------------------------------------
 export const uploadDocument = async (
   file: File,
@@ -133,9 +142,8 @@ export const uploadDocument = async (
         try {
           const response = JSON.parse(xhr.response) as BackendDocument;
           resolve(response);
-        } catch (e) {
+        } catch {
           reject(new Error("Invalid JSON response"));
-          console.error(e);
         }
       } else {
         try {
@@ -153,7 +161,7 @@ export const uploadDocument = async (
 };
 
 // --------------------------------------------------------------------------
-// 4. 문서 다운로드 (기존 유지)
+// 4. 문서 다운로드
 // --------------------------------------------------------------------------
 export const downloadDocument = async (
   docId: number,
@@ -176,21 +184,22 @@ export const downloadDocument = async (
   window.URL.revokeObjectURL(url);
 };
 
-// ==========================================================================
-// 일반 사용자용 임시 업로드 (RequestModal용)
-// 기존 코드에 영향 없음
-// ==========================================================================
+// --------------------------------------------------------------------------
+// 5. [신규] 일반 사용자용 임시 업로드 (승인 대기용)
+// POST /async/upload
+// --------------------------------------------------------------------------
 export const uploadTempDocument = async (
   file: File,
-  userId: number,
+  deptId: number,
   projectId: number
 ): Promise<string> => {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("user_id", String(userId));
-  formData.append("dept_id", "1"); // [TODO] 필요시 실제 부서 ID로 변경
+  // [주의] user_id는 실제 인증된 유저 ID를 넣어야 함 (지금은 1로 하드코딩 or 인자로 받기)
+  formData.append("user_id", "1");
+  formData.append("dept_id", String(deptId));
   formData.append("project_id", String(projectId));
-  formData.append("category", "일반");
+  formData.append("category", "GENERAL"); // 기본 카테고리
   formData.append("version", "1.0");
 
   const response = await fetch(`${API_BASE_URL}/async/upload`, {
@@ -199,10 +208,10 @@ export const uploadTempDocument = async (
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`임시 업로드 실패: ${errorText}`);
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || "임시 업로드 실패");
   }
 
-  // API가 업로드된 문서의 ID(식별자)를 반환
+  // API 명세상 Response가 "string" (문서 ID)일 것으로 추정
   return response.json();
 };

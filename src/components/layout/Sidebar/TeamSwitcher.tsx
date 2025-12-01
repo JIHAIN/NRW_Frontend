@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useSidebar } from "@/hooks/useSidebar";
+import { Link } from "react-router-dom";
 
 export function TeamSwitcher() {
   const { open: isSidebarOpen } = useSidebar();
@@ -35,14 +36,18 @@ export function TeamSwitcher() {
                 src="/newRun_noText.png"
                 className=" w-6 h-6 rounded-full group-data-[collapsible=icon]:m-1 group-data-[collapsible=icon]:group-hover:hidden opacity-85"
               />
-              <div className="grid flex-1 text-center text-sm leading-tight group-data-[collapsible=icon]:hidden">
+              <Link
+                to="/"
+                className="grid flex-1 text-center text-sm leading-tight group-data-[collapsible=icon]:hidden"
+              >
                 <span className="truncate font-bold text-blue-500">
                   NEURON WAY
                 </span>
                 <span className="truncate text-xs font-bold text-blue-500">
-                  Alain
+                  ALAIN
                 </span>
-              </div>
+              </Link>
+
               <Tooltip>
                 <TooltipTrigger asChild>
                   <SidebarTrigger className="w-10 h-10  cursor-ew-resize hover:bg-blue-100 opacity-80 " />
