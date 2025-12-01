@@ -24,6 +24,8 @@ export const DOC_CATEGORY_LABEL: Record<DocumentCategory, string> = {
 
 export const DOC_STATUS_LABEL: Record<DocumentStatus, string> = {
   PARSED: "업로드 완료",
-
   FAILED: "처리 실패",
+  PENDING: "보류 중",
+  PROCESSING: "처리 중",
+  REJECTED: "반려 처리",
 };

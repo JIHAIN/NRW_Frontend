@@ -9,6 +9,9 @@ export const STATUS_FILTERS: DocumentStatus[] = ["PARSED", "FAILED"];
 export const STATUS_LABEL: Record<DocumentStatus, string> = {
   PARSED: "완료",
   FAILED: "실패",
+  PENDING: "보류",
+  PROCESSING: "처리중",
+  REJECTED: "거부",
 };
 
 export const CATEGORY_FILTERS: DocumentCategory[] = [
@@ -55,6 +58,21 @@ export const STATUS_CONFIG: Record<
   },
   FAILED: {
     label: "실패",
+    color: "text-red-600 bg-red-100",
+    dot: "bg-red-500",
+  },
+  PENDING: {
+    label: "보류",
+    color: "text-green-600 bg-green-100",
+    dot: "bg-green-500",
+  },
+  PROCESSING: {
+    label: "처리중",
+    color: "text-blue-600 bg-blue-100",
+    dot: "bg-blue-500",
+  },
+  REJECTED: {
+    label: "거부",
     color: "text-red-600 bg-red-100",
     dot: "bg-red-500",
   },

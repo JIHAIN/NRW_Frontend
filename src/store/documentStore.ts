@@ -96,9 +96,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
           );
 
           if (foundDoc) {
-            // ✨ [수정] PARSED 제거, COMPLETED만 확인
             if (
-              foundDoc.status === "COMPLETED" ||
               foundDoc.status === "PARSED" // 👈 여기 추가!
             ) {
               get().clearSimulation(item.fileName);
@@ -119,11 +117,8 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       });
 
       // 폴링 유지 조건 확인
-      // 1. 서버 목록에 처리 중인 문서가 있거나
-      // ✨ [수정] UPLOADING 제거 (Document 타입에 없음)
-      const hasServerPending = docs.some(
-        (d) => d.status === "PARSING" || d.status === "EMBEDDING"
-      );
+
+      const hasServerPending = docs.some((d) => d.status === "PROCESSING");
 
       // 2. 내 업로드 큐에 처리 중인 항목이 있을 때
       const hasQueuePending = get().uploadQueue.some(

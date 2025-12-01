@@ -23,7 +23,10 @@ export type DocumentCategory =
 /** 문서 처리 상태 (DB: status) */
 export type DocumentStatus =
   | "PARSED" // (완료)
-  | "FAILED"; // 실패
+  | "FAILED" // 실패
+  | "PENDING" // 보류
+  | "PROCESSING" // 처리중
+  | "REJECTED"; // 거부
 
 // =============================================================================
 // 2. Interfaces (DB 테이블 구조 반영)
