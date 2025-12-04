@@ -41,7 +41,7 @@ interface ChatState {
   updateSessionTitle: (sessionId: string, title: string) => void;
   deleteSession: (sessionId: string) => void;
 
-  clearCurrentSession: () => void;
+  // clearCurrentSession: () => void;
 
   setSelectedReference: (
     data: { sourceName: string; text: string } | null
@@ -120,6 +120,8 @@ export const useChatStore = create(
               ? null
               : state.selectedSessionId,
         })),
+
+      clearCurrentSession: () => set({ selectedSessionId: null }),
 
       setSelectedReference: (data) => set({ selectedReference: data }),
 

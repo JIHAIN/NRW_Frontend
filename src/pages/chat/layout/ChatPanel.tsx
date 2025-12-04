@@ -13,7 +13,7 @@ import { useChatStore, type Message } from "@/store/chatStore";
 export function ChatPanel() {
   const queryClient = useQueryClient();
   const store = useChatStore();
-  const currentSessionId = store.currentSessionId;
+  const currentSessionId = store.selectedSessionId;
 
   const currentSession = store.sessions.find((s) => s.id === currentSessionId);
   const messages = currentSession?.messages || [];
@@ -76,7 +76,7 @@ export function ChatPanel() {
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
 
-    let activeId = store.currentSessionId;
+    let activeId = store.selectedSessionId;
 
     // (1) 새 채팅방 생성 로직
     if (!activeId) {
