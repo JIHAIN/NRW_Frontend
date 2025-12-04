@@ -5,12 +5,16 @@ import {
   uploadDocument,
   type UploadMetadata,
 } from "@/services/documents.service";
+import { EventSourcePolyfill } from "event-source-polyfill";
+import { useAuthStore } from "@/store/authStore";
 
 // ----------------------------------------------------------------
 // 📝 상태 타입 정의
 // ----------------------------------------------------------------
 
-export interface UploadProgress {
+export interface UploadTask {
+  type: "UPLOAD";
+  id: string;
   fileName: string;
   progress: number;
   status: "UPLOADING" | "PARSING" | "COMPLETED" | "ERROR";
@@ -20,32 +24,48 @@ export interface UploadProgress {
   simulationInterval?: number;
 }
 
+export interface RequestTask {
+  type: "REQUEST";
+  id: string;
+  requestId: number;
+  fileName: string;
+  progress: number;
+  status: "PROCESSING" | "COMPLETED" | "ERROR";
+  errorMessage?: string;
+  eventSource?: EventSourcePolyfill;
+  // [수정 1] 공통 함수(clearSimulation)에서 접근할 수 있도록 속성 추가
+  simulationInterval?: number;
+}
+
+// 통합 작업 타입
+export type BackgroundTask = UploadTask | RequestTask;
+
+const ACTIVE_STATUSES = ["PARSING", "EMBEDDING", "PROCESSING", "UPLOADING"];
+
 interface DocumentState {
   documents: Document[];
   selectedDocument: Document | null;
   isLoading: boolean;
   pollingIntervalId: number | null;
-
   currentDeptId: number;
   currentProjectId: number;
+  taskQueue: BackgroundTask[];
 
-  uploadQueue: UploadProgress[];
-
+  // Actions
   fetchDocuments: () => Promise<void>;
   setContext: (deptId: number, projectId: number) => void;
-
   startPolling: () => void;
   stopPolling: () => void;
   selectDocument: (doc: Document | null) => void;
-
   uploadFile: (file: File, metadata: UploadMetadata) => Promise<void>;
   retryUpload: (fileName: string) => Promise<void>;
-  removeUploadFromQueue: (fileName: string) => void;
+  removeTask: (id: string) => void;
+  startRequestSSE: (requestId: number, docName: string) => void;
 
-  updateUploadProgress: (fileName: string, progress: number) => void;
-  updateUploadStatus: (
-    fileName: string,
-    status: UploadProgress["status"],
+  updateTaskProgress: (id: string, progress: number) => void;
+  updateTaskStatus: (
+    id: string,
+    status: BackgroundTask["status"],
     error?: string
   ) => void;
   startSimulatedProgress: (fileName: string) => void;
@@ -57,11 +77,9 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   selectedDocument: null,
   isLoading: false,
   pollingIntervalId: null,
-
   currentDeptId: 0,
   currentProjectId: 0,
-
-  uploadQueue: [],
+  taskQueue: [],
 
   setContext: (deptId, projectId) => {
     const { currentDeptId, currentProjectId } = get();
@@ -71,7 +89,6 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     }
   },
 
-  // 1. 문서 목록 조회 & 폴링 로직
   fetchDocuments: async () => {
     const { currentDeptId, currentProjectId, pollingIntervalId } = get();
 
@@ -88,50 +105,42 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         if (updated) set({ selectedDocument: updated });
       }
 
-      // 업로드 큐 완료 체크 및 동기화
-      get().uploadQueue.forEach((item) => {
-        if (item.status === "PARSING") {
+      get().taskQueue.forEach((task) => {
+        if (task.type === "UPLOAD" && task.status === "PARSING") {
           const foundDoc = docs.find(
-            (d) => d.originalFilename === item.fileName
+            (d) => d.originalFilename === task.fileName
           );
-
           if (foundDoc) {
-            if (
-              foundDoc.status === "PARSED" // 👈 여기 추가!
-            ) {
-              get().clearSimulation(item.fileName);
-              get().updateUploadProgress(item.fileName, 100);
-              get().updateUploadStatus(item.fileName, "COMPLETED");
-            }
-            // ✨ [수정] ERROR -> FAILED (Document 타입에 맞춤)
-            else if (foundDoc.status === "FAILED") {
-              get().clearSimulation(item.fileName);
-              get().updateUploadStatus(
-                item.fileName,
-                "ERROR",
-                "서버 처리 실패"
-              );
+            if (foundDoc.status === "PARSED") {
+              get().clearSimulation(task.fileName);
+              get().updateTaskProgress(task.id, 100);
+              get().updateTaskStatus(task.id, "COMPLETED");
+            } else if (foundDoc.status === "FAILED") {
+              get().clearSimulation(task.fileName);
+              get().updateTaskStatus(task.id, "ERROR", "서버 처리 실패");
             }
           }
         }
       });
 
-      // 폴링 유지 조건 확인
-
-      const hasServerPending = docs.some((d) => d.status === "PROCESSING");
-
-      // 2. 내 업로드 큐에 처리 중인 항목이 있을 때
-      const hasQueuePending = get().uploadQueue.some(
-        (q) => q.status === "PARSING" || q.status === "UPLOADING"
+      const hasServerProcessing = docs.some((d) =>
+        ACTIVE_STATUSES.includes(d.status)
+      );
+      const hasQueueProcessing = get().taskQueue.some(
+        (t) =>
+          (t.type === "UPLOAD" &&
+            (t.status === "UPLOADING" || t.status === "PARSING")) ||
+          (t.type === "REQUEST" && t.status === "PROCESSING")
       );
 
-      if (hasServerPending || hasQueuePending) {
+      if (hasServerProcessing || hasQueueProcessing) {
         get().startPolling();
       } else {
         get().stopPolling();
       }
     } catch (error) {
       console.error("문서 목록 로드 실패:", error);
+      get().stopPolling();
     } finally {
       set({ isLoading: false });
     }
@@ -140,7 +149,6 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   startPolling: () => {
     const { pollingIntervalId } = get();
     if (pollingIntervalId) return;
-
     const id = window.setInterval(async () => {
       await get().fetchDocuments();
     }, 3000);
@@ -159,15 +167,22 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
   uploadFile: async (file, metadata) => {
     const fileName = file.name;
+    const taskId = fileName;
 
     set((state) => {
-      const filtered = state.uploadQueue.filter(
-        (item) => item.fileName !== fileName
-      );
+      const filtered = state.taskQueue.filter((t) => t.id !== taskId);
       return {
-        uploadQueue: [
+        taskQueue: [
           ...filtered,
-          { fileName, progress: 0, status: "UPLOADING", file, metadata },
+          {
+            type: "UPLOAD",
+            id: taskId,
+            fileName,
+            progress: 0,
+            status: "UPLOADING",
+            file,
+            metadata,
+          } as UploadTask,
         ],
       };
     });
@@ -175,97 +190,186 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     try {
       await uploadDocument(file, metadata, (rawPercent) => {
         const mappedPercent = Math.round(rawPercent * 0.5);
-        get().updateUploadProgress(fileName, mappedPercent);
+        get().updateTaskProgress(taskId, mappedPercent);
       });
 
-      get().updateUploadStatus(fileName, "PARSING");
-      get().startSimulatedProgress(fileName);
-
+      get().updateTaskStatus(taskId, "PARSING");
+      get().startSimulatedProgress(taskId);
       await get().fetchDocuments();
-      // ✨ [수정] any 제거하고 타입 안전하게 처리
     } catch (error: unknown) {
       let errMsg = "업로드 실패";
-      if (error instanceof Error) {
-        errMsg = error.message;
-      }
-      get().clearSimulation(fileName);
-      get().updateUploadStatus(fileName, "ERROR", errMsg);
-    }
-  },
+      if (error instanceof Error) errMsg = error.message;
 
-  startSimulatedProgress: (fileName) => {
-    get().clearSimulation(fileName);
-
-    const intervalId = window.setInterval(() => {
-      set((state) => {
-        const queue = state.uploadQueue.map((item) => {
-          if (item.fileName === fileName && item.status === "PARSING") {
-            if (item.progress < 90) {
-              const increment = Math.random() + 0.5;
-              return {
-                ...item,
-                progress: Math.min(item.progress + increment, 90),
-              };
-            }
-          }
-          return item;
-        });
-        return { uploadQueue: queue };
-      });
-    }, 500);
-
-    set((state) => ({
-      uploadQueue: state.uploadQueue.map((item) =>
-        item.fileName === fileName
-          ? { ...item, simulationInterval: intervalId }
-          : item
-      ),
-    }));
-  },
-
-  clearSimulation: (fileName) => {
-    const item = get().uploadQueue.find((i) => i.fileName === fileName);
-    if (item?.simulationInterval) {
-      window.clearInterval(item.simulationInterval);
-      set((state) => ({
-        uploadQueue: state.uploadQueue.map((i) =>
-          i.fileName === fileName ? { ...i, simulationInterval: undefined } : i
-        ),
-      }));
+      get().clearSimulation(taskId);
+      get().updateTaskStatus(taskId, "ERROR", errMsg);
     }
   },
 
   retryUpload: async (fileName) => {
-    const item = get().uploadQueue.find((i) => i.fileName === fileName);
-    if (item && item.file && item.metadata) {
-      get().updateUploadStatus(fileName, "UPLOADING");
-      get().updateUploadProgress(fileName, 0);
-      await get().uploadFile(item.file, item.metadata);
+    const task = get().taskQueue.find((t) => t.id === fileName) as
+      | UploadTask
+      | undefined;
+    if (task && task.type === "UPLOAD" && task.file && task.metadata) {
+      get().updateTaskStatus(fileName, "UPLOADING");
+      get().updateTaskProgress(fileName, 0);
+      await get().uploadFile(task.file, task.metadata);
     }
   },
 
-  removeUploadFromQueue: (fileName) => {
-    get().clearSimulation(fileName);
+  startRequestSSE: (requestId, docName) => {
+    const taskId = `req-${requestId}`;
+
+    set((state) => {
+      const filtered = state.taskQueue.filter((t) => t.id !== taskId);
+      return {
+        taskQueue: [
+          ...filtered,
+          {
+            type: "REQUEST",
+            id: taskId,
+            requestId,
+            fileName: docName,
+            progress: 0,
+            status: "PROCESSING",
+          } as RequestTask,
+        ],
+      };
+    });
+
+    // 2. 토큰 가져오기 (수정됨: any 제거)
+    const state = useAuthStore.getState();
+
+    // 임시 인터페이스 정의: 우리가 찾으려는 필드(token)만 명시
+    interface StateWithToken {
+      token?: string;
+      user?: { token?: string };
+    }
+
+    // unknown으로 먼저 변환 후, 우리가 정의한 구조로 단언 (Safe Casting)
+    const safeState = state as unknown as StateWithToken;
+
+    let token: string | null = null;
+
+    // 1순위: 스토어 최상위 토큰 확인
+    if (safeState.token) {
+      token = safeState.token;
+    }
+    // 2순위: 유저 객체 내부 토큰 확인
+    else if (safeState.user?.token) {
+      token = safeState.user.token;
+    }
+
+    // 디버깅용 로그 (나중에 지우세요)
+    console.log("현재 스토어 상태:", state);
+    console.log("추출된 토큰:", token);
+
+    if (!token) {
+      get().updateTaskStatus(taskId, "ERROR", "인증 토큰 없음");
+      return;
+    }
+
+    const eventSource = new EventSourcePolyfill(
+      `/api/v1/events/request/${requestId}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        heartbeatTimeout: 86400000,
+      }
+    );
+
+    eventSource.onopen = () => {
+      console.log(`[Req-${requestId}] SSE 연결 성공`);
+    };
+
+    eventSource.onmessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (typeof data.progress === "number") {
+          get().updateTaskProgress(taskId, data.progress);
+        }
+
+        if (data.status === "DONE" || data.status === "APPROVED") {
+          get().updateTaskProgress(taskId, 100);
+          get().updateTaskStatus(taskId, "COMPLETED");
+          eventSource.close();
+          get().fetchDocuments();
+        } else if (data.status === "FAILED") {
+          get().updateTaskStatus(taskId, "ERROR", data.error || "처리 실패");
+          eventSource.close();
+        }
+      } catch (e) {
+        console.error("SSE 파싱 에러", e);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error(`[Req-${requestId}] SSE 에러`, err);
+      get().updateTaskStatus(taskId, "ERROR", "연결 끊김");
+      eventSource.close();
+    };
+  },
+
+  removeTask: (id) => {
+    get().clearSimulation(id);
     set((state) => ({
-      uploadQueue: state.uploadQueue.filter(
-        (item) => item.fileName !== fileName
+      taskQueue: state.taskQueue.filter((t) => t.id !== id),
+    }));
+  },
+
+  updateTaskProgress: (id, progress) =>
+    set((state) => ({
+      taskQueue: state.taskQueue.map((t) =>
+        t.id === id ? { ...t, progress } : t
+      ),
+    })),
+
+  // [수정 2] any 제거 및 BackgroundTask 단언 사용
+  updateTaskStatus: (id, status, error) =>
+    set((state) => ({
+      taskQueue: state.taskQueue.map((t) => {
+        if (t.id === id) {
+          return { ...t, status, errorMessage: error } as BackgroundTask;
+        }
+        return t;
+      }),
+    })),
+
+  startSimulatedProgress: (id) => {
+    get().clearSimulation(id);
+    const intervalId = window.setInterval(() => {
+      set((state) => {
+        const queue = state.taskQueue.map((t) => {
+          if (t.id === id && t.type === "UPLOAD" && t.status === "PARSING") {
+            if (t.progress < 90) {
+              return {
+                ...t,
+                progress: Math.min(t.progress + (Math.random() + 0.5), 90),
+              };
+            }
+          }
+          return t;
+        });
+        return { taskQueue: queue };
+      });
+    }, 500);
+
+    set((state) => ({
+      taskQueue: state.taskQueue.map((t) =>
+        t.id === id ? { ...t, simulationInterval: intervalId } : t
       ),
     }));
   },
 
-  updateUploadProgress: (fileName, progress) =>
-    set((state) => ({
-      uploadQueue: state.uploadQueue.map((item) =>
-        item.fileName === fileName ? { ...item, progress } : item
-      ),
-    })),
-
-  updateUploadStatus: (fileName, status, error) =>
-    set((state) => ({
-      uploadQueue: state.uploadQueue.map((item) =>
-        item.fileName === fileName
-          ? { ...item, status, errorMessage: error }
-          : item
-      ),
-    })),
+  // [오류 해결] 이제 BackgroundTask 타입에 simulationInterval이 존재하므로 안전하게 접근 가능
+  clearSimulation: (id) => {
+    const task = get().taskQueue.find((t) => t.id === id);
+    if (task?.simulationInterval) {
+      window.clearInterval(task.simulationInterval);
+      set((state) => ({
+        taskQueue: state.taskQueue.map((t) =>
+          t.id === id ? { ...t, simulationInterval: undefined } : t
+        ),
+      }));
+    }
+  },
 }));

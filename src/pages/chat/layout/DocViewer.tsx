@@ -113,7 +113,7 @@ export function DocViewer() {
       {/* 2. 스크롤 가능한 컨텐츠 영역 (flex-1, overflow-y-auto) */}
       {/* ------------------------------------------------------- */}
 
-      <div className=" overflow-y-auto  bg-slate-50  custom-scrollbar ">
+      <div className=" overflow-y-auto  bg-slate-50 h-full custom-scrollbar ">
         {selectedReference ? (
           // [Mode 1] RAG 참고 문맥 표시
           <div className="bg-white p-6 rounded-xl border border-blue-200 shadow-sm max-w-4xl mx-auto">
@@ -131,16 +131,16 @@ export function DocViewer() {
           // [Mode 2] 전체 문서 내용
           <div className=" min-h-0 h-full p-2 md:p-10 max-w-6xl ">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center h-145 gap-3 text-slate-400">
+              <div className="flex flex-col items-center justify-center gap-3 h-full pb-40 text-slate-400">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
                 <p className="text-sm font-medium">
                   문서 내용을 불러오는 중입니다...
                 </p>
               </div>
             ) : isError ? (
-              <div className="flex flex-col items-center justify-center h-145 text-red-400">
+              <div className="flex flex-col items-center justify-center h-full text-red-400">
                 <FileText className="w-10 h-10 opacity-20" />
-                <div className="text-center">
+                <div className="text-center pb-40">
                   <p className="font-bold">문서 내용을 불러올 수 없습니다.</p>
                   <p className="text-xs mt-1 opacity-80">
                     서버 처리 중이거나 파일에 문제가 있을 수 있습니다.

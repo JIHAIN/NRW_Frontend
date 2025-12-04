@@ -107,11 +107,11 @@ export default function ProjectPage() {
   const projectCount = filteredProjects.length;
 
   return (
-    <div className="w-full h-full overflow-auto bg-white flex flex-col gap-8 page-layout p-8">
+    <div className="w-full h-full overflow-auto  flex flex-col gap-8 page-layout p-8">
       {/* 상단 영역: 헤더 & 업로드 컨텍스트 설정 */}
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-end">
-          <div>
+          <div className="flex flex-col gap-2">
             <h1 className="page-title text-2xl font-bold text-gray-800">
               문서 관리
             </h1>
@@ -123,7 +123,7 @@ export default function ProjectPage() {
           {/* 모달 버튼: 헤더에서 선택된 프로젝트 정보를 전달 */}
           {isUser ? (
             <RequestModal
-              projectId={currentProjectData?.id || null}
+              projectId={currentProjectData?.id}
               projectName={currentProjectData?.name || ""}
             />
           ) : (

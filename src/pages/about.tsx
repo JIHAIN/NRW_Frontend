@@ -1,5 +1,4 @@
 // 서비스 소개 페이지
-import { useNavigate } from "react-router-dom";
 import {
   FileText,
   ShieldCheck,
@@ -7,56 +6,20 @@ import {
   LayoutDashboard,
   UploadCloud,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/store/authStore";
 
 export default function LandingPage() {
-  const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore();
-
-  const handleStart = () => {
-    if (isAuthenticated) {
-      // 로그인 상태면 바로 채팅방으로
-      navigate("/chat");
-    } else {
-      // 아니면 로그인 페이지로
-      navigate("/login");
-    }
-  };
-
   return (
-    <div className="h-full bg-white selection:bg-blue-100 overflow-y-auto">
-      {/* 1. Navigation */}
-      <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-slate-100 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-end">
-          {/* 버튼 영역 (오른쪽) */}
-          <div className="flex gap-4 px-8">
-            {/* 로그인이 안 되어 있을 때만 '로그인' 버튼 표시 */}
-            {!isAuthenticated && (
-              <Button
-                variant="ghost"
-                onClick={() => navigate("/login")}
-                className="point-hover"
-              >
-                로그인
-              </Button>
-            )}
+    <div className="h-full  selection:bg-blue-100 overflow-y-auto">
+      {/*  2. 상단 메인 블루 그라데이션 레이어 */}
+      <div className="absolute top-0 left-0 right-0 h-screen bg-[radial-gradient(circle_800px_at_20%_0%,#e0f2fe,transparent)] opacity-80 -z-10 pointer-events-none"></div>
 
-            <Button
-              onClick={handleStart}
-              className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-            >
-              {/* 상태에 따라 텍스트 변경*/}
-              {isAuthenticated ? "채팅으로 이동" : "시작하기"}
-            </Button>
-          </div>
-        </div>
-      </nav>
+      {/*  3. 하단 서브 블루 그라데이션 레이어 */}
+      <div className="absolute bottom-0 left-0 right-0 h-screen bg-[radial-gradient(circle_800px_at_80%_100%,#e0f2fe,transparent)] opacity-80 -z-10 pointer-events-none"></div>
 
       {/* 2. Hero Section */}
-      <section className="pt-32 pb-20 px-6">
+      <section className="pt-8 pb-20 px-6">
         <div className="max-w-4xl mx-auto text-center space-y-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-sm font-medium animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full  border border-blue-100 text-blue-600 text-sm font-medium animate-in fade-in slide-in-from-bottom-4 duration-700">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
@@ -82,7 +45,7 @@ export default function LandingPage() {
       </section>
 
       {/* 3. Feature Grid */}
-      <section className="py-24 bg-slate-50">
+      <section className="py-24 ">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-slate-900 mb-4">
@@ -142,7 +105,7 @@ export default function LandingPage() {
       </section>
 
       {/* 4. Detail Sections */}
-      <section className="py-24 border-b border-slate-100">
+      <section className="py-24">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center gap-16">
           <div className="flex-1 space-y-6">
             <div className="inline-flex items-center gap-2 text-blue-600 font-semibold">

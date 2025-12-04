@@ -20,21 +20,29 @@ export interface ChatSession {
 
 interface ChatState {
   sessions: ChatSession[];
-  currentSessionId: string | null;
+
+  // [수정] ChatPage에서 사용하는 이름(selectedSessionId)으로 변경
+  selectedSessionId: string | null;
+
   selectedReference: { sourceName: string; text: string } | null;
 
   // 뷰어 관련 상태
   viewMode: "list" | "viewer";
   selectedDocument: Document | null;
 
+  // Actions
   createSession: (id: string, title: string) => void;
-  selectSession: (sessionId: string) => void;
+
+  // [수정] 세션 선택 및 해제(null)가 가능하도록 변경
+  setSelectedSessionId: (sessionId: string | null) => void;
+
   addMessage: (sessionId: string, message: Message) => void;
-  // [추가] API에서 가져온 메시지로 교체하는 함수
   setMessages: (sessionId: string, messages: Message[]) => void;
   updateSessionTitle: (sessionId: string, title: string) => void;
   deleteSession: (sessionId: string) => void;
+
   clearCurrentSession: () => void;
+
   setSelectedReference: (
     data: { sourceName: string; text: string } | null
   ) => void;
@@ -43,7 +51,6 @@ interface ChatState {
   openDocument: (doc: Document) => void;
   closeDocument: () => void;
 
-  // [추가] 마지막 메시지에 내용(스트림 청크)을 이어 붙이는 함수
   streamTokenToLastMessage: (sessionId: string, token: string) => void;
 }
 
@@ -51,7 +58,8 @@ export const useChatStore = create(
   persist<ChatState>(
     (set) => ({
       sessions: [],
-      currentSessionId: null,
+      // [수정] 초기값 이름 변경
+      selectedSessionId: null,
       selectedReference: null,
       viewMode: "list",
       selectedDocument: null,
@@ -65,11 +73,13 @@ export const useChatStore = create(
         };
         set((state) => ({
           sessions: [newSession, ...state.sessions],
-          currentSessionId: id,
+          selectedSessionId: id, // 새 세션 생성 시 바로 선택
         }));
       },
 
-      selectSession: (sessionId) => set({ currentSessionId: sessionId }),
+      // [수정] 이름 변경 및 null 허용 (새 채팅 가기 위함)
+      setSelectedSessionId: (sessionId) =>
+        set({ selectedSessionId: sessionId }),
 
       addMessage: (sessionId, message) =>
         set((state) => ({
@@ -84,7 +94,6 @@ export const useChatStore = create(
           }),
         })),
 
-      // [추가 구현] API 로드 시 메시지 덮어쓰기
       setMessages: (sessionId, messages) =>
         set((state) => ({
           sessions: state.sessions.map((session) => {
@@ -105,28 +114,30 @@ export const useChatStore = create(
       deleteSession: (sessionId) =>
         set((state) => ({
           sessions: state.sessions.filter((s) => s.id !== sessionId),
-          currentSessionId:
-            state.currentSessionId === sessionId
+          // [수정] 현재 보고 있는 세션을 삭제했다면, '새 채팅(null)' 화면으로 이동
+          selectedSessionId:
+            state.selectedSessionId === sessionId
               ? null
-              : state.currentSessionId,
+              : state.selectedSessionId,
         })),
 
-      clearCurrentSession: () => set({ currentSessionId: null }),
       setSelectedReference: (data) => set({ selectedReference: data }),
+
       setViewMode: (mode) => set({ viewMode: mode }),
+
       openDocument: (doc) =>
         set({
           selectedDocument: doc,
           viewMode: "viewer",
           selectedReference: null,
         }),
+
       closeDocument: () =>
         set({
           selectedDocument: null,
           viewMode: "list",
         }),
 
-      // 이어붙이기용 기능
       streamTokenToLastMessage: (sessionId, token) => {
         set((state) => ({
           sessions: state.sessions.map((session) => {
@@ -134,11 +145,10 @@ export const useChatStore = create(
               const lastMsgIndex = session.messages.length - 1;
               if (lastMsgIndex < 0) return session;
 
-              // 불변성을 지키며 마지막 메시지의 content만 업데이트
               const updatedMessages = [...session.messages];
               updatedMessages[lastMsgIndex] = {
                 ...updatedMessages[lastMsgIndex],
-                content: updatedMessages[lastMsgIndex].content + token, // 기존 내용 + 새 글자
+                content: updatedMessages[lastMsgIndex].content + token,
               };
 
               return { ...session, messages: updatedMessages };

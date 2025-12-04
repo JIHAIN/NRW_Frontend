@@ -188,18 +188,29 @@ export const downloadDocument = async (
 // 5. [신규] 일반 사용자용 임시 업로드 (승인 대기용)
 // POST /async/upload
 // --------------------------------------------------------------------------
-export const uploadTempDocument = async (
-  file: File,
-  deptId: number,
-  projectId: number
-): Promise<string> => {
+
+interface UploadTempParams {
+  file: File;
+  deptId: number;
+  projectId: number;
+  userId: number;
+  category: string;
+}
+
+export const uploadTempDocument = async ({
+  file,
+  deptId,
+  projectId,
+  userId,
+  category,
+}: UploadTempParams): Promise<number> => {
+  // 반환 타입을 number로 명시
   const formData = new FormData();
   formData.append("file", file);
-  // [주의] user_id는 실제 인증된 유저 ID를 넣어야 함 (지금은 1로 하드코딩 or 인자로 받기)
-  formData.append("user_id", "1");
+  formData.append("user_id", String(userId));
   formData.append("dept_id", String(deptId));
   formData.append("project_id", String(projectId));
-  formData.append("category", "GENERAL"); // 기본 카테고리
+  formData.append("category", category);
   formData.append("version", "1.0");
 
   const response = await fetch(`${API_BASE_URL}/async/upload`, {
@@ -212,6 +223,8 @@ export const uploadTempDocument = async (
     throw new Error(errorData.detail || "임시 업로드 실패");
   }
 
-  // API 명세상 Response가 "string" (문서 ID)일 것으로 추정
-  return response.json();
+  const data = await response.json();
+
+  // 전체 data를 리턴하는게 아니라 document_id만 리턴
+  return data.id;
 };

@@ -29,8 +29,6 @@ import type { RequestItem, RequestStatus } from "@/types/UserType";
 import { useAuthStore } from "@/store/authStore";
 import { RequestDetailModal } from "./RequestDetailModal";
 
-//  상세 모달 임포트
-
 const TABS: { label: string; value: RequestStatus | "" }[] = [
   { label: "대기중", value: "PENDING" },
   { label: "승인됨", value: "APPROVED" },
@@ -38,9 +36,13 @@ const TABS: { label: string; value: RequestStatus | "" }[] = [
   { label: "전체 보기", value: "" },
 ];
 
+import { useDocumentStore } from "@/store/documentStore";
+
 export default function RequestAdminPage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+
+  const { startRequestSSE } = useDocumentStore();
 
   const [currentTab, setCurrentTab] = useState<RequestStatus | "">("PENDING");
 
@@ -49,9 +51,11 @@ export default function RequestAdminPage() {
   const [selectedReqId, setSelectedReqId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
-  //  상세 모달 관련 상태
+  // 상세 모달 관련 상태: ID 대신 객체 전체를 저장
   const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [detailReqId, setDetailReqId] = useState<number | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<RequestItem | null>(
+    null
+  );
 
   // 1. 요청 목록 조회
   const { data: requests = [], isLoading } = useQuery<RequestItem[]>({
@@ -67,10 +71,19 @@ export default function RequestAdminPage() {
   // 2. 승인 Mutation
   const approveMutation = useMutation({
     mutationFn: approveRequest,
-    onSuccess: () => {
-      alert("승인되었습니다.");
+    onSuccess: (_, reqId) => {
+      // reqId: 승인한 요청 ID
+      alert("승인 요청이 전송되었습니다. 백그라운드에서 처리됩니다.");
+
+      // ★ 여기서 스토어 액션 호출!
+      // (문서 이름을 알기 위해 requests 목록에서 찾거나, mutation 변수로 받아야 함)
+      const targetReq = requests.find((r) => r.id === reqId);
+      const docName = targetReq?.document_name || `요청 #${reqId}`;
+
+      startRequestSSE(reqId, docName); // SSE 시작 및 상태창 표시
+
       queryClient.invalidateQueries({ queryKey: ["requests"] });
-      setDetailModalOpen(false); // 상세창 열려있으면 닫기
+      setDetailModalOpen(false);
     },
     onError: () => alert("승인 실패"),
   });
@@ -79,12 +92,21 @@ export default function RequestAdminPage() {
   const rejectMutation = useMutation({
     mutationFn: ({ id, reason }: { id: number; reason: string }) =>
       rejectRequest(id, reason),
-    onSuccess: () => {
+    // 여기도 variables를 받아옵니다. variables는 { id, reason } 객체입니다.
+    onSuccess: (_, variables) => {
       alert("반려되었습니다.");
       setRejectModalOpen(false);
       setRejectReason("");
+
+      // 1. 목록 갱신
       queryClient.invalidateQueries({ queryKey: ["requests"] });
-      setDetailModalOpen(false); // 상세창 열려있으면 닫기
+
+      // 2. 핵심: 방금 반려한 그 디테일 데이터도 갱신 (캐시 삭제)
+      queryClient.invalidateQueries({
+        queryKey: ["requestDetail", variables.id],
+      });
+
+      setDetailModalOpen(false);
     },
     onError: () => alert("반려 실패"),
   });
@@ -96,7 +118,7 @@ export default function RequestAdminPage() {
 
   const handleRejectClick = (id: number) => {
     setSelectedReqId(id);
-    setRejectModalOpen(true); // 거절 사유 입력창 오픈
+    setRejectModalOpen(true);
   };
 
   const submitReject = () => {
@@ -108,18 +130,17 @@ export default function RequestAdminPage() {
   // 상세 모달에서 사용하는 핸들러
   const handleDetailApprove = (id: number) => handleApprove(id);
   const handleDetailReject = (id: number) => {
-    // 상세창을 닫고 반려창을 연다 (UX 선택)
-    // setDetailModalOpen(false);
     setSelectedReqId(id);
     setRejectModalOpen(true);
   };
 
-  const handleRowClick = (id: number) => {
-    setDetailReqId(id);
+  // 수정됨: ID 대신 객체 전체를 받음
+  const handleRowClick = (req: RequestItem) => {
+    setSelectedRequest(req);
     setDetailModalOpen(true);
   };
 
-  // 상태 뱃지
+  // 상태 뱃지 (리스트용)
   const renderStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -145,7 +166,7 @@ export default function RequestAdminPage() {
     }
   };
 
-  // 타입 뱃지 "CREATE" | "UPDATE" | "DELETE";
+  // 타입 뱃지 (리스트용)
   const renderTypeBadge = (status: string) => {
     switch (status) {
       case "CREATE":
@@ -172,13 +193,15 @@ export default function RequestAdminPage() {
   };
 
   return (
-    <div className="w-full h-full bg-white flex flex-col gap-6 page-layout p-8">
+    <div className="w-full h-full flex flex-col gap-6 page-layout p-8">
+      {/* ... (상단 헤더 및 탭 부분은 동일) ... */}
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-800">요청 승인 관리</h1>
           <Button
             variant="ghost"
             size="sm"
+            className="border border-blue-100 point-hover"
             onClick={() =>
               queryClient.invalidateQueries({ queryKey: ["requests"] })
             }
@@ -218,9 +241,10 @@ export default function RequestAdminPage() {
             {requests.map((req) => (
               <div
                 key={req.id}
-                onClick={() => handleRowClick(req.id)} //  클릭 시 상세 모달
+                onClick={() => handleRowClick(req)} // 수정됨: 객체 전체 전달
                 className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row gap-4 cursor-pointer group"
               >
+                {/* ... (리스트 아이템 렌더링 부분은 동일) ... */}
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-4">
                     {renderTypeBadge(req.request_type)}
@@ -257,7 +281,6 @@ export default function RequestAdminPage() {
                   </div>
                 </div>
 
-                {/* 버튼 클릭 시 모달 뜨지 않게 stopPropagation */}
                 {req.status === "PENDING" && (
                   <div
                     className="flex md:flex-col justify-center gap-2 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-4 min-w-[120px]"
@@ -286,19 +309,20 @@ export default function RequestAdminPage() {
 
       {/* 상세 정보 모달 */}
       <RequestDetailModal
-        requestId={detailReqId}
+        baseInfo={selectedRequest} // 수정됨: 객체 전체 전달
         open={detailModalOpen}
         onClose={() => setDetailModalOpen(false)}
         onApprove={handleDetailApprove}
         onReject={handleDetailReject}
       />
 
-      {/* 반려 사유 입력 모달 */}
+      {/* 반려 사유 입력 모달 (동일) */}
       <Dialog open={rejectModalOpen} onOpenChange={setRejectModalOpen}>
-        <DialogContent>
+        <DialogContent className="bg-white">
+          {/* ... (반려 모달 내용 동일) ... */}
           <DialogHeader>
-            <DialogTitle className="text-red-600 flex gap-2">
-              <AlertCircle /> 요청 반려
+            <DialogTitle className="text-red-600 flex gap-2 ">
+              <AlertCircle size={20} /> 요청 반려
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
@@ -306,16 +330,20 @@ export default function RequestAdminPage() {
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="반려 사유 입력"
-              className="resize-none h-32"
+              className="resize-none h-52 border-gray-300  "
             />
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setRejectModalOpen(false)}>
+            <Button
+              variant="ghost"
+              onClick={() => setRejectModalOpen(false)}
+              className="border border-gray-300 cursor-pointer hover:bg-gray-200"
+            >
               취소
             </Button>
             <Button
               onClick={submitReject}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-red-600 hover:bg-red-700 text-white cursor-pointer"
             >
               반려 확정
             </Button>

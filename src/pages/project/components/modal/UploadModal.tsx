@@ -50,7 +50,7 @@ export function UploadModal({
   const [files, setFiles] = useState<PendingFile[]>([]);
   const [category, setCategory] = useState<DocumentCategory>("GENERAL");
 
-  // ✨ 스토어 액션 가져오기
+  //  스토어 액션 가져오기
   const { uploadFile } = useDocumentStore();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,7 +68,7 @@ export function UploadModal({
     setFiles((prev) => prev.filter((item) => item.id !== id));
   };
 
-  // ✨ 제출 버튼 (핵심 수정)
+  //  제출 버튼 (핵심 수정)
   const handleSubmit = () => {
     if (!files.length) return;
 

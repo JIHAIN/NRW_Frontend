@@ -26,9 +26,8 @@ export function ProjectsNavigation() {
   const queryClient = useQueryClient();
   // store의 createSession 대신, 상태를 직접 제어하거나 동기화 로직 사용
   const {
-    currentSessionId,
-    selectSession,
-    clearCurrentSession,
+    selectedSessionId,
+    setSelectedSessionId,
     createSession,
     sessions: storeSessions,
   } = useChatStore();
@@ -62,8 +61,8 @@ export function ProjectsNavigation() {
     onSuccess: (_, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
       useChatStore.getState().deleteSession(String(deletedId));
-      if (currentSessionId === String(deletedId)) {
-        clearCurrentSession();
+      if (selectedSessionId === String(deletedId)) {
+        setSelectedSessionId(null);
       }
     },
   });
@@ -77,7 +76,7 @@ export function ProjectsNavigation() {
       <div className="flex items-center justify-between px-2 mb-2">
         <SidebarGroupLabel>채팅 목록</SidebarGroupLabel>
         <button
-          onClick={clearCurrentSession}
+          onClick={() => setSelectedSessionId(null)}
           className="text-xs flex gap-1 items-center hover:text-blue-500"
         >
           <Plus size={14} /> 새 채팅
@@ -93,12 +92,12 @@ export function ProjectsNavigation() {
           <SidebarMenuItem key={session.id}>
             {/* [수정] asChild 제거 및 span으로 감싸서 버튼 중첩 오류 해결 */}
             <SidebarMenuButton
-              isActive={String(session.id) === currentSessionId}
+              isActive={String(session.id) === selectedSessionId}
               className="data-[active=true]:bg-blue-100 data-[active=true]:text-blue-700"
             >
               <Link
                 to="/chat"
-                onClick={() => selectSession(String(session.id))}
+                onClick={() => setSelectedSessionId(String(session.id))}
                 className="flex items-center gap-2 w-full overflow-hidden"
               >
                 <MessageSquare size={12} className="shrink-0" />

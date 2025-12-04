@@ -15,6 +15,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      "/async": {
+        target: "http://52.21.185.171",
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
   resolve: {

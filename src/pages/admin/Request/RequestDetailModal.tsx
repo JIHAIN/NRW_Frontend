@@ -18,12 +18,12 @@ import {
 
 // API
 import { fetchRequestDetail } from "@/services/request.service";
-import { downloadDocument } from "@/services/documents.service"; //  다운로드 함수 추가
+import { downloadDocument } from "@/services/documents.service";
 
-import type { Document } from "@/types/UserType";
+import type { Document, RequestItem } from "@/types/UserType";
 
 interface RequestDetailModalProps {
-  requestId: number | null;
+  baseInfo: RequestItem | null; // 수정됨: ID 대신 기본 정보 객체 전체를 받음
   open: boolean;
   onClose: () => void;
   onApprove: (id: number) => void;
@@ -31,25 +31,25 @@ interface RequestDetailModalProps {
 }
 
 export function RequestDetailModal({
-  requestId,
+  baseInfo,
   open,
   onClose,
   onApprove,
   onReject,
 }: RequestDetailModalProps) {
+  const requestId = baseInfo?.id;
+
   const { data, isLoading } = useQuery({
     queryKey: ["requestDetail", requestId],
     queryFn: () => fetchRequestDetail(requestId!),
     enabled: !!requestId && open,
   });
 
-  //  다운로드 핸들러 추가
   const handleDownload = async () => {
     const doc = data?.document;
     if (!doc) return;
 
     try {
-      // ID 기반 다운로드 (이전에 수정한 API 사용)
       await downloadDocument(doc.id, doc.originalFilename);
     } catch (error) {
       console.error("Download failed:", error);
@@ -57,9 +57,38 @@ export function RequestDetailModal({
     }
   };
 
-  if (!requestId) return null;
+  // 상태값 한글 변환 함수
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "PENDING":
+        return "대기중";
+      case "APPROVED":
+        return "승인됨";
+      case "REJECTED":
+        return "반려됨";
+      default:
+        return status;
+    }
+  };
 
-  const req = data?.request;
+  // 요청 유형 한글 변환 함수
+  const getTypeText = (type: string) => {
+    switch (type) {
+      case "CREATE":
+        return "문서 추가";
+      case "UPDATE":
+        return "문서 수정";
+      case "DELETE":
+        return "문서 삭제";
+      default:
+        return type;
+    }
+  };
+
+  if (!baseInfo) return null;
+
+  // data.request에 상세 내용이 있지만, 이름 등은 baseInfo 사용
+  const req = data?.request || baseInfo;
   const doc: Document | null | undefined = data?.document;
 
   return (
@@ -73,7 +102,7 @@ export function RequestDetailModal({
           <div className="flex justify-center py-10">
             <Loader2 className="animate-spin text-blue-500" />
           </div>
-        ) : req ? (
+        ) : (
           <div className="flex flex-col gap-6 py-2">
             {/* 1. 요청 정보 */}
             <section className="space-y-3">
@@ -83,7 +112,7 @@ export function RequestDetailModal({
                     요청 유형
                   </span>
                   <span className="font-semibold text-blue-600">
-                    {req.request_type}
+                    {getTypeText(baseInfo.request_type)} {/* 한글 변환 적용 */}
                   </span>
                 </div>
                 <div>
@@ -99,7 +128,7 @@ export function RequestDetailModal({
                         : "text-red-600"
                     }`}
                   >
-                    {req.status}
+                    {getStatusText(req.status)} {/* 한글 변환 적용 */}
                   </span>
                 </div>
                 <div className="col-span-2">
@@ -112,11 +141,19 @@ export function RequestDetailModal({
                 </div>
                 <div>
                   <span className="text-xs text-slate-400 block mb-1">
-                    요청자 ID
+                    요청자
                   </span>
-                  <span>{req.requester_id}</span>
+                  {/* ID 대신 이름 표시 (baseInfo 사용) */}
+                  <span className="font-medium">{baseInfo.user_name}</span>
                 </div>
                 <div>
+                  <span className="text-xs text-slate-400 block mb-1">
+                    프로젝트
+                  </span>
+                  {/* 프로젝트 이름 표시 (baseInfo 사용) */}
+                  <span className="font-medium">{baseInfo.project_name}</span>
+                </div>
+                <div className="col-span-2">
                   <span className="text-xs text-slate-400 block mb-1">
                     요청 일시
                   </span>
@@ -125,7 +162,7 @@ export function RequestDetailModal({
               </div>
             </section>
 
-            {/* 2. 대상 문서 정보 */}
+            {/* 2. 대상 문서 정보 (기존 로직 유지) */}
             {doc && (
               <section className="space-y-3">
                 <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
@@ -186,29 +223,21 @@ export function RequestDetailModal({
               </div>
             )}
           </div>
-        ) : (
-          <div className="py-10 text-center text-gray-500">
-            정보를 불러올 수 없습니다.
-          </div>
         )}
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose}>
-            닫기
-          </Button>
-
           {req?.status === "PENDING" && (
             <>
               <Button
                 variant="destructive"
                 onClick={() => onReject(req.id)}
-                className="bg-white text-red-600 border border-red-200 hover:bg-red-50"
+                className="bg-white cursor-pointer text-red-600 border border-red-200 hover:bg-red-100"
               >
-                <XCircle className="w-4 h-4 mr-2" /> 반려
+                <XCircle className="w-4 h-4 mr-2 " /> 반려
               </Button>
               <Button
                 onClick={() => onApprove(req.id)}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-blue-500 hover:bg-blue-700 cursor-pointer text-white"
               >
                 <CheckCircle className="w-4 h-4 mr-2" /> 승인
               </Button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react"; // useMemo 추가
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,41 +24,57 @@ import {
 } from "@/components/ui/select";
 import { FileText, Plus, Loader2 } from "lucide-react";
 
-// [변경] fetchDocuments(기존)와 uploadTempDocument(신규) import
+// API & Store
 import {
   fetchDocuments,
   uploadTempDocument,
 } from "@/services/documents.service";
 import { createRequest } from "@/services/request.service";
-import type { RequestType } from "@/types/UserType";
+import { useAuthStore } from "@/store/authStore";
+import type { RequestType, DocumentCategory } from "@/types/UserType"; // 타입 추가
+import { CATEGORY_LABEL, CATEGORY_FILTERS } from "@/constants/projectConstants"; // 상수 추가
 
 interface RequestModalProps {
-  projectId: number | null;
-  projectName: string;
+  projectId: number | undefined;
+  projectName: string | undefined;
 }
 
 export function RequestModal({ projectId, projectName }: RequestModalProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { user } = useAuthStore();
+
   // 폼 상태
   const [requestType, setRequestType] = useState<RequestType>("CREATE");
+  const [category, setCategory] = useState<DocumentCategory>("GENERAL"); //  카테고리 상태 추가
   const [content, setContent] = useState("");
   const [targetDocId, setTargetDocId] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // 1. 문서 목록 조회 (기존 fetchDocuments 함수 사용)
-  // 인자 순서 주의: 기존 함수가 (deptId, projectId) 순서인지 (projectId, deptId)인지 확인 필요
-  // 상우님이 올린 파일 기준: fetchDocuments(deptId, projectId) 입니다.
+  // 1. 문서 목록 조회 (수정/삭제용)
   const { data: projectDocuments = [], isLoading } = useQuery({
     queryKey: ["projectDocuments", projectId],
-    queryFn: () => fetchDocuments(1, projectId!), // deptId=1(임시), projectId
-    enabled: !!projectId && open,
+    queryFn: () => fetchDocuments(1, projectId!),
+    enabled: !!projectId && open && requestType !== "CREATE",
   });
 
+  //  [추가] 카테고리 필터링된 문서 목록 (UPDATE/DELETE 용)
+  const filteredDocuments = useMemo(() => {
+    if (!category) return projectDocuments;
+    // "GENERAL"이거나 특정 카테고리 선택 시 필터링 (전체보기 옵션이 없다면 선택된 것만)
+    return projectDocuments.filter((doc) => doc.category === category);
+  }, [projectDocuments, category]);
+
   const handleSubmit = async () => {
+    // 1. 기본 유효성 검사
     if (!content.trim()) return alert("요청 사유를 입력해주세요.");
     if (!projectId) return alert("프로젝트 정보가 없습니다.");
+    if (!user?.departmentId) return alert("부서 정보가 없습니다.");
+
+    if (!user) return alert("로그인 정보가 없습니다.");
+
+    // 2. 유형별 추가 검사
     if (requestType === "CREATE" && !selectedFile)
       return alert("파일을 선택해주세요.");
     if (requestType !== "CREATE" && !targetDocId)
@@ -66,18 +82,34 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
 
     try {
       setIsSubmitting(true);
-      let finalTargetId = Number(targetDocId) || 0;
+      // 최종적으로 보낼 문서 ID를 담을 변수 선언
+      let finalTargetId: number | null = null;
 
-      // [Step 1] 신규 등록(CREATE) 시 -> '임시 업로드(uploadTempDocument)' 사용
+      // [Step 1] 신규 등록(CREATE)
       if (requestType === "CREATE" && selectedFile) {
-        // 관리자용(uploadDocument)이 아니라, 새로 만든 사용자용(uploadTempDocument) 호출
-        const uploadedId = await uploadTempDocument(selectedFile, 1, projectId);
+        const uploadedId = await uploadTempDocument({
+          file: selectedFile,
+          deptId: user.departmentId,
+          userId: user.id,
+          projectId: projectId,
+          category: category,
+        });
+
+        console.log("업로드된 ID:", uploadedId);
+
         finalTargetId = Number(uploadedId);
+      } else {
+        finalTargetId = Number(targetDocId);
+      }
+
+      // ID가 없으면 중단 (안전장치)
+      if (!finalTargetId) {
+        throw new Error("문서 ID를 확보하지 못했습니다.");
       }
 
       // [Step 2] 요청 생성
       await createRequest({
-        requester_id: 1, // [TODO] user_id
+        requester_id: user.id,
         project_id: projectId,
         request_type: requestType,
         target_document_id: finalTargetId,
@@ -99,6 +131,7 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
     setContent("");
     setTargetDocId("");
     setSelectedFile(null);
+    setCategory("GENERAL"); // 초기화
     setRequestType("CREATE");
     setIsSubmitting(false);
   };
@@ -114,7 +147,7 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
       <DialogTrigger asChild>
         <Button
           disabled={!projectId}
-          className="gap-2 border rounded-2xl px-5 py-2 text-blue-900/70 hover:bg-blue-50"
+          className="gap-2 border rounded-2xl px-5 py-2 text-blue-900/70 hover:bg-blue-50 bg-white"
         >
           <Plus className="size-4 text-blue-500" /> 문서 변경 요청
         </Button>
@@ -130,6 +163,7 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
         </DialogHeader>
 
         <div className="grid gap-5 py-4">
+          {/* 1. 요청 종류 */}
           <div className="grid gap-2">
             <Label className="text-sm font-semibold">요청 종류</Label>
             <Select
@@ -137,6 +171,7 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
               onValueChange={(v) => {
                 setRequestType(v as RequestType);
                 setTargetDocId("");
+                setSelectedFile(null);
               }}
             >
               <SelectTrigger className="shadow-sm">
@@ -150,12 +185,44 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
             </Select>
           </div>
 
+          {/*  2. 카테고리 선택 (메타데이터 or 필터링) */}
+          <div className="grid gap-2 ">
+            <Label className="text-sm font-semibold flex gap-4 ">
+              문서 분류
+              <span className="text-xs font-normal text-gray-400">
+                {requestType === "CREATE"
+                  ? "* 등록될 문서의 카테고리입니다."
+                  : "* 목록을 필터링합니다."}
+              </span>
+            </Label>
+            <Select
+              value={category}
+              onValueChange={(v) => {
+                setCategory(v as DocumentCategory);
+                setTargetDocId(""); // 카테고리 바꾸면 선택된 문서도 초기화
+              }}
+            >
+              <SelectTrigger className="bg-white shadow-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                {CATEGORY_FILTERS.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {CATEGORY_LABEL[cat] || cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 3. 파일 업로드 or 문서 선택 */}
           {requestType === "CREATE" ? (
-            <div className="grid gap-2">
+            <div className="grid gap-2 ">
               <Label className="text-sm font-semibold">첨부 파일</Label>
               <Input
                 type="file"
                 onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                className="border-blue-200 shadow-sm cursor-pointer"
               />
             </div>
           ) : (
@@ -167,14 +234,15 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
                     placeholder={
                       isLoading
                         ? "로딩 중..."
-                        : projectDocuments.length
+                        : filteredDocuments.length //  필터링된 목록 개수 확인
                         ? "문서 선택"
-                        : "문서 없음"
+                        : "해당 분류의 문서 없음"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent className="bg-white max-h-[200px]">
-                  {projectDocuments.map((doc) => (
+                  {/*  필터링된 목록 렌더링 */}
+                  {filteredDocuments.map((doc) => (
                     <SelectItem key={doc.id} value={String(doc.id)}>
                       <div className="flex items-center gap-2">
                         <FileText size={14} className="text-gray-400" />
@@ -189,13 +257,14 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
             </div>
           )}
 
+          {/* 4. 사유 입력 */}
           <div className="grid gap-2">
             <Label className="text-sm font-semibold">요청 사유</Label>
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="상세 내용을 입력하세요."
-              className="h-24 resize-none shadow-sm"
+              placeholder="요청에 대한 상세 내용을 입력하세요."
+              className="h-24 resize-none border-blue-200 shadow-sm"
             />
           </div>
         </div>
@@ -205,13 +274,14 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
             variant="outline"
             onClick={() => setOpen(false)}
             disabled={isSubmitting}
+            className="point-hover border shadow-sm border-blue-200"
           >
             취소
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="bg-blue-600 text-white hover:bg-blue-700 min-w-[100px]"
+            className="bg-blue-600 text-white shadow-sm hover:bg-blue-700 min-w-[100px] cursor-pointer"
           >
             {isSubmitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />

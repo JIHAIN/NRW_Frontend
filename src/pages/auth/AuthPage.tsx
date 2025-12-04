@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export default function AuthPage() {
+export default function AuthPage2() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
 
   return (

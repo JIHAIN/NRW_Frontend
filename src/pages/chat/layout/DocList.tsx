@@ -1,6 +1,5 @@
 import { useEffect } from "react";
-import { FileText, Plus, Search, Loader2 } from "lucide-react";
-import { IconButton } from "@/components/common/IconButton";
+import { FileText, Loader2 } from "lucide-react";
 import { useChatStore } from "@/store/chatStore";
 import { useAuthStore } from "@/store/authStore";
 import { useDocumentStore } from "@/store/documentStore";
@@ -25,37 +24,16 @@ export function DocList() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-3 flex-1 overflow-y-auto custom-scrollbar">
-        {/* 상단 검색창 및 버튼 */}
-        <div className="mb-2 flex items-center justify-between">
-          <div className="mt-3 flex items-center gap-2 rounded-xl border border-blue-100 px-2 py-1.5 flex-1 mr-2 bg-white">
-            <Search className="size-4 text-blue-600" />
-            <input
-              placeholder="검색"
-              className="w-full outline-none text-sm bg-transparent placeholder:text-gray-400"
-            />
-          </div>
-          {/*  className 오류 해결: div로 감싸서 마진 적용 */}
-          <div className="mt-3">
-            <IconButton label="새로 열기">
-              <Plus className="size-4" />
-            </IconButton>
-          </div>
-        </div>
-
-        <div className="mt-5 mb-2 text-xs font-semibold text-blue-900/70 px-1">
-          문서 목록
-        </div>
-
+      <div className="h-full overflow-y-auto custom-scrollbar ">
         {/* 문서 목록 영역 */}
-        <div className="space-y-1">
+        <div className="space-y-1 h-full">
           {isLoading && documents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-gray-400 gap-2">
+            <div className="flex flex-col h-full items-center justify-center text-gray-400 gap-2">
               <Loader2 className="animate-spin size-5" />
               <span className="text-xs">문서를 불러오는 중...</span>
             </div>
           ) : documents.length === 0 ? (
-            <div className="text-center py-8 text-xs text-gray-400">
+            <div className="h-full flex items-center justify-center text-xs text-gray-400">
               등록된 문서가 없습니다.
             </div>
           ) : (

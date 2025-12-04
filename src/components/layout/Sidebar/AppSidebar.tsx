@@ -30,7 +30,7 @@ const data = {
         },
         {
           title: "문서 관리",
-          url: "/admin/docs",
+          url: "/docs",
         },
       ],
     },
