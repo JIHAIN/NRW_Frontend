@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useSystemStore } from "@/store/systemStore";
+// [NEW] 채팅 스토어 import
+import { useChatStore } from "@/store/chatStore";
 import { FlaskConical, X, GripHorizontal, Loader2 } from "lucide-react";
 import type { User, UserRole } from "@/types/UserType";
 
 // ----------------------------------------------------------------------
-// 1. 내부 전용 Select 컴포넌트
+// 1. 내부 전용 Select 컴포넌트 (기존 동일)
 // ----------------------------------------------------------------------
 interface TestSelectProps {
   label: string;
@@ -42,13 +44,12 @@ export function TestAuthPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Store 구독 (logout 추가)
+  // Store 구독
   const { user, login, logout } = useAuthStore();
   const { departments, projects, isLoading } = useSystemStore();
 
   // ---------------------------------------------------------
   // [핵심] UI 상태 관리
-  // "NONE"은 로그아웃 상태를 의미함
   // ---------------------------------------------------------
   const [selectedRole, setSelectedRole] = useState<UserRole | "NONE">("USER");
   const [selectedDeptId, setSelectedDeptId] = useState<number>(0);
@@ -66,14 +67,13 @@ export function TestAuthPanel() {
     }
   }, []);
 
-  // 2. 현재 유저 상태와 UI 동기화 (마운트 시 or 외부 변경 시)
+  // 2. 현재 유저 상태와 UI 동기화
   useEffect(() => {
     if (user) {
       setSelectedRole(user.role);
       setSelectedDeptId(user.departmentId);
       setSelectedProjId(user.projectId || 0);
     } else {
-      // 유저가 없으면 NONE으로 설정
       setSelectedRole("NONE");
       setSelectedDeptId(0);
       setSelectedProjId(0);
@@ -81,14 +81,22 @@ export function TestAuthPanel() {
   }, [user]);
 
   // ---------------------------------------------------------
-  // 3. 로그인 실행 함수
+  // 3. 로그인 실행 함수 (유저 변경 로직)
   // ---------------------------------------------------------
   const performLogin = (role: UserRole, deptId: number, projId: number) => {
+    // [NEW] ★★★ 중요: 사용자 변경 시 채팅 데이터 완전 초기화 ★★★
+    // (이전 사용자의 대화 기록, 작성 중인 글 등이 남지 않도록 함)
+    useChatStore.getState().resetAll();
+
     const targetDept = departments.find((d) => d.id === deptId);
     const deptName = targetDept ? targetDept.dept_name : "본사";
 
+    // 랜덤 ID 부여 (실제 DB 연동 전 시뮬레이션용)
+    // ID가 바뀌어야 useEffect 등에서 새로운 유저로 인식하기 쉬움
+    const simUserId = Math.floor(Math.random() * 10000) + 1;
+
     const mockUser: User = {
-      id: 1,
+      id: simUserId,
       accountId: "test_admin",
       userName: `[Test] ${role} (${deptName})`,
       role: role,
@@ -110,12 +118,11 @@ export function TestAuthPanel() {
   useEffect(() => {
     if (isLoading || departments.length === 0 || hasInit.current) return;
 
-    // 초기값: 슈퍼 관리자
+    // 초기값 설정
     const initRole: UserRole = "SUPER_ADMIN";
     const initDept = 0;
     const initProj = 0;
 
-    // UI 업데이트 & 로그인
     setSelectedRole(initRole);
     setSelectedDeptId(initDept);
     setSelectedProjId(initProj);
@@ -131,16 +138,19 @@ export function TestAuthPanel() {
   const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newRole = e.target.value as UserRole | "NONE";
 
-    //  "로그인 안함" 선택 시 로그아웃 처리
+    // "로그인 안함" 선택 시 로그아웃 및 채팅 초기화
     if (newRole === "NONE") {
       setSelectedRole("NONE");
       setSelectedDeptId(0);
       setSelectedProjId(0);
-      logout(); // 로그아웃 액션
+
+      // [NEW] 채팅 데이터 초기화
+      useChatStore.getState().resetAll();
+
+      logout();
       return;
     }
 
-    // 그 외 권한 변경 로직
     let newDept = selectedDeptId;
     if (newRole === "SUPER_ADMIN") {
       newDept = 0;
@@ -178,7 +188,7 @@ export function TestAuthPanel() {
   };
 
   // ---------------------------------------------------------
-  // 6. 드래그 로직
+  // 6. 드래그 로직 (기존 동일)
   // ---------------------------------------------------------
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -269,7 +279,6 @@ export function TestAuthPanel() {
                 <option value="SUPER_ADMIN">총괄 관리자</option>
                 <option value="MANAGER">부서 관리자</option>
                 <option value="USER">일반 사용자</option>
-                {/*  로그인 안함 옵션 추가 */}
                 <option value="NONE" className="text-red-500 font-bold">
                   로그인 안함
                 </option>
@@ -280,7 +289,6 @@ export function TestAuthPanel() {
                 label="Dept"
                 value={selectedDeptId}
                 onChange={handleDeptChange}
-                //  NONE일 때도 비활성화
                 disabled={
                   selectedRole === "SUPER_ADMIN" || selectedRole === "NONE"
                 }

@@ -1,32 +1,38 @@
-import { useRef, useState, useEffect, type DragEvent } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useEffect, useState, type DragEvent } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowBigUpIcon, Loader2, BookOpen } from "lucide-react";
 
-import {
-  createChatSession,
-  getChatSessionDetail,
-  streamChatResponse,
-} from "@/services/chat.service";
+// 마크다운 처리 임포트
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+import { getChatSessionDetail } from "@/services/chat.service";
 import { useChatStore, type Message } from "@/store/chatStore";
+import { useAuthStore } from "@/store/authStore";
 
 export function ChatPanel() {
-  const queryClient = useQueryClient();
-  const store = useChatStore();
-  const currentSessionId = store.selectedSessionId;
-
-  const currentSession = store.sessions.find((s) => s.id === currentSessionId);
-  const messages = currentSession?.messages || [];
-
-  const [input, setInput] = useState("");
-  const [isDragging, setIsDragging] = useState(false);
-  // [추가] react-query의 isPending 대신 직접 스트리밍 상태를 관리합니다.
-  const [isStreaming, setIsStreaming] = useState(false);
-
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // 1. 상세 대화 내용 가져오기 (사이드바 클릭 시 작동)
+  // 1. Store 연결
+  const store = useChatStore();
+  const { user } = useAuthStore();
+
+  const currentSessionId = store.selectedSessionId;
+  const isStreaming = store.isStreaming;
+
+  // 2. 현재 세션의 메시지 가져오기
+  const currentSession = store.sessions.find((s) => s.id === currentSessionId);
+  const messages = currentSession?.messages || [];
+
+  // 3. 입력창 상태 동기화
+  const draftKey = currentSessionId || "new";
+  const inputValue = store.drafts[draftKey] || "";
+
+  const [isDragging, setIsDragging] = useState(false);
+
+  // 4. 세션 상세 데이터 동기화
   const { data: sessionDetail } = useQuery({
     queryKey: ["sessionDetail", currentSessionId],
     queryFn: () => getChatSessionDetail(currentSessionId!),
@@ -34,108 +40,66 @@ export function ChatPanel() {
     staleTime: 0,
   });
 
-  // 2. API 데이터가 오면 Store에 덮어쓰기
+  // DB에서 가져온 내용을 Store에 업데이트
   useEffect(() => {
     if (sessionDetail && currentSessionId) {
-      const loadedMessages: Message[] = sessionDetail.messages.map(
-        (msg, idx) => ({
-          id: `msg-${currentSessionId}-${idx}-${Date.now()}`,
-          role: (msg.role === "system" ? "assistant" : msg.role) as
-            | "user"
-            | "assistant",
-          content: msg.content,
-          createdAt: new Date().toISOString(),
-        })
-      );
+      // 스트리밍 중이 아닐 때만 동기화
+      if (!isStreaming) {
+        // [수정 핵심 1] 스토어에 해당 세션이 존재하는지 확인
+        const sessionExists = store.sessions.some(
+          (s) => s.id === currentSessionId
+        );
 
-      if (store.sessions.some((s) => s.id === currentSessionId)) {
+        // [수정 핵심 2] 세션이 없으면(새로고침 직후 등), API 메타데이터로 세션 껍데기 먼저 생성
+        if (!sessionExists) {
+          store.createSession(
+            String(sessionDetail.session.id), // ID는 문자열로 변환하여 통일
+            sessionDetail.session.title
+          );
+        }
+
+        // [수정 핵심 3] 메시지 변환 및 주입
+        const loadedMessages: Message[] = sessionDetail.messages.map(
+          (msg, idx) => ({
+            // 고유 ID 생성 (React key 오류 방지)
+            id: `msg-${currentSessionId}-${idx}-${Date.now()}`,
+            role: (msg.role === "system" ? "assistant" : msg.role) as
+              | "user"
+              | "assistant",
+            content: msg.content,
+            createdAt: new Date().toISOString(), // DB에 시간이 없다면 현재 시간 혹은 API의 created_at 활용
+          })
+        );
+
         store.setMessages(currentSessionId, loadedMessages);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionDetail, currentSessionId]);
+  }, [sessionDetail, currentSessionId, isStreaming]);
 
-  // [삭제] 기존 useMutation 로직은 스트리밍에 적합하지 않아 제거하고 send 함수 내부로 통합했습니다.
-
-  // 스크롤 자동 이동
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, isStreaming]); // isStreaming이 변할 때도 스크롤 체크
+  }, [messages.length, isStreaming]);
 
-  // Textarea 높이 조절
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = "0px";
     const next = Math.min(200, ta.scrollHeight);
     ta.style.height = next + "px";
-  }, [input]);
+  }, [inputValue]);
 
-  // 3. 메시지 전송 및 스트리밍 처리 함수
-  const send = async () => {
-    const trimmed = input.trim();
-    if (!trimmed || isStreaming) return;
+  // 5. 메시지 전송
+  const handleSend = () => {
+    if (!inputValue.trim() || isStreaming || !user) return;
 
-    let activeId = store.selectedSessionId;
+    store.sendMessage({
+      sessionId: currentSessionId,
+      content: inputValue,
+      userId: user.id,
+    });
 
-    // (1) 새 채팅방 생성 로직
-    if (!activeId) {
-      try {
-        const title =
-          trimmed.length > 20 ? trimmed.substring(0, 20) + "..." : trimmed;
-        const newSessionId = await createChatSession({ user_id: 1, title });
-        const strSessionId = String(newSessionId);
-
-        store.createSession(strSessionId, title);
-        activeId = strSessionId;
-
-        queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
-      } catch (e) {
-        console.error(e);
-        return;
-      }
-    }
-
-    // (2) 사용자 메시지 즉시 표시 (낙관적 업데이트)
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: trimmed,
-      createdAt: new Date().toISOString(),
-    };
-    store.addMessage(activeId, userMsg);
-    setInput("");
-    setIsStreaming(true); // 스트리밍 시작 상태 변경
-
-    // (3) 봇의 '빈 메시지' 미리 생성
-    const botMsgId = (Date.now() + 1).toString();
-    const botMsg: Message = {
-      id: botMsgId,
-      role: "assistant",
-      content: "", // 내용은 비워둡니다. 스트리밍으로 채워질 예정
-      createdAt: new Date().toISOString(),
-    };
-    store.addMessage(activeId, botMsg);
-
-    try {
-      // 3. [변경] POST 방식 스트리밍 호출
-      await streamChatResponse(
-        {
-          conversation_id: String(activeId), // 세션 ID
-          message: trimmed, // 질문 내용
-          user_id: 1, // 유저 ID (필수)
-        },
-        (token) => {
-          // 글자가 들어올 때마다 화면에 찍기
-          store.streamTokenToLastMessage(activeId!, token);
-        }
-      );
-    } catch (error) {
-      console.error("Streaming Error:", error);
-      store.streamTokenToLastMessage(activeId!, "\n[오류가 발생했습니다]");
-    } finally {
-      setIsStreaming(false);
-    }
+    textareaRef.current?.focus();
   };
 
   const onDragOver = (e: DragEvent) => {
@@ -157,6 +121,7 @@ export function ChatPanel() {
         <div className="pointer-events-none absolute inset-0 z-20 rounded-3xl border-dashed border-blue-400/70 bg-blue-100/50" />
       )}
 
+      {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto overflow-w-auto min-h-0 px-4 pt-2 flex flex-col gap-10 rounded-t-2xl">
         {messages.length === 0 && (
           <div className="flex h-full items-center justify-center text-slate-400">
@@ -171,18 +136,146 @@ export function ChatPanel() {
               msg.role === "user" ? "items-end" : "items-start"
             }`}
           >
-            {/* 메시지 내용이 없더라도 스트리밍 중이면 카드 표시 */}
             {msg.content.length > 0 && (
               <Card
-                className={`max-w-[75%] border-none ${
+                className={`max-w-[75%] border-none text-md ${
                   msg.role === "user"
                     ? "bg-blue-400 text-white rounded-br-none p-0 shadow-md "
-                    : "bg-yellow-100 rounded-bl-none p-0 shadow-md "
+                    : "bg-gray-100 rounded-bl-none p-0 shadow-md "
                 }`}
               >
-                <CardContent className="p-2 text-sm whitespace-pre-wrap leading-relaxed break-all">
-                  {/* 내용이 비어있고 어시스턴트 메시지라면 커서 깜빡임 효과 등을 줄 수 있음 */}
-                  {msg.content}
+                <CardContent className="p-3 leading-relaxed break-all">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      // [핵심 수정 1] 문단(p) 스타일 추가
+                      // - 리스트 내부의 텍스트가 p태그로 감싸질 때 불필요한 여백을 줄이고 줄간격을 조절합니다.
+                      p: ({ ...props }) => (
+                        <p
+                          className="mb-1 leading-relaxed last:mb-0"
+                          {...props}
+                        />
+                      ),
+
+                      // [핵심 수정 2] 리스트(ul, ol) 스타일 변경
+                      // - list-inside 제거 -> 숫자가 글자와 분리되지 않음
+                      // - pl-5 추가 -> 들여쓰기를 통해 가독성 확보
+                      ul: ({ ...props }) => (
+                        <ul
+                          className="list-disc pl-5 mb-2 space-y-1"
+                          {...props}
+                        />
+                      ),
+                      ol: ({ ...props }) => (
+                        <ol
+                          className="list-decimal pl-5 mb-2 space-y-1"
+                          {...props}
+                        />
+                      ),
+
+                      // 리스트 아이템(li)
+                      li: ({ ...props }) => <li className="pl-1" {...props} />,
+
+                      // 제목 스타일링 (h1~h3)
+                      h1: ({ ...props }) => (
+                        <h1
+                          className="text-lg font-bold mt-4 mb-2"
+                          {...props}
+                        />
+                      ),
+                      h2: ({ ...props }) => (
+                        <h2
+                          className="text-base font-bold mt-3 mb-2"
+                          {...props}
+                        />
+                      ),
+                      h3: ({ ...props }) => (
+                        <h3
+                          className="text-sm font-bold mt-2 mb-1"
+                          {...props}
+                        />
+                      ),
+
+                      // 코드 블록 스타일링
+                      code: ({
+                        className,
+                        children,
+                        ...props
+                      }: React.ComponentPropsWithoutRef<"code">) => {
+                        const match = /language-(\w+)/.exec(className || "");
+                        const isInline =
+                          !match && !String(children).includes("\n");
+
+                        return isInline ? (
+                          <code
+                            className="bg-gray-200 text-red-500 rounded px-1 py-0.5 text-xs font-mono"
+                            {...props}
+                          >
+                            {children}
+                          </code>
+                        ) : (
+                          <div className="my-2 w-full overflow-x-auto rounded-lg bg-slate-800 p-3 text-white">
+                            <code
+                              className="text-xs font-mono whitespace-pre"
+                              {...props}
+                            >
+                              {children}
+                            </code>
+                          </div>
+                        );
+                      },
+
+                      // 인용문
+                      blockquote: ({ ...props }) => (
+                        <blockquote
+                          className="border-l-4 border-gray-300 pl-4 my-2 italic text-gray-500 bg-gray-50 py-1"
+                          {...props}
+                        />
+                      ),
+
+                      // 테이블
+                      table: ({ ...props }) => (
+                        <div className="overflow-x-auto my-4 rounded-lg border border-gray-200">
+                          <table
+                            className="min-w-full divide-y divide-gray-300"
+                            {...props}
+                          />
+                        </div>
+                      ),
+                      th: ({ ...props }) => (
+                        <th
+                          className="bg-gray-100 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b"
+                          {...props}
+                        />
+                      ),
+                      td: ({ ...props }) => (
+                        <td
+                          className="px-3 py-2 text-sm text-gray-700 border-b last:border-0 whitespace-pre-wrap"
+                          {...props}
+                        />
+                      ),
+
+                      // 링크
+                      a: ({ ...props }) => (
+                        <a
+                          className="text-blue-600 hover:underline cursor-pointer font-medium"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          {...props}
+                        />
+                      ),
+
+                      // 굵게
+                      strong: ({ ...props }) => (
+                        <strong
+                          className="font-bold text-gray-900"
+                          {...props}
+                        />
+                      ),
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
                 </CardContent>
               </Card>
             )}
@@ -208,8 +301,6 @@ export function ChatPanel() {
           </div>
         ))}
 
-        {/* [변경] 별도의 로딩 카드 대신, 실제 말풍선이 생성되므로 이 부분은 필요 시 제거하거나 유지 */}
-        {/* 만약 답변 생성 전 '생각 중...' 단계를 표현하고 싶다면 아래 유지 */}
         {isStreaming &&
           messages.length > 0 &&
           messages[messages.length - 1].content.length === 0 && (
@@ -228,31 +319,31 @@ export function ChatPanel() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          send();
+          handleSend();
         }}
         className="rounded-b-2xl p-2 flex flex-col gap-2 shrink-0"
       >
         <div className="flex items-end gap-2 rounded-2xl shadow-md shadow-blue-200 border border-blue-100 focus-within:ring-2 focus-within:ring-blue-200 bg-white">
           <textarea
             ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+            value={inputValue}
+            onChange={(e) => store.setDraft(draftKey, e.target.value)}
             placeholder="  질문을 입력하세요"
             rows={1}
             disabled={isStreaming}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                send();
+                handleSend();
               }
             }}
             className="flex-1 max-h-[200px] resize-none px-2 py-3 text-sm focus:outline-none scroll-auto disabled:bg-transparent"
           />
           <button
             type="submit"
-            disabled={!input.trim() || isStreaming}
+            disabled={!inputValue.trim() || isStreaming}
             className={`m-1 rounded-xl p-2 text-white transition-colors shrink-0 ${
-              !input.trim() || isStreaming
+              !inputValue.trim() || isStreaming
                 ? "bg-gray-300 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
             }`}

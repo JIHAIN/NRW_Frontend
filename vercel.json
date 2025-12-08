@@ -2,7 +2,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "http://52.21.185.171/api/:path*"
+      "destination": "https://alain.r-e.kr/api/:path*"
+    },
+    {
+      "source": "/((?!api/|_next/|static/|favicon.ico|sw.js).*)",
+      "destination": "/index.html"
     }
   ]
 }

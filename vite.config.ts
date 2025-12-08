@@ -11,12 +11,12 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/api": {
-        target: "http://52.21.185.171", // 백엔드 주소
+        target: "https://alain.r-e.kr", // 백엔드 주소
         changeOrigin: true,
         secure: false,
       },
       "/async": {
-        target: "http://52.21.185.171",
+        target: "https://alain.r-e.kr",
         changeOrigin: true,
         secure: false,
       },
