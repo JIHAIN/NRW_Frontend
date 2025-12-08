@@ -138,17 +138,17 @@ export function ChatPanel() {
           >
             {msg.content.length > 0 && (
               <Card
-                className={`max-w-[75%] border-none text-md ${
+                className={`max-w-[75%] border-none p-0 ${
                   msg.role === "user"
-                    ? "bg-blue-400 text-white rounded-br-none p-0 shadow-md "
-                    : "bg-gray-100 rounded-bl-none p-0 shadow-md "
+                    ? "bg-blue-500 text-white rounded-br-none shadow-md "
+                    : "bg-neutral-200  rounded-bl-none  shadow-md "
                 }`}
               >
                 <CardContent className="p-3 leading-relaxed break-all">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
-                      // [핵심 수정 1] 문단(p) 스타일 추가
+                      // 문단(p) 스타일 추가
                       // - 리스트 내부의 텍스트가 p태그로 감싸질 때 불필요한 여백을 줄이고 줄간격을 조절합니다.
                       p: ({ ...props }) => (
                         <p
@@ -157,7 +157,7 @@ export function ChatPanel() {
                         />
                       ),
 
-                      // [핵심 수정 2] 리스트(ul, ol) 스타일 변경
+                      // 리스트(ul, ol) 스타일 변경
                       // - list-inside 제거 -> 숫자가 글자와 분리되지 않음
                       // - pl-5 추가 -> 들여쓰기를 통해 가독성 확보
                       ul: ({ ...props }) => (

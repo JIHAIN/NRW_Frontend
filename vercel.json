@@ -5,7 +5,11 @@
       "destination": "https://alain.r-e.kr/api/:path*"
     },
     {
-      "source": "/((?!api/|_next/|static/|favicon.ico|sw.js).*)",
+      "source": "/async/:path*",
+      "destination": "https://alain.r-e.kr/async/:path*"
+    },
+    {
+      "source": "/((?!api/|async/|_next/|static/|favicon.ico|sw.js).*)",
       "destination": "/index.html"
     }
   ]
