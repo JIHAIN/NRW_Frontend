@@ -30,7 +30,7 @@ interface BackendProject {
 
 // 부서 목록 조회
 export const fetchDepartments = async (): Promise<Department[]> => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/dept`);
+  const response = await fetch(`${API_BASE_URL}/api/v1/dept/`);
   if (!response.ok) throw new Error("부서 목록을 불러오는데 실패했습니다.");
 
   const data: BackendDepartment[] = await response.json(); // ✨ 타입 명시
@@ -47,7 +47,7 @@ export const fetchDepartments = async (): Promise<Department[]> => {
 
 // 부서 생성
 export const createDepartment = async (deptName: string): Promise<string> => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/dept`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/dept/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ dept_name: deptName }),
@@ -62,7 +62,7 @@ export const updateDepartment = async (
   deptId: number,
   deptName: string
 ): Promise<string> => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/dept${deptId}`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/dept/${deptId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ dept_name: deptName }),
@@ -74,7 +74,7 @@ export const updateDepartment = async (
 
 // 부서 삭제
 export const deleteDepartmentAPI = async (deptId: number): Promise<string> => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/dept${deptId}`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/dept/${deptId}`, {
     method: "DELETE",
   });
 
@@ -88,7 +88,7 @@ export const deleteDepartmentAPI = async (deptId: number): Promise<string> => {
 
 // 프로젝트 목록 조회
 export const fetchProjects = async (): Promise<Project[]> => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/project`);
+  const response = await fetch(`${API_BASE_URL}/api/v1/project/`);
   if (!response.ok) throw new Error("프로젝트 목록을 불러오는데 실패했습니다.");
 
   const data: BackendProject[] = await response.json(); // ✨ 타입 명시
@@ -115,7 +115,7 @@ export const createProject = async (
     dept_id: deptId,
   };
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/project`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/project/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -130,7 +130,7 @@ export const updateProject = async (
   projectId: number,
   projectName: string
 ): Promise<string> => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/project${projectId}`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/project/${projectId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ project_name: projectName }),
@@ -142,7 +142,7 @@ export const updateProject = async (
 
 // 프로젝트 삭제
 export const deleteProjectAPI = async (projectId: number): Promise<string> => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/project${projectId}`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/project/${projectId}`, {
     method: "DELETE",
   });
 

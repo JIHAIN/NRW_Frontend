@@ -49,7 +49,7 @@ export const sendChatMessageStream = async (
   data: SendMessageRequest,
   onDelta: (token: string) => void
 ): Promise<void> => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/chat`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/chat/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -89,7 +89,7 @@ export const createChatSession = async (
   data: CreateSessionRequest
 ): Promise<string> => {
   // 1. URL 끝에 슬래시(/) 확인
-  const response = await fetch(`${API_BASE_URL}/api/v1/chat/sessions`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/chat/sessions/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -117,7 +117,7 @@ export const getChatSessions = async (
   userId: number
 ): Promise<ChatSession[]> => {
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/chat/sessions?user_id=${userId}`
+    `${API_BASE_URL}/api/v1/chat/sessions/?user_id=${userId}`
   );
 
   if (!response.ok) throw new Error(`목록 조회 실패: ${response.status}`);
@@ -133,7 +133,7 @@ export const getChatSessionDetail = async (
   sessionId: number | string
 ): Promise<SessionDetailResponse> => {
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/chat/sessions${sessionId}`
+    `${API_BASE_URL}/api/v1/chat/sessions/${sessionId}`
   );
 
   if (!response.ok) throw new Error(`대화 내용 로드 실패: ${response.status}`);
@@ -150,7 +150,7 @@ export const sendChatMessage = async (
   data: SendMessageRequest
 ): Promise<string> => {
   // 명세서에 따라 끝에 슬래시(/) 포함
-  const response = await fetch(`${API_BASE_URL}/api/v1/chat`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/chat/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -240,7 +240,7 @@ export const deleteChatSession = async (
   sessionId: number | string
 ): Promise<string> => {
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/chat/sessions${sessionId}`,
+    `${API_BASE_URL}/api/v1/chat/sessions/${sessionId}`,
     {
       method: "DELETE",
     }

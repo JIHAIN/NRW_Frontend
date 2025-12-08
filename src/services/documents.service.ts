@@ -81,7 +81,7 @@ export const fetchDocuments = async (
   if (projectId) params.append("project_id", String(projectId));
 
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/documents?${params.toString()}`
+    `${API_BASE_URL}/api/v1/documents/?${params.toString()}`
   );
 
   if (!response.ok) {
@@ -97,7 +97,7 @@ export const fetchDocuments = async (
 // 2. 문서 내용 조회
 // --------------------------------------------------------------------------
 export const fetchDocumentContent = async (docId: number): Promise<string> => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/documents${docId}`);
+  const response = await fetch(`${API_BASE_URL}/api/v1/documents/${docId}`);
 
   if (!response.ok) throw new Error("Failed to fetch document content");
 
@@ -128,7 +128,7 @@ export const uploadDocument = async (
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${API_BASE_URL}/api/v1/parsing/upload-and-parse`);
+    xhr.open("POST", `${API_BASE_URL}/api/v1/parsing/upload-and-parse/`);
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && onProgress) {
@@ -168,7 +168,7 @@ export const downloadDocument = async (
   filename: string
 ): Promise<void> => {
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/documents/download${docId}`
+    `${API_BASE_URL}/api/v1/documents/download/${docId}`
   );
 
   if (!response.ok) throw new Error("Download failed");
