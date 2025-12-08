@@ -58,7 +58,7 @@ export interface RequestDetailData {
 export const createRequest = async (
   payload: CreateRequestPayload
 ): Promise<string> => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/requests/`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/requests`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -76,12 +76,12 @@ export const fetchRequests = async (
   status: RequestStatus | "" = "",
   deptId?: number
 ): Promise<RequestItem[]> => {
-  let url = `${API_BASE_URL}/api/v1/admin/requests/`;
+  let url = `${API_BASE_URL}/api/v1/admin/requests`;
   const params = new URLSearchParams();
 
   if (status) params.append("status", status);
   if (deptId) {
-    url = `${API_BASE_URL}/api/v1/admin/requests/by-dept/${deptId}`;
+    url = `${API_BASE_URL}/api/v1/admin/requests/by-dept${deptId}`;
   }
 
   const queryString = params.toString();
@@ -102,9 +102,7 @@ export const fetchRequests = async (
 export const fetchRequestDetail = async (
   reqId: number
 ): Promise<RequestDetailData> => {
-  const response = await fetch(
-    `${API_BASE_URL}/api/v1/admin/requests/${reqId}`
-  );
+  const response = await fetch(`${API_BASE_URL}/api/v1/admin/requests${reqId}`);
 
   if (!response.ok) throw new Error("상세 정보 조회 실패");
 
