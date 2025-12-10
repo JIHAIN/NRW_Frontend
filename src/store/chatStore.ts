@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Document } from "@/types/UserType";
+// [수정] 존재하지 않고 사용하지 않는 type Message as ApiMessage 제거
 import { createChatSession, streamChatResponse } from "@/services/chat.service";
 
 // ----------------------------------------------------------------------
@@ -30,11 +31,10 @@ interface ChatState {
   sessions: ChatSession[];
   selectedSessionId: string | null;
 
-  // [NEW] 세션별 작성 중인 텍스트 저장 (Draft)
-  // 예: { "session-1": "안녕하세요", "session-2": "질문있습니다" }
+  // 세션별 작성 중인 텍스트 저장 (Draft)
   drafts: Record<string, string>;
 
-  // [NEW] 전역 스트리밍 상태 (백그라운드 처리를 위해 Store에서 관리)
+  // 전역 스트리밍 상태
   isStreaming: boolean;
 
   // 뷰어/참조 관련
@@ -51,15 +51,15 @@ interface ChatState {
   updateSessionTitle: (sessionId: string, title: string) => void;
 
   // 메시지 및 드래프트 조작
-  setDraft: (sessionId: string, text: string) => void; // 입력창 글자 저장
+  setDraft: (sessionId: string, text: string) => void;
   addMessage: (sessionId: string, message: Message) => void;
   setMessages: (sessionId: string, messages: Message[]) => void;
 
-  // [NEW] 메시지 전송 로직 (ChatPanel에서 이동)
+  // 메시지 전송 로직
   sendMessage: (props: {
-    sessionId: string | null; // null이면 새 세션 생성
+    sessionId: string | null;
     content: string;
-    userId: number; // API 호출용
+    userId: number;
   }) => Promise<void>;
 
   // UI 상태 조작
@@ -70,7 +70,7 @@ interface ChatState {
   openDocument: (doc: Document) => void;
   closeDocument: () => void;
 
-  // [NEW] 사용자 변경/로그아웃 시 데이터 초기화
+  // 사용자 변경/로그아웃 시 데이터 초기화
   resetAll: () => void;
 }
 
@@ -104,7 +104,6 @@ export const useChatStore = create(
         set((state) => ({
           sessions: [newSession, ...state.sessions],
           selectedSessionId: id,
-          // 새 세션용 빈 드래프트 생성
           drafts: { ...state.drafts, [id]: "" },
         }));
       },
@@ -143,7 +142,7 @@ export const useChatStore = create(
       deleteSession: (sessionId) =>
         set((state) => {
           const newDrafts = { ...state.drafts };
-          delete newDrafts[sessionId]; // 드래프트도 삭제
+          delete newDrafts[sessionId];
 
           return {
             sessions: state.sessions.filter((s) => s.id !== sessionId),
@@ -168,7 +167,8 @@ export const useChatStore = create(
           try {
             const title =
               trimmed.length > 20 ? trimmed.substring(0, 20) + "..." : trimmed;
-            // API 호출로 세션 ID 발급
+
+            // chat.service.ts 수정본은 여기서 string(ID)을 반환합니다.
             const newSessionId = await createChatSession({
               user_id: userId,
               title,
@@ -182,19 +182,18 @@ export const useChatStore = create(
           }
         }
 
-        // 2. 상태 업데이트: 로딩 시작, 입력창 비우기(Draft 제거)
+        // 2. 상태 업데이트
         set((state) => {
           const newDrafts = { ...state.drafts };
-          // 메시지를 보냈으니 해당 방의 임시저장 글은 삭제
           if (activeId) delete newDrafts[activeId];
           return {
             isStreaming: true,
             drafts: newDrafts,
-            selectedSessionId: activeId, // 혹시 모르니 선택 확실히
+            selectedSessionId: activeId,
           };
         });
 
-        // 3. 사용자 메시지 UI에 즉시 추가 (낙관적 업데이트)
+        // 3. 사용자 메시지 UI에 즉시 추가
         const userMsg: Message = {
           id: `u-${Date.now()}`,
           role: "user",
@@ -217,20 +216,17 @@ export const useChatStore = create(
         try {
           await streamChatResponse(
             {
-              conversation_id: activeId,
+              conversation_id: activeId, // chat.service.ts 타입과 일치 (string)
               message: trimmed,
               user_id: userId,
             },
             (token) => {
-              // 토큰 수신 시마다 Store 상태 업데이트
-              // (Store 내부는 React 컴포넌트 생명주기와 무관하게 동작하므로 백그라운드 처리가 됨)
               set((state) => ({
                 sessions: state.sessions.map((session) => {
                   if (session.id === activeId) {
                     const msgs = [...session.messages];
                     const lastIdx = msgs.length - 1;
                     if (lastIdx >= 0) {
-                      // 마지막 메시지(봇 메시지)에 토큰 누적
                       msgs[lastIdx] = {
                         ...msgs[lastIdx],
                         content: msgs[lastIdx].content + token,
@@ -245,7 +241,6 @@ export const useChatStore = create(
           );
         } catch (error) {
           console.error("Streaming error in Store:", error);
-          // 에러 발생 시 봇 메시지에 에러 문구 추가
           set((state) => ({
             sessions: state.sessions.map((session) => {
               if (session.id === activeId) {
@@ -265,7 +260,6 @@ export const useChatStore = create(
             }),
           }));
         } finally {
-          // 6. 스트리밍 종료
           set({ isStreaming: false });
         }
       },
@@ -286,7 +280,6 @@ export const useChatStore = create(
           viewMode: "list",
         }),
 
-      // [핵심] 사용자 변경/로그아웃 시 모든 데이터 초기화
       resetAll: () =>
         set({
           sessions: [],
@@ -299,7 +292,7 @@ export const useChatStore = create(
         }),
     }),
     {
-      name: "chat-storage", // 로컬 스토리지 키 이름
+      name: "chat-storage",
       storage: createJSONStorage(() => localStorage),
     }
   )

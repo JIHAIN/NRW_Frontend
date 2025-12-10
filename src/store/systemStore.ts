@@ -9,6 +9,9 @@ import {
   deleteProjectAPI,
 } from "@/services/system.service";
 
+// [추가] 다이얼로그 스토어 (getState로 접근하기 위해 임포트)
+import { useDialogStore } from "@/store/dialogStore";
+
 // --------------------------------------------------------------------------
 // Store Interface
 // --------------------------------------------------------------------------
@@ -21,11 +24,11 @@ interface SystemState {
   fetchSystemData: () => Promise<void>;
 
   // 관리자용 액션 (CRUD)
-  addDepartment: (name: string) => Promise<void>; // Async로 변경
-  deleteDepartment: (id: number) => Promise<void>; // Async로 변경
+  addDepartment: (name: string) => Promise<void>;
+  deleteDepartment: (id: number) => Promise<void>;
 
-  addProject: (project: Project) => Promise<void>; // Async로 변경
-  deleteProject: (id: number) => Promise<void>; // Async로 변경
+  addProject: (project: Project) => Promise<void>;
+  deleteProject: (id: number) => Promise<void>;
 }
 
 export const useSystemStore = create<SystemState>((set, get) => ({
@@ -56,11 +59,16 @@ export const useSystemStore = create<SystemState>((set, get) => ({
   addDepartment: async (name) => {
     try {
       await createDepartment(name);
-      // 추가 후 목록 갱신 (서버에서 생성된 ID를 받아오기 위해 재조회)
+      // 추가 후 목록 갱신
       await get().fetchSystemData();
     } catch (error) {
       console.error("부서 추가 실패:", error);
-      alert("부서 추가 중 오류가 발생했습니다.");
+      // [수정] alert -> useDialogStore.getState().alert
+      useDialogStore.getState().alert({
+        title: "오류 발생",
+        message: "부서 추가 중 오류가 발생했습니다.",
+        variant: "error",
+      });
     }
   },
 
@@ -72,20 +80,30 @@ export const useSystemStore = create<SystemState>((set, get) => ({
       await get().fetchSystemData();
     } catch (error) {
       console.error("부서 삭제 실패:", error);
-      alert("부서 삭제 중 오류가 발생했습니다.");
+      // [수정] alert -> useDialogStore.getState().alert
+      useDialogStore.getState().alert({
+        title: "오류 발생",
+        message: "부서 삭제 중 오류가 발생했습니다.",
+        variant: "error",
+      });
     }
   },
 
   // 4. 프로젝트 추가
   addProject: async (project) => {
     try {
-      // API 호출 (project 객체에서 필요한 이름과 부서ID만 추출)
+      // API 호출
       await createProject(project.name, project.departmentId);
       // 추가 후 목록 갱신
       await get().fetchSystemData();
     } catch (error) {
       console.error("프로젝트 추가 실패:", error);
-      alert("프로젝트 추가 중 오류가 발생했습니다.");
+      // [수정] alert -> useDialogStore.getState().alert
+      useDialogStore.getState().alert({
+        title: "오류 발생",
+        message: "프로젝트 추가 중 오류가 발생했습니다.",
+        variant: "error",
+      });
     }
   },
 
@@ -97,7 +115,12 @@ export const useSystemStore = create<SystemState>((set, get) => ({
       await get().fetchSystemData();
     } catch (error) {
       console.error("프로젝트 삭제 실패:", error);
-      alert("프로젝트 삭제 중 오류가 발생했습니다.");
+      // [수정] alert -> useDialogStore.getState().alert
+      useDialogStore.getState().alert({
+        title: "오류 발생",
+        message: "프로젝트 삭제 중 오류가 발생했습니다.",
+        variant: "error",
+      });
     }
   },
 }));

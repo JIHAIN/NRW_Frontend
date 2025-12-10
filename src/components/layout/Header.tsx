@@ -6,16 +6,6 @@ function Header() {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuthStore();
 
-  const handleStart = () => {
-    if (isAuthenticated) {
-      // 로그인 상태면 바로 채팅방으로
-      navigate("/chat");
-    } else {
-      // 아니면 로그인 페이지로
-      navigate("/login");
-    }
-  };
-
   const handleUser = () => {
     if (isAuthenticated) {
       // 로그인 상태면 유저정보로
@@ -29,7 +19,7 @@ function Header() {
   return (
     <div className="w-full">
       {/* 1. Navigation */}
-      <nav className="    z-50">
+      <nav className="z-50">
         <div className=" h-14 flex items-center justify-end">
           {/* 버튼 영역 (오른쪽) */}
           <div className=" flex gap-6 mr-10">
@@ -40,15 +30,17 @@ function Header() {
               onClick={handleUser}
               className="point-hover "
             >
-              {isAuthenticated ? [user?.userName] : "로그인"}
-            </Button>
-
-            <Button
-              onClick={handleStart}
-              className="bg-blue-500 hover:bg-blue-700 text-white cursor-pointer rounded-full"
-            >
-              {/* 상태에 따라 텍스트 변경*/}
-              {isAuthenticated ? "새 채팅" : "시작하기"}
+              {isAuthenticated ? (
+                <span className="text-[13px]">
+                  안녕하세요{" "}
+                  <span className="font-bold text-[15px] text-blue-600">
+                    {user?.userName}
+                  </span>{" "}
+                  님
+                </span>
+              ) : (
+                "로그인"
+              )}
             </Button>
           </div>
         </div>

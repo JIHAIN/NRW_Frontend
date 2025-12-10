@@ -15,6 +15,8 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useAuthStore } from "@/store/authStore";
+import { useSystemStore } from "@/store/systemStore";
+import { API_BASE_URL } from "@/lib/constants";
 
 const data = {
   navMain: [
@@ -62,24 +64,35 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuthStore();
+  const { departments } = useSystemStore(); // 부서 목록 가져오기
 
-  // 1. user.role이 있으면 소문자로 변환(toLowerCase), 없으면 "user"
   const userRole = user?.role ? user.role.toLowerCase() : "user";
 
-  // useMemo를 사용하여 role이 바뀔 때만 다시 계산
   const filteredNavMain = React.useMemo(() => {
     return data.navMain.filter((item) => {
-      // 데이터에 정의된 roles 배열에 현재 내 role이 포함되어 있는지 확인
-      // (만약 데이터에 roles가 없다면 기본적으로 보여줌)
       return item.roles ? item.roles.includes(userRole) : true;
     });
   }, [userRole]);
 
-  // 3. 사이드바 하단에 표시할 유저 정보 객체 생성
+  // [수정] 부서 ID를 이용해 부서 이름 찾기
+  const deptName = React.useMemo(() => {
+    if (!user?.departmentId) return "부서 미배정";
+    const dept = departments.find((d) => d.id === user.departmentId);
+    return dept ? dept.dept_name : `부서 ${user.departmentId}`;
+  }, [user, departments]);
+
+  const profileUrl = React.useMemo(() => {
+    if (!user?.profileImagePath) return ""; // 없으면 빈 문자열 (AvatarFallback 보임)
+    if (user.profileImagePath.startsWith("http")) return user.profileImagePath;
+    return `${API_BASE_URL}${user.profileImagePath}`;
+  }, [user?.profileImagePath]);
+
+  // [수정] 현재 유저 정보 표시 객체
   const currentUser = {
-    name: `${user?.accountId} 계정`, // 실제 이름이 있다면 그것을 사용 (현재는 role로 대체)
-    email: `${user?.departmentId} / ${user?.projectId || "프로젝트 없음"}`, // 부서/프로젝트 표시
-    avatar: "/bat.gif", // 아바타는 고정 (나중에 DB에서 가져오면 변경)
+    // 이제 user.userName이 매핑되어 있으므로 정상 출력됨
+    name: user?.userName || ` 이름 없음`,
+    email: `${deptName} / ${user?.role || "사용자"}`, // 부서명과 직급 표시
+    avatar: profileUrl || "CN",
   };
 
   return (

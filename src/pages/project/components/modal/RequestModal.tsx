@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react"; // useMemo 추가
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,8 +31,10 @@ import {
 } from "@/services/documents.service";
 import { createRequest } from "@/services/request.service";
 import { useAuthStore } from "@/store/authStore";
-import type { RequestType, DocumentCategory } from "@/types/UserType"; // 타입 추가
-import { CATEGORY_LABEL, CATEGORY_FILTERS } from "@/constants/projectConstants"; // 상수 추가
+import type { RequestType, DocumentCategory } from "@/types/UserType";
+import { CATEGORY_LABEL, CATEGORY_FILTERS } from "@/constants/projectConstants";
+// [추가] 다이얼로그 스토어
+import { useDialogStore } from "@/store/dialogStore";
 
 interface RequestModalProps {
   projectId: number | undefined;
@@ -44,10 +46,11 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { user } = useAuthStore();
+  const dialog = useDialogStore(); // [추가] 다이얼로그 훅
 
   // 폼 상태
   const [requestType, setRequestType] = useState<RequestType>("CREATE");
-  const [category, setCategory] = useState<DocumentCategory>("GENERAL"); //  카테고리 상태 추가
+  const [category, setCategory] = useState<DocumentCategory>("GENERAL");
   const [content, setContent] = useState("");
   const [targetDocId, setTargetDocId] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -59,30 +62,56 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
     enabled: !!projectId && open && requestType !== "CREATE",
   });
 
-  //  [추가] 카테고리 필터링된 문서 목록 (UPDATE/DELETE 용)
+  // 카테고리 필터링된 문서 목록
   const filteredDocuments = useMemo(() => {
     if (!category) return projectDocuments;
-    // "GENERAL"이거나 특정 카테고리 선택 시 필터링 (전체보기 옵션이 없다면 선택된 것만)
     return projectDocuments.filter((doc) => doc.category === category);
   }, [projectDocuments, category]);
 
   const handleSubmit = async () => {
-    // 1. 기본 유효성 검사
-    if (!content.trim()) return alert("요청 사유를 입력해주세요.");
-    if (!projectId) return alert("프로젝트 정보가 없습니다.");
-    if (!user?.departmentId) return alert("부서 정보가 없습니다.");
+    // 1. 기본 유효성 검사 (alert -> dialog.alert)
+    if (!content.trim()) {
+      return dialog.alert({
+        message: "요청 사유를 입력해주세요.",
+        variant: "warning",
+      });
+    }
+    if (!projectId) {
+      return dialog.alert({
+        message: "프로젝트 정보가 없습니다.",
+        variant: "error",
+      });
+    }
+    if (!user?.departmentId) {
+      return dialog.alert({
+        message: "부서 정보가 없습니다.",
+        variant: "error",
+      });
+    }
 
-    if (!user) return alert("로그인 정보가 없습니다.");
+    if (!user) {
+      return dialog.alert({
+        message: "로그인 정보가 없습니다.",
+        variant: "error",
+      });
+    }
 
-    // 2. 유형별 추가 검사
-    if (requestType === "CREATE" && !selectedFile)
-      return alert("파일을 선택해주세요.");
-    if (requestType !== "CREATE" && !targetDocId)
-      return alert("대상 문서를 선택해주세요.");
+    // 2. 유형별 추가 검사 (alert -> dialog.alert)
+    if (requestType === "CREATE" && !selectedFile) {
+      return dialog.alert({
+        message: "파일을 선택해주세요.",
+        variant: "warning",
+      });
+    }
+    if (requestType !== "CREATE" && !targetDocId) {
+      return dialog.alert({
+        message: "대상 문서를 선택해주세요.",
+        variant: "warning",
+      });
+    }
 
     try {
       setIsSubmitting(true);
-      // 최종적으로 보낼 문서 ID를 담을 변수 선언
       let finalTargetId: number | null = null;
 
       // [Step 1] 신규 등록(CREATE)
@@ -102,7 +131,6 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
         finalTargetId = Number(targetDocId);
       }
 
-      // ID가 없으면 중단 (안전장치)
       if (!finalTargetId) {
         throw new Error("문서 ID를 확보하지 못했습니다.");
       }
@@ -116,12 +144,23 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
         content: content,
       });
 
-      alert("요청이 성공적으로 전송되었습니다.");
+      // alert -> await dialog.alert
+      await dialog.alert({
+        title: "요청 완료",
+        message: "요청이 성공적으로 전송되었습니다.",
+        variant: "success",
+      });
+
       setOpen(false);
       resetForm();
     } catch (error) {
       console.error(error);
-      alert("처리 중 오류가 발생했습니다.");
+      // alert -> dialog.alert
+      dialog.alert({
+        title: "오류 발생",
+        message: "처리 중 오류가 발생했습니다.",
+        variant: "error",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -131,7 +170,7 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
     setContent("");
     setTargetDocId("");
     setSelectedFile(null);
-    setCategory("GENERAL"); // 초기화
+    setCategory("GENERAL");
     setRequestType("CREATE");
     setIsSubmitting(false);
   };
@@ -185,7 +224,7 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
             </Select>
           </div>
 
-          {/*  2. 카테고리 선택 (메타데이터 or 필터링) */}
+          {/* 2. 카테고리 선택 */}
           <div className="grid gap-2 ">
             <Label className="text-sm font-semibold flex gap-4 ">
               문서 분류
@@ -199,7 +238,7 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
               value={category}
               onValueChange={(v) => {
                 setCategory(v as DocumentCategory);
-                setTargetDocId(""); // 카테고리 바꾸면 선택된 문서도 초기화
+                setTargetDocId("");
               }}
             >
               <SelectTrigger className="bg-white shadow-sm">
@@ -234,14 +273,13 @@ export function RequestModal({ projectId, projectName }: RequestModalProps) {
                     placeholder={
                       isLoading
                         ? "로딩 중..."
-                        : filteredDocuments.length //  필터링된 목록 개수 확인
+                        : filteredDocuments.length
                         ? "문서 선택"
                         : "해당 분류의 문서 없음"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent className="bg-white max-h-[200px]">
-                  {/*  필터링된 목록 렌더링 */}
                   {filteredDocuments.map((doc) => (
                     <SelectItem key={doc.id} value={String(doc.id)}>
                       <div className="flex items-center gap-2">

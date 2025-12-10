@@ -228,3 +228,27 @@ export const uploadTempDocument = async ({
   // 전체 data를 리턴하는게 아니라 document_id만 리턴
   return data.id;
 };
+
+/**
+ * 문서 삭제 API (파일 + 벡터DB + SQL 삭제 마킹)
+ * DELETE /api/v1/admin/documents/{doc_pk}
+ */
+export const deleteDocument = async (documentId: number): Promise<string> => {
+  // [참고] 이전의 URL 슬래시 문제 해결에 따라, URL 끝에 슬래시를 붙이지 않습니다.
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/admin/documents/${documentId}`,
+    {
+      method: "DELETE",
+      // 실제 운영 환경에서는 인증 헤더(Authorization)가 필요할 수 있습니다.
+    }
+  );
+
+  // 응답 코드가 200 OK가 아니면 에러를 throw 합니다.
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`문서 삭제 실패: ${response.status} - ${errorBody}`);
+  }
+
+  // 성공 응답은 "string"을 반환하므로 text를 반환합니다.
+  return response.text();
+};

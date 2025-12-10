@@ -1,14 +1,17 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useSystemStore } from "@/store/systemStore";
-// [NEW] 채팅 스토어 import
 import { useChatStore } from "@/store/chatStore";
-import { FlaskConical, X, GripHorizontal, Loader2 } from "lucide-react";
-import type { User, UserRole } from "@/types/UserType";
+import { useUserStore } from "@/store/userStore";
+import { useDocumentStore } from "@/store/documentStore";
+import {
+  FlaskConical,
+  X,
+  GripHorizontal,
+  Loader2,
+  PowerOff,
+} from "lucide-react";
 
-// ----------------------------------------------------------------------
-// 1. 내부 전용 Select 컴포넌트 (기존 동일)
-// ----------------------------------------------------------------------
 interface TestSelectProps {
   label: string;
   value: string | number;
@@ -37,29 +40,25 @@ const TestSelect = ({
   </label>
 );
 
-// ----------------------------------------------------------------------
-// 2. 메인 컴포넌트
-// ----------------------------------------------------------------------
 export function TestAuthPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Store 구독
+  // Real Mode: 패널이 로그인 상태에 개입하지 않는 모드
+  const [isRealMode, setIsRealMode] = useState(false);
+
+  // Stores
   const { user, login, logout } = useAuthStore();
-  const { departments, projects, isLoading } = useSystemStore();
+  const { fetchSystemData } = useSystemStore();
+  const { fetchUserById } = useUserStore();
 
-  // ---------------------------------------------------------
-  // [핵심] UI 상태 관리
-  // ---------------------------------------------------------
-  const [selectedRole, setSelectedRole] = useState<UserRole | "NONE">("USER");
-  const [selectedDeptId, setSelectedDeptId] = useState<number>(0);
-  const [selectedProjId, setSelectedProjId] = useState<number>(0);
-
+  // 상태 관리
+  const [selectedUserId, setSelectedUserId] = useState<string>("REAL"); // 기본값을 REAL로 설정하여 간섭 최소화
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const isDragging = useRef(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
 
-  // 1. 초기화
   useEffect(() => {
     setIsMounted(true);
     if (typeof window !== "undefined") {
@@ -67,134 +66,88 @@ export function TestAuthPanel() {
     }
   }, []);
 
-  // 2. 현재 유저 상태와 UI 동기화
+  // 현재 로그인한 유저 정보 UI 동기화
   useEffect(() => {
-    if (user) {
-      setSelectedRole(user.role);
-      setSelectedDeptId(user.departmentId);
-      setSelectedProjId(user.projectId || 0);
-    } else {
-      setSelectedRole("NONE");
-      setSelectedDeptId(0);
-      setSelectedProjId(0);
+    // Real Mode일 때는 드롭다운 값을 강제로 변경하지 않음 (단, UI 표시용으로만 활용 가능)
+    if (isRealMode) {
+      setSelectedUserId("REAL");
+      return;
     }
-  }, [user]);
 
-  // ---------------------------------------------------------
-  // 3. 로그인 실행 함수 (유저 변경 로직)
-  // ---------------------------------------------------------
-  const performLogin = (role: UserRole, deptId: number, projId: number) => {
-    // [NEW] ★★★ 중요: 사용자 변경 시 채팅 데이터 완전 초기화 ★★★
-    // (이전 사용자의 대화 기록, 작성 중인 글 등이 남지 않도록 함)
-    useChatStore.getState().resetAll();
+    if (user) {
+      setSelectedUserId(String(user.id));
+    } else {
+      setSelectedUserId("0");
+    }
+  }, [user, isRealMode]);
 
-    const targetDept = departments.find((d) => d.id === deptId);
-    const deptName = targetDept ? targetDept.dept_name : "본사";
+  // 사용자 전환 핸들러
+  const handleUserSwitch = async (targetIdStr: string) => {
+    // 1. Real Mode 진입 (패널 비활성화)
+    if (targetIdStr === "REAL") {
+      setIsRealMode(true);
+      return;
+    }
 
-    // 랜덤 ID 부여 (실제 DB 연동 전 시뮬레이션용)
-    // ID가 바뀌어야 useEffect 등에서 새로운 유저로 인식하기 쉬움
-    const simUserId = Math.floor(Math.random() * 10000) + 1;
+    // Real Mode 해제
+    if (isRealMode) setIsRealMode(false);
 
-    const mockUser: User = {
-      id: simUserId,
-      accountId: "test_admin",
-      userName: `[Test] ${role} (${deptName})`,
-      role: role,
-      departmentId: deptId,
-      projectId: projId,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    login(mockUser);
-  };
-
-  // ---------------------------------------------------------
-  // 4. 자동 로그인 (최초 1회)
-  // ---------------------------------------------------------
-  const hasInit = useRef(false);
-
-  useEffect(() => {
-    if (isLoading || departments.length === 0 || hasInit.current) return;
-
-    // 초기값 설정
-    const initRole: UserRole = "SUPER_ADMIN";
-    const initDept = 0;
-    const initProj = 0;
-
-    setSelectedRole(initRole);
-    setSelectedDeptId(initDept);
-    setSelectedProjId(initProj);
-    performLogin(initRole, initDept, initProj);
-
-    hasInit.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, departments]);
-
-  // ---------------------------------------------------------
-  // 5. 핸들러
-  // ---------------------------------------------------------
-  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newRole = e.target.value as UserRole | "NONE";
-
-    // "로그인 안함" 선택 시 로그아웃 및 채팅 초기화
-    if (newRole === "NONE") {
-      setSelectedRole("NONE");
-      setSelectedDeptId(0);
-      setSelectedProjId(0);
-
-      // [NEW] 채팅 데이터 초기화
+    // 2. 로그아웃 처리
+    if (targetIdStr === "0") {
       useChatStore.getState().resetAll();
-
+      useDocumentStore.setState({ documents: [], selectedDocument: null });
       logout();
       return;
     }
 
-    let newDept = selectedDeptId;
-    if (newRole === "SUPER_ADMIN") {
-      newDept = 0;
-    } else if (newDept === 0 && departments.length > 0) {
-      newDept = departments[0].id;
+    // 3. 특정 유저로 강제 로그인 (DB 연동)
+    try {
+      setIsProcessing(true);
+      const targetId = Number(targetIdStr);
+
+      // 데이터 초기화
+      useChatStore.getState().resetAll();
+      useDocumentStore.setState({
+        documents: [],
+        selectedDocument: null,
+        taskQueue: [],
+      });
+
+      // 실제 DB 조회
+      const realUser = await fetchUserById(targetId);
+
+      // 로그인 처리
+      login(realUser);
+
+      // 시스템 데이터 최신화
+      await fetchSystemData();
+
+      // 문서 컨텍스트 설정
+      if (realUser.departmentId) {
+        useDocumentStore
+          .getState()
+          .setContext(realUser.departmentId, realUser.projectId || 0);
+      }
+
+      console.log(`[TestAuthPanel] Switched to User ID: ${targetId}`);
+    } catch (error) {
+      console.error("사용자 전환 실패:", error);
+      alert("사용자 정보를 불러오는데 실패했습니다.");
+    } finally {
+      setIsProcessing(false);
     }
-    const newProj = 0;
-
-    setSelectedRole(newRole);
-    setSelectedDeptId(newDept);
-    setSelectedProjId(newProj);
-
-    performLogin(newRole, newDept, newProj);
   };
 
-  const handleDeptChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newDept = Number(e.target.value);
-    const newProj = 0;
-
-    setSelectedDeptId(newDept);
-    setSelectedProjId(newProj);
-
-    if (selectedRole !== "NONE") {
-      performLogin(selectedRole, newDept, newProj);
-    }
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedUserId(val);
+    handleUserSwitch(val);
   };
 
-  const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newProj = Number(e.target.value);
-    setSelectedProjId(newProj);
-
-    if (selectedRole !== "NONE") {
-      performLogin(selectedRole, selectedDeptId, newProj);
-    }
-  };
-
-  // ---------------------------------------------------------
-  // 6. 드래그 로직 (기존 동일)
-  // ---------------------------------------------------------
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
     isDragging.current = false;
     dragStartPos.current = { x: e.clientX, y: e.clientY };
-
     const startX = e.clientX - position.x;
     const startY = e.clientY - position.y;
 
@@ -204,7 +157,6 @@ export function TestAuthPanel() {
         moveEvent.clientY - dragStartPos.current.y
       );
       if (moveDistance > 5) isDragging.current = true;
-
       setPosition({
         x: moveEvent.clientX - startX,
         y: moveEvent.clientY - startY,
@@ -220,11 +172,6 @@ export function TestAuthPanel() {
     window.addEventListener("mouseup", handleMouseUp);
   };
 
-  const filteredProjects = useMemo(() => {
-    if (!selectedDeptId) return [];
-    return projects.filter((p) => p.departmentId === selectedDeptId);
-  }, [projects, selectedDeptId]);
-
   if (!isMounted) return null;
 
   return (
@@ -236,32 +183,54 @@ export function TestAuthPanel() {
         <button
           onMouseDown={handleMouseDown}
           onClick={() => !isDragging.current && setIsOpen(true)}
-          className="rounded-full bg-blue-600 p-3 text-white shadow-lg transition-transform hover:scale-110 hover:bg-blue-700 cursor-move active:scale-95"
+          className={`rounded-full p-3 text-white shadow-lg transition-transform hover:scale-110 cursor-move active:scale-95 ${
+            isRealMode
+              ? "bg-gray-600 hover:bg-gray-700"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
+          title={
+            isRealMode ? "Real Mode (패널 비활성)" : "Dev Mode (패널 활성)"
+          }
         >
-          <FlaskConical size={24} />
+          {isRealMode ? <PowerOff size={24} /> : <FlaskConical size={24} />}
         </button>
       )}
 
       {isOpen && (
-        <div className="flex flex-col gap-2 rounded-xl border-2 border-blue-500 bg-blue-50 p-4 shadow-xl animate-in fade-in zoom-in-95 duration-200 min-w-60">
+        <div
+          className={`flex flex-col gap-2 rounded-xl border-2 p-4 shadow-xl animate-in fade-in zoom-in-95 duration-200 min-w-64 ${
+            isRealMode
+              ? "border-gray-400 bg-gray-100"
+              : "border-blue-500 bg-blue-50"
+          }`}
+        >
           <div
-            className="flex items-center justify-between border-b border-blue-200 pb-2 mb-1 cursor-move"
+            className={`flex items-center justify-between border-b pb-2 mb-1 cursor-move ${
+              isRealMode ? "border-gray-300" : "border-blue-200"
+            }`}
             onMouseDown={handleMouseDown}
           >
-            <h4 className="text-sm font-bold text-blue-700 flex items-center gap-2 pointer-events-none">
-              <GripHorizontal size={16} className="text-blue-400" />
-              권한 시뮬레이션
+            <h4
+              className={`text-sm font-bold flex items-center gap-2 pointer-events-none ${
+                isRealMode ? "text-gray-600" : "text-blue-700"
+              }`}
+            >
+              <GripHorizontal
+                size={16}
+                className={isRealMode ? "text-gray-400" : "text-blue-400"}
+              />
+              {isRealMode ? "Real Mode (Off)" : "Dev User Switcher"}
             </h4>
             <button
               onClick={() => setIsOpen(false)}
               onMouseDown={(e) => e.stopPropagation()}
-              className="text-blue-400 hover:text-blue-700 transition-colors cursor-pointer"
+              className="text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
             >
               <X size={18} />
             </button>
           </div>
 
-          {isLoading ? (
+          {isProcessing ? (
             <div className="flex justify-center items-center py-4 text-blue-500">
               <Loader2 className="animate-spin" size={24} />
             </div>
@@ -270,56 +239,36 @@ export function TestAuthPanel() {
               onMouseDown={(e) => e.stopPropagation()}
               className="flex flex-col gap-2"
             >
-              {/* Role 선택 */}
               <TestSelect
-                label="Role"
-                value={selectedRole}
-                onChange={handleRoleChange}
+                label="User"
+                value={selectedUserId}
+                onChange={handleChange}
               >
-                <option value="SUPER_ADMIN">총괄 관리자</option>
-                <option value="MANAGER">부서 관리자</option>
-                <option value="USER">일반 사용자</option>
-                <option value="NONE" className="text-red-500 font-bold">
-                  로그인 안함
-                </option>
+                <option value="REAL">패널 끄기 (Real Mode)</option>
+                <option value="0">로그인 안 함 (Guest)</option>
+                <optgroup label="Real DB Users">
+                  <option value="1">총괄 관리자 (ID: 1)</option>
+                  <option value="2">부서 관리자 (ID: 2)</option>
+                  <option value="3">일반 사용자 (ID: 3)</option>
+                </optgroup>
               </TestSelect>
 
-              {/* Dept 선택 */}
-              <TestSelect
-                label="Dept"
-                value={selectedDeptId}
-                onChange={handleDeptChange}
-                disabled={
-                  selectedRole === "SUPER_ADMIN" || selectedRole === "NONE"
-                }
+              <div
+                className={`mt-2 p-2 rounded text-[10px] font-mono border ${
+                  isRealMode
+                    ? "bg-gray-200 text-gray-700 border-gray-300"
+                    : "bg-blue-100 text-blue-800 border-blue-200"
+                }`}
               >
-                <option value={0}>전체 / 선택 안함</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.dept_name}
-                  </option>
-                ))}
-              </TestSelect>
-
-              {/* Project 선택 */}
-              <TestSelect
-                label="Proj"
-                value={selectedProjId}
-                onChange={handleProjectChange}
-                disabled={selectedRole !== "USER" || !selectedDeptId}
-              >
-                <option value={0}>선택 안함</option>
-                {filteredProjects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </TestSelect>
-
-              {/* 상태 확인용 텍스트 */}
-              <div className="mt-2 p-2 bg-blue-100 rounded text-[10px] text-blue-800 font-mono">
-                User: {user ? user.userName : "Guest (비로그인)"} <br />
-                Dept: {selectedDeptId} | Proj: {selectedProjId}
+                <strong>Current State:</strong> <br />
+                ID: {user?.id || "-"} <br />
+                Name: {user ? user.userName : "Guest"} <br />
+                Role: {user?.role || "-"} <br />
+                {isRealMode && (
+                  <span className="font-bold text-green-700 mt-1 block">
+                    [Real Mode Active]
+                  </span>
+                )}
               </div>
             </div>
           )}

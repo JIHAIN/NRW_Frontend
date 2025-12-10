@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MessageSquare, Trash2, Plus, Loader2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // useNavigate 추가
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -19,33 +19,40 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { useChatStore } from "@/store/chatStore";
+import { useAuthStore } from "@/store/authStore"; // AuthStore 추가
 import { getChatSessions, deleteChatSession } from "@/services/chat.service";
 import { useEffect } from "react";
+import { useDialogStore } from "@/store/dialogStore";
 
 export function ProjectsNavigation() {
   const queryClient = useQueryClient();
-  // store의 createSession 대신, 상태를 직접 제어하거나 동기화 로직 사용
+  const navigate = useNavigate();
+  const dialog = useDialogStore();
+
   const {
     selectedSessionId,
     setSelectedSessionId,
     createSession,
     sessions: storeSessions,
   } = useChatStore();
-  const USER_ID = 1;
 
-  // 1. API 목록 가져오기
+  // [수정] 로그인한 유저 ID 가져오기
+  const { user } = useAuthStore();
+  const userId = user?.id;
+
+  // 1. API 목록 가져오기 (userId가 있을 때만)
   const { data: apiSessions, isLoading } = useQuery({
-    queryKey: ["chatSessions", USER_ID],
-    queryFn: () => getChatSessions(USER_ID),
+    queryKey: ["chatSessions", userId],
+    queryFn: () => getChatSessions(userId!),
+    enabled: !!userId,
   });
 
-  // [수정] API 목록을 Store와 강력 동기화
+  // API 목록을 Store와 동기화
   useEffect(() => {
     if (apiSessions && apiSessions.length > 0) {
       apiSessions.forEach((s) => {
         const strId = String(s.id);
         const exists = storeSessions.some((local) => local.id === strId);
-        // 스토어에 없는 방이면 새로 생성해둡니다.
         if (!exists) {
           createSession(strId, s.title);
         }
@@ -53,22 +60,38 @@ export function ProjectsNavigation() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiSessions]);
-  // storeSessions를 의존성에 넣으면 무한루프 돌 수 있으므로 뺍니다.
 
   // 2. 삭제 기능
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteChatSession(id),
     onSuccess: (_, deletedId) => {
-      queryClient.invalidateQueries({ queryKey: ["chatSessions"] });
+      queryClient.invalidateQueries({ queryKey: ["chatSessions", userId] });
       useChatStore.getState().deleteSession(String(deletedId));
       if (selectedSessionId === String(deletedId)) {
         setSelectedSessionId(null);
       }
+      dialog.alert({ message: "삭제되었습니다.", variant: "success" });
+    },
+    onError: () => {
+      dialog.alert({ message: "삭제에 실패했습니다.", variant: "error" });
     },
   });
 
-  const handleDelete = (id: number) => {
-    if (confirm("삭제하시겠습니까?")) deleteMutation.mutate(id);
+  const handleDelete = async (id: number) => {
+    const confirmed = await dialog.confirm({
+      title: "채팅 삭제",
+      message: "정말 삭제하시겠습니까?",
+      variant: "warning",
+    });
+    if (confirmed) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  // [수정] 새 채팅 버튼 핸들러
+  const handleNewChat = () => {
+    setSelectedSessionId(null); // 세션 선택 해제
+    navigate("/chat"); // 채팅 페이지로 이동 (자동으로 새 세션 준비됨)
   };
 
   return (
@@ -76,8 +99,8 @@ export function ProjectsNavigation() {
       <div className="flex items-center justify-between px-2 mb-2">
         <SidebarGroupLabel>채팅 목록</SidebarGroupLabel>
         <button
-          onClick={() => setSelectedSessionId(null)}
-          className="text-xs flex gap-1 items-center hover:text-blue-500"
+          onClick={handleNewChat}
+          className="text-xs flex gap-1 items-center hover:text-blue-500 cursor-pointer text-gray-500"
         >
           <Plus size={14} /> 새 채팅
         </button>
@@ -90,7 +113,6 @@ export function ProjectsNavigation() {
 
         {apiSessions?.map((session) => (
           <SidebarMenuItem key={session.id}>
-            {/* [수정] asChild 제거 및 span으로 감싸서 버튼 중첩 오류 해결 */}
             <SidebarMenuButton
               isActive={String(session.id) === selectedSessionId}
               className="data-[active=true]:bg-blue-100 data-[active=true]:text-blue-700"

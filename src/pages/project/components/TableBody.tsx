@@ -39,7 +39,7 @@ const TableBody: FC<TableBodyProps> = ({
         return (
           <div
             key={item.id}
-            className="flex items-center text-sm text-gray-700 hover:bg-blue-50/50 transition-colors p-3 group"
+            className="flex items-center text-sm text-gray-700  border-gray-200 hover:bg-blue-50/50 transition-colors p-3 group"
           >
             {/* 1. 체크박스 */}
             <div className="w-1/12 text-center">

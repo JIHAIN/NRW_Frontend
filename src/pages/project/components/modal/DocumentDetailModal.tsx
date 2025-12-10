@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,7 @@ import {
   downloadDocument,
 } from "@/services/documents.service";
 import { CATEGORY_LABEL, STATUS_CONFIG } from "@/constants/projectConstants";
+import { useDialogStore } from "@/store/dialogStore";
 
 interface DocumentDetailModalProps {
   document: Document | null;
@@ -49,6 +51,8 @@ export function DocumentDetailModal({
     staleTime: 1000 * 60 * 5,
   });
 
+  const dialog = useDialogStore();
+
   // 2. 데이터가 없으면 렌더링 안 함
   if (!document) return null;
 
@@ -59,7 +63,7 @@ export function DocumentDetailModal({
     try {
       await downloadDocument(document.id, document.originalFilename);
     } catch (e) {
-      alert("다운로드에 실패했습니다.");
+      dialog.alert({ message: "다운로드에 실패했습니다.", variant: "error" });
       console.error(e);
     }
   };

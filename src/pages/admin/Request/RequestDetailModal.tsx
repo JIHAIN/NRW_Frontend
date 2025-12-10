@@ -21,9 +21,11 @@ import { fetchRequestDetail } from "@/services/request.service";
 import { downloadDocument } from "@/services/documents.service";
 
 import type { Document, RequestItem } from "@/types/UserType";
+// [추가] 다이얼로그 스토어
+import { useDialogStore } from "@/store/dialogStore";
 
 interface RequestDetailModalProps {
-  baseInfo: RequestItem | null; // 수정됨: ID 대신 기본 정보 객체 전체를 받음
+  baseInfo: RequestItem | null;
   open: boolean;
   onClose: () => void;
   onApprove: (id: number) => void;
@@ -38,6 +40,7 @@ export function RequestDetailModal({
   onReject,
 }: RequestDetailModalProps) {
   const requestId = baseInfo?.id;
+  const dialog = useDialogStore(); // [추가] 다이얼로그 훅
 
   const { data, isLoading } = useQuery({
     queryKey: ["requestDetail", requestId],
@@ -53,7 +56,12 @@ export function RequestDetailModal({
       await downloadDocument(doc.id, doc.originalFilename);
     } catch (error) {
       console.error("Download failed:", error);
-      alert("문서 다운로드에 실패했습니다.");
+
+      dialog.alert({
+        title: "다운로드 실패",
+        message: "문서 다운로드에 실패했습니다.",
+        variant: "error",
+      });
     }
   };
 
@@ -112,7 +120,7 @@ export function RequestDetailModal({
                     요청 유형
                   </span>
                   <span className="font-semibold text-blue-600">
-                    {getTypeText(baseInfo.request_type)} {/* 한글 변환 적용 */}
+                    {getTypeText(baseInfo.request_type)}
                   </span>
                 </div>
                 <div>
@@ -128,7 +136,7 @@ export function RequestDetailModal({
                         : "text-red-600"
                     }`}
                   >
-                    {getStatusText(req.status)} {/* 한글 변환 적용 */}
+                    {getStatusText(req.status)}
                   </span>
                 </div>
                 <div className="col-span-2">
@@ -143,14 +151,12 @@ export function RequestDetailModal({
                   <span className="text-xs text-slate-400 block mb-1">
                     요청자
                   </span>
-                  {/* ID 대신 이름 표시 (baseInfo 사용) */}
                   <span className="font-medium">{baseInfo.user_name}</span>
                 </div>
                 <div>
                   <span className="text-xs text-slate-400 block mb-1">
                     프로젝트
                   </span>
-                  {/* 프로젝트 이름 표시 (baseInfo 사용) */}
                   <span className="font-medium">{baseInfo.project_name}</span>
                 </div>
                 <div className="col-span-2">
@@ -162,7 +168,7 @@ export function RequestDetailModal({
               </div>
             </section>
 
-            {/* 2. 대상 문서 정보 (기존 로직 유지) */}
+            {/* 2. 대상 문서 정보 */}
             {doc && (
               <section className="space-y-3">
                 <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">

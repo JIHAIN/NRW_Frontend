@@ -7,6 +7,7 @@ import {
   fetchDocumentContent,
   downloadDocument,
 } from "@/services/documents.service";
+import { useDialogStore } from "@/store/dialogStore";
 
 export function DocViewer() {
   const {
@@ -15,6 +16,8 @@ export function DocViewer() {
     selectedDocument,
     closeDocument,
   } = useChatStore();
+
+  const dialog = useDialogStore();
 
   // 1. 문서 내용 조회 Query
   const {
@@ -42,7 +45,7 @@ export function DocViewer() {
       );
     } catch (error) {
       console.error("Download failed:", error);
-      alert("다운로드에 실패했습니다.");
+      dialog.alert({ message: "다운로드에 실패했습니다.", variant: "error" });
     }
   };
 

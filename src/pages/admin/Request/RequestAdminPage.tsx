@@ -37,10 +37,13 @@ const TABS: { label: string; value: RequestStatus | "" }[] = [
 ];
 
 import { useDocumentStore } from "@/store/documentStore";
+import { useDialogStore } from "@/store/dialogStore";
 
 export default function RequestAdminPage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+
+  const dialog = useDialogStore();
 
   const { startRequestSSE } = useDocumentStore();
 
@@ -51,7 +54,7 @@ export default function RequestAdminPage() {
   const [selectedReqId, setSelectedReqId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
-  // 상세 모달 관련 상태: ID 대신 객체 전체를 저장
+  // 상세 모달 관련 상태
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<RequestItem | null>(
     null
@@ -73,10 +76,14 @@ export default function RequestAdminPage() {
     mutationFn: approveRequest,
     onSuccess: (_, reqId) => {
       // reqId: 승인한 요청 ID
-      alert("승인 요청이 전송되었습니다. 백그라운드에서 처리됩니다.");
+      dialog.alert({
+        title: "승인 완료",
+        message:
+          "승인 요청이 전송되었습니다.\n백그라운드에서 문서 처리가 시작됩니다.",
+        variant: "info", // 초록색 체크 아이콘 대신 파란색 정보 아이콘 사용 (백그라운드 처리 중임을 의미)
+      });
 
-      // ★ 여기서 스토어 액션 호출!
-      // (문서 이름을 알기 위해 requests 목록에서 찾거나, mutation 변수로 받아야 함)
+      // 스토어 액션 호출
       const targetReq = requests.find((r) => r.id === reqId);
       const docName = targetReq?.document_name || `요청 #${reqId}`;
 
@@ -85,35 +92,62 @@ export default function RequestAdminPage() {
       queryClient.invalidateQueries({ queryKey: ["requests"] });
       setDetailModalOpen(false);
     },
-    onError: () => alert("승인 실패"),
+    onError: (error) =>
+      dialog.alert({
+        title: "승인 실패",
+        message: `승인 처리에 실패했습니다.\n(오류: ${
+          error.message || "서버 응답 오류"
+        })`,
+        variant: "error", // warning -> error로 변경 (명확하게 실패임을 알림)
+      }),
   });
 
   // 3. 반려 Mutation
   const rejectMutation = useMutation({
     mutationFn: ({ id, reason }: { id: number; reason: string }) =>
       rejectRequest(id, reason),
-    // 여기도 variables를 받아옵니다. variables는 { id, reason } 객체입니다.
     onSuccess: (_, variables) => {
-      alert("반려되었습니다.");
+      dialog.alert({
+        title: "반려 완료",
+        message: "요청이 성공적으로 반려되었습니다.",
+        variant: "success",
+      });
       setRejectModalOpen(false);
       setRejectReason("");
 
       // 1. 목록 갱신
       queryClient.invalidateQueries({ queryKey: ["requests"] });
 
-      // 2. 핵심: 방금 반려한 그 디테일 데이터도 갱신 (캐시 삭제)
+      // 2. 상세 데이터 갱신
       queryClient.invalidateQueries({
         queryKey: ["requestDetail", variables.id],
       });
 
       setDetailModalOpen(false);
     },
-    onError: () => alert("반려 실패"),
+    onError: (error) =>
+      dialog.alert({
+        title: "반려 실패",
+        message: `반려 처리에 실패했습니다.\n(오류: ${
+          error.message || "서버 응답 오류"
+        })`,
+        variant: "error",
+      }),
   });
 
   // 핸들러
-  const handleApprove = (id: number) => {
-    if (confirm("승인하시겠습니까?")) approveMutation.mutate(id);
+
+  const handleApprove = async (id: number) => {
+    const confirmed = await dialog.confirm({
+      title: "요청 승인",
+      message:
+        "해당 요청을 승인하시겠습니까?\n승인 시 문서 처리가 즉시 시작됩니다.",
+      variant: "info", // 파란색
+    });
+
+    if (confirmed) {
+      approveMutation.mutate(id);
+    }
   };
 
   const handleRejectClick = (id: number) => {
@@ -121,9 +155,24 @@ export default function RequestAdminPage() {
     setRejectModalOpen(true);
   };
 
-  const submitReject = () => {
+  // [수정] 반려 제출 핸들러: 확인 창 추가
+  const submitReject = async () => {
     if (selectedReqId && rejectReason.trim()) {
-      rejectMutation.mutate({ id: selectedReqId, reason: rejectReason });
+      // 반려 전 한 번 더 확인 (실수 방지)
+      const confirmed = await dialog.confirm({
+        title: "반려 확인",
+        message: "작성하신 사유로 요청을 반려하시겠습니까?",
+        variant: "warning", // 주황색 경고
+      });
+
+      if (confirmed) {
+        rejectMutation.mutate({ id: selectedReqId, reason: rejectReason });
+      }
+    } else {
+      dialog.alert({
+        message: "반려 사유를 입력해주세요.",
+        variant: "warning",
+      });
     }
   };
 
@@ -134,7 +183,6 @@ export default function RequestAdminPage() {
     setRejectModalOpen(true);
   };
 
-  // 수정됨: ID 대신 객체 전체를 받음
   const handleRowClick = (req: RequestItem) => {
     setSelectedRequest(req);
     setDetailModalOpen(true);
@@ -241,10 +289,9 @@ export default function RequestAdminPage() {
             {requests.map((req) => (
               <div
                 key={req.id}
-                onClick={() => handleRowClick(req)} // 수정됨: 객체 전체 전달
+                onClick={() => handleRowClick(req)}
                 className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row gap-4 cursor-pointer group"
               >
-                {/* ... (리스트 아이템 렌더링 부분은 동일) ... */}
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-4">
                     {renderTypeBadge(req.request_type)}
@@ -309,7 +356,7 @@ export default function RequestAdminPage() {
 
       {/* 상세 정보 모달 */}
       <RequestDetailModal
-        baseInfo={selectedRequest} // 수정됨: 객체 전체 전달
+        baseInfo={selectedRequest}
         open={detailModalOpen}
         onClose={() => setDetailModalOpen(false)}
         onApprove={handleDetailApprove}
@@ -319,7 +366,6 @@ export default function RequestAdminPage() {
       {/* 반려 사유 입력 모달 (동일) */}
       <Dialog open={rejectModalOpen} onOpenChange={setRejectModalOpen}>
         <DialogContent className="bg-white">
-          {/* ... (반려 모달 내용 동일) ... */}
           <DialogHeader>
             <DialogTitle className="text-red-600 flex gap-2 ">
               <AlertCircle size={20} /> 요청 반려

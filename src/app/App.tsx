@@ -9,6 +9,7 @@ import Header from "@/components/layout/Header";
 
 // ▼ AuthStore 가져오기
 import { useAuthStore } from "@/store/authStore";
+import { GlobalDialog } from "@/components/ui/GlobalDialog";
 
 function App() {
   // 1. 로그인 상태 가져오기
@@ -54,6 +55,7 @@ function App() {
                 <AppRoutes />
               </div>
             </main>
+            <GlobalDialog />
 
             {/* 로그인 상태일 때만 업로드 상태창도 보여주는게 좋음 */}
             {isAuthenticated && <UploadStatusBox />}

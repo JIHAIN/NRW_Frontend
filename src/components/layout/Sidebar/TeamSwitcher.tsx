@@ -42,19 +42,14 @@ export function TeamSwitcher() {
               to="/"
               className="grid flex-1 text-center text-sm leading-tight group-data-[collapsible=icon]:hidden"
             >
-              <span className="truncate font-bold text-blue-500">
-                NEURON WAY
-              </span>
-              <span className="truncate text-xs font-bold text-blue-500">
-                ALAIN
-              </span>
+              <span className="truncate font-bold ">NEURON WAY</span>
             </Link>
 
             <Tooltip>
               <TooltipTrigger asChild>
                 <SidebarTrigger
                   asChild
-                  className="w-10 h-10  cursor-ew-resize hover:bg-blue-100 opacity-80 "
+                  className="w-8 h-8  cursor-ew-resize rounded-md hover:bg-blue-100 opacity-80 "
                 />
               </TooltipTrigger>
               <TooltipContent>

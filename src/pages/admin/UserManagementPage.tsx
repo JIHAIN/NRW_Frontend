@@ -1,8 +1,10 @@
 import { useState, useMemo, type FC, useEffect } from "react";
-import { Trash2, Settings, Search } from "lucide-react";
-import UserEditModal from "./UserEditModal";
+import { Trash2, Settings, Search, Plus } from "lucide-react"; // Plus 아이콘 추가
+
 import type { User, UserRole } from "@/types/UserType";
 import { useAuthStore } from "@/store/authStore";
+
+import type { CreateUserRequest } from "@/services/user.service";
 
 // Store 임포트
 import { useSystemStore } from "@/store/systemStore";
@@ -10,6 +12,9 @@ import { useUserStore } from "@/store/userStore";
 
 import Pagination from "../project/components/Pagination";
 import { FilterCombobox } from "@/components/common/FilterCombobox";
+import { useDialogStore } from "@/store/dialogStore"; // Dialog 사용 (선택사항)
+import UserEditModal from "./UserModal/UserEditModal";
+import UserCreateModal from "./UserModal/UserCreateModal";
 
 const ITEMS_PER_PAGE: number = 10;
 
@@ -30,16 +35,13 @@ interface OptionItem<T> {
   label: string;
 }
 
-// 필터용 옵션
 const ROLE_FILTER_OPTIONS: OptionItem<string>[] = [
   { value: "ALL", label: "전체 권한" },
   { value: "MANAGER", label: "관리자" },
   { value: "USER", label: "일반 사용자" },
 ];
 
-// --------------------------------------------------------------------------
 // 삭제 확인 모달
-// --------------------------------------------------------------------------
 interface DeleteConfirmModalProps {
   userName: string;
   onConfirm: () => void;
@@ -87,15 +89,17 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
 // --------------------------------------------------------------------------
 export const UserManagementPage: FC = () => {
   const { departments, projects, fetchSystemData } = useSystemStore();
-  const { users, fetchUsers, deleteUser, updateUser } = useUserStore();
+  // [수정] addUser 액션 추가
+  const { users, fetchUsers, deleteUser, updateUser, addUser } = useUserStore();
   const { user: currentUser } = useAuthStore();
+
+  const dialog = useDialogStore(); // 알림용
 
   useEffect(() => {
     fetchSystemData();
     fetchUsers();
   }, [fetchSystemData, fetchUsers]);
 
-  // 권한 체크
   const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
   const isManager = currentUser?.role === "MANAGER";
 
@@ -114,51 +118,34 @@ export const UserManagementPage: FC = () => {
   const [deptFilter, setDeptFilter] = useState<string>("ALL");
 
   const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // 모달 상태들
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false); // [신규] 생성 모달
+
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
-  // --------------------------------------------------------------------------
-  // 🔍 필터링 로직
-  // --------------------------------------------------------------------------
+  // ... (필터링 로직: 기존 유지) ...
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
-      // ✨ [수정 1] 총괄 관리자는 목록에 아예 노출시키지 않음
-      if (user.role === "SUPER_ADMIN") {
-        return false;
-      }
-
-      // ✨ [수정 2] 관리자(MANAGER)는 자기 부서 사람만 볼 수 있음
+      if (user.role === "SUPER_ADMIN") return false;
       if (isManager) {
-        if (user.departmentId !== currentUser?.departmentId) {
-          return false;
-        }
+        if (user.departmentId !== currentUser?.departmentId) return false;
       }
-
-      // 1. 권한 필터
-      if (roleFilter !== "ALL" && user.role !== roleFilter) {
-        return false;
-      }
-
-      // 2. 부서 필터
+      if (roleFilter !== "ALL" && user.role !== roleFilter) return false;
       if (deptFilter !== "ALL") {
         const userDeptName = departments.find(
           (dept) => dept.id === user.departmentId
         )?.dept_name;
-        if (userDeptName !== deptFilter) {
-          return false;
-        }
+        if (userDeptName !== deptFilter) return false;
       }
-
-      // 3. 검색 필터
       const searchLower = searchText.toLowerCase();
       const userName = user.userName.toLowerCase();
       const accountId = user.accountId.toLowerCase();
-
       if (!userName.includes(searchLower) && !accountId.includes(searchLower)) {
         return false;
       }
-
       return true;
     });
   }, [
@@ -184,9 +171,7 @@ export const UserManagementPage: FC = () => {
     setCurrentPage(1);
   }, [searchText, roleFilter, deptFilter]);
 
-  // --------------------------------------------------------------------------
   // 핸들러
-  // --------------------------------------------------------------------------
   const handleEditUser = (user: User) => {
     setSelectedUser(user);
     setIsEditModalOpen(true);
@@ -210,12 +195,24 @@ export const UserManagementPage: FC = () => {
     setIsEditModalOpen(false);
   };
 
+  // [신규] 사용자 생성 핸들러
+  const handleCreateUser = async (data: CreateUserRequest) => {
+    try {
+      await addUser(data);
+      dialog.alert({
+        title: "생성 완료",
+        message: "새로운 사용자가 등록되었습니다.",
+        variant: "success",
+      });
+      setIsCreateModalOpen(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleRoleChange = (value: string) => setRoleFilter(value);
   const handleDeptChange = (value: string) => setDeptFilter(value);
 
-  // ✨ [수정 3] 모달에 전달할 권한 옵션을 동적으로 생성
-  // 관리자는 '일반 사용자'로만 설정 가능 (승급 불가)
-  // 총괄 관리자는 '관리자' 혹은 '일반 사용자'로 설정 가능
   const availableEditRoles: OptionItem<string>[] = useMemo(() => {
     if (isSuperAdmin) {
       return [
@@ -223,7 +220,6 @@ export const UserManagementPage: FC = () => {
         { value: "USER", label: "일반 사용자" },
       ];
     }
-    // 관리자라면 선택지는 USER 뿐
     return [{ value: "USER", label: "일반 사용자" }];
   }, [isSuperAdmin]);
 
@@ -244,7 +240,6 @@ export const UserManagementPage: FC = () => {
             />
           </div>
 
-          {/* 관리자는 자기 부서만 보므로 필터 불필요 (SUPER_ADMIN만 표시) */}
           {isSuperAdmin && (
             <>
               <FilterCombobox<string>
@@ -262,9 +257,20 @@ export const UserManagementPage: FC = () => {
             </>
           )}
         </div>
+
+        {/* [신규] 사용자 등록 버튼 (총괄 관리자 전용) */}
+        {isSuperAdmin && (
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-sm"
+          >
+            <Plus size={18} />
+            사용자 등록
+          </button>
+        )}
       </div>
 
-      {/* 테이블 영역 */}
+      {/* 테이블 영역 (기존 코드 유지) */}
       <div className="overflow-x-auto bg-white rounded-lg shadow-lg border-2xl border-blue-200">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
@@ -295,14 +301,10 @@ export const UserManagementPage: FC = () => {
                   departments.find((d) => d.id === user.departmentId)
                     ?.dept_name || "-";
 
-                // ✨ [수정 4] 수정/삭제 권한 로직
                 let canEdit = false;
-
                 if (isSuperAdmin) {
-                  // 총괄 관리자는 모든 사람 수정 가능 (목록에 자신은 안 나오므로 체크 불필요)
                   canEdit = true;
                 } else if (isManager) {
-                  // 관리자는 '일반 사용자'만 수정 가능 (관리자 본인이나 타 관리자 수정 불가)
                   canEdit = user.role === "USER";
                 }
 
@@ -325,7 +327,6 @@ export const UserManagementPage: FC = () => {
                       {deptName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center space-x-2">
-                      {/* 권한이 있을 때만 버튼 표시 */}
                       {canEdit && (
                         <>
                           <button
@@ -342,7 +343,6 @@ export const UserManagementPage: FC = () => {
                           </button>
                         </>
                       )}
-                      {/* 권한 없을 때 빈 공간 채우기 or 자물쇠 아이콘 등 (여기선 빈칸) */}
                       {!canEdit && (
                         <span className="text-xs text-gray-300">-</span>
                       )}
@@ -369,16 +369,25 @@ export const UserManagementPage: FC = () => {
         />
       )}
 
+      {/* 수정 모달 */}
       {isEditModalOpen && selectedUser && (
         <UserEditModal
           user={selectedUser}
-          // ✨ 동적으로 계산된 역할 목록 전달
           roles={availableEditRoles}
           departments={departments}
           projects={projects}
           currentRole={currentUser?.role}
           onSave={handleSaveUser}
           onClose={() => setIsEditModalOpen(false)}
+        />
+      )}
+
+      {/* [신규] 생성 모달 */}
+      {isCreateModalOpen && (
+        <UserCreateModal
+          departments={departments}
+          onSave={handleCreateUser}
+          onClose={() => setIsCreateModalOpen(false)}
         />
       )}
 

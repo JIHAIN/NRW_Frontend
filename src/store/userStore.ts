@@ -1,53 +1,13 @@
-// src/store/userStore.ts
 import { create } from "zustand";
 import type { User } from "@/types/UserType";
-
-// --------------------------------------------------------------------------
-// 🧪 [Mock Data] DB 스키마(UserType)와 100% 일치시킨 더미 데이터
-// --------------------------------------------------------------------------
-const MOCK_DB_USERS: User[] = [
-  {
-    id: 1,
-    accountId: "사원번호를 부여할 예정입니다.", // email 대신 accountId 사용
-    userName: "총괄관리자", // name 대신 userName 사용
-    role: "SUPER_ADMIN", // 한글 대신 ENUM 코드 사용
-    departmentId: 1, // DT 본부
-    isActive: true,
-    createdAt: "2024-01-01",
-    updatedAt: "2024-01-01",
-  },
-  {
-    id: 2,
-    accountId: "202511232",
-    userName: "김부장",
-    role: "MANAGER",
-    departmentId: 1, // DT 본부
-    isActive: true,
-    createdAt: "2024-01-05",
-    updatedAt: "2024-01-05",
-  },
-  {
-    id: 3,
-    accountId: "202553432",
-    userName: "이사원",
-    role: "USER",
-    departmentId: 1, // DT 본부
-    projectId: 1, // 차세대 AI 프로젝트 소속
-    isActive: true,
-    createdAt: "2024-02-01",
-    updatedAt: "2024-02-01",
-  },
-  {
-    id: 4,
-    accountId: "202563463",
-    userName: "박인사",
-    role: "USER",
-    departmentId: 2, // 경영지원본부
-    isActive: true, // (퇴사자라면 false)
-    createdAt: "2024-03-01",
-    updatedAt: "2024-03-01",
-  },
-];
+import {
+  fetchUsersAPI,
+  fetchUserByIdAPI,
+  createUser,
+  updateUserAPI,
+  deleteUserAPI,
+  type CreateUserRequest,
+} from "@/services/user.service";
 
 // --------------------------------------------------------------------------
 // Store Interface
@@ -57,49 +17,79 @@ interface UserState {
   isLoading: boolean;
 
   fetchUsers: () => Promise<void>;
-  updateUser: (updatedUser: User) => void;
-  deleteUser: (userId: number) => void;
-  addUser: (newUser: User) => void; // 관리자가 유저 추가할 때 필요
+  fetchUserById: (userId: number) => Promise<User>; // 단일 유저 조회 추가
+  updateUser: (updatedUser: User) => Promise<void>;
+  deleteUser: (userId: number) => Promise<void>;
+  addUser: (newUser: CreateUserRequest) => Promise<void>;
 }
 
-export const useUserStore = create<UserState>((set) => ({
+export const useUserStore = create<UserState>((set, get) => ({
   users: [],
   isLoading: false,
 
   // 1. 사용자 목록 가져오기
   fetchUsers: async () => {
     set({ isLoading: true });
-
-    // 📡 [나중에 백엔드 API 연동 시]
-    /*
-    const res = await fetch("/api/users");
-    const data = await res.json();
-    set({ users: data, isLoading: false });
-    */
-
-    // 🧪 [현재] Mock 데이터 로드
-    setTimeout(() => {
-      set({ users: MOCK_DB_USERS, isLoading: false });
-    }, 500);
+    try {
+      const data = await fetchUsersAPI();
+      set({ users: data, isLoading: false });
+    } catch (error) {
+      console.error(error);
+      set({ isLoading: false });
+    }
   },
 
-  // 2. 사용자 수정 (화면 갱신용)
-  updateUser: (updatedUser) =>
-    set((state) => ({
-      users: state.users.map((u) =>
-        u.id === updatedUser.id ? updatedUser : u
-      ),
-    })),
+  // 2. 단일 사용자 가져오기 (로그인 시뮬레이션용)
+  fetchUserById: async (userId: number) => {
+    set({ isLoading: true });
+    try {
+      const user = await fetchUserByIdAPI(userId);
+      set({ isLoading: false });
+      return user;
+    } catch (error) {
+      set({ isLoading: false });
+      console.error("User fetch failed:", error);
+      throw error;
+    }
+  },
 
-  // 3. 사용자 삭제 (화면 갱신용)
-  deleteUser: (userId) =>
-    set((state) => ({
-      users: state.users.filter((u) => u.id !== userId),
-    })),
+  // 3. 사용자 수정
+  updateUser: async (updatedUser) => {
+    try {
+      await updateUserAPI(updatedUser.id, {
+        user_name: updatedUser.userName,
+        dept_id: updatedUser.departmentId || 0,
+        role: updatedUser.role,
+      });
 
-  // 4. 사용자 추가 (화면 갱신용)
-  addUser: (newUser) =>
-    set((state) => ({
-      users: [...state.users, { ...newUser, id: Date.now() }], // ID는 임시로 생성
-    })),
+      await get().fetchUsers();
+    } catch (error) {
+      console.error("Update failed:", error);
+      throw error;
+    }
+  },
+
+  // 4. 사용자 삭제
+  deleteUser: async (userId) => {
+    try {
+      await deleteUserAPI(userId);
+      set((state) => ({
+        users: state.users.filter((u) => u.id !== userId),
+      }));
+    } catch (error) {
+      console.error("Delete failed:", error);
+      throw error;
+    }
+  },
+
+  // 5. 사용자 추가
+  addUser: async (newUserRequest) => {
+    try {
+      await createUser(newUserRequest);
+      await get().fetchUsers();
+    } catch (error) {
+      console.error("User creation failed:", error);
+      throw error;
+    }
+  },
 }));

@@ -3,62 +3,15 @@ import DepartmentManager from "./components/DepartmentManager";
 import ProjectManager from "./components/ProjectManager";
 import DeleteConfirmationModal from "./components/DeleteConfirmationModal";
 import type { Department, Project } from "@/types/UserType";
-import { X } from "lucide-react";
+// [삭제] SimpleConfirmModal에서 쓰던 X 아이콘 제거
 
 // 시스템 스토어 & 인증 스토어 임포트
 import { useSystemStore } from "@/store/systemStore";
 import { useAuthStore } from "@/store/authStore";
+// [추가] 다이얼로그 스토어
+import { useDialogStore } from "@/store/dialogStore";
 
-// --------------------------------------------------------------------------
-//  부서/프로젝트 삭제를 위한 간단한 확인 모달
-// --------------------------------------------------------------------------
-interface SimpleConfirmModalProps {
-  name: string;
-  type: "부서" | "프로젝트";
-  onConfirm: () => void;
-  onClose: () => void;
-}
-
-const SimpleConfirmModal: FC<SimpleConfirmModalProps> = ({
-  name,
-  type,
-  onConfirm,
-  onClose,
-}) => {
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg shadow-xl w-80 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-        >
-          <X size={20} />
-        </button>
-        <h3 className="text-lg font-bold mb-4 text-red-600">
-          {type} 삭제 확인
-        </h3>
-        <p className="mb-6 text-sm text-gray-600">
-          정말로 <span className="font-semibold text-red-600">"{name}"</span>{" "}
-          {type}을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-        </p>
-        <div className="flex justify-end space-x-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 text-sm"
-          >
-            취소
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
-          >
-            삭제
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+// [삭제] SimpleConfirmModal 관련 코드 전체 제거 (GlobalDialog로 대체)
 
 // --------------------------------------------------------------------------
 // === 메인 컴포넌트: DeptProjectAdminPage
@@ -69,7 +22,7 @@ export const DeptProjectAdminPage: FC = () => {
   const {
     departments,
     projects,
-    isLoading, //  로딩 상태 구독
+    isLoading,
     fetchSystemData,
     addDepartment,
     deleteDepartment,
@@ -77,37 +30,31 @@ export const DeptProjectAdminPage: FC = () => {
     deleteProject,
   } = useSystemStore();
 
-  // 현재 로그인한 유저 정보 구독
   const { user } = useAuthStore();
+  const dialog = useDialogStore(); // [추가] 다이얼로그 훅
 
-  // 권한 체크
   const isManager = user?.role === "MANAGER";
 
-  // 초기 데이터 로드
   useEffect(() => {
     fetchSystemData();
   }, [fetchSystemData]);
 
-  // UI 상태 관리
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<
     number | null
   >(null);
 
-  // 프로젝트 삭제 모달 상태
+  // 프로젝트 삭제 모달 상태 (복잡한 로직이 있어 유지)
   const [isProjectModalOpen, setIsProjectModalOpen] = useState<boolean>(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
-  // 부서 삭제 모달 상태
-  const [isDeptModalOpen, setIsDeptModalOpen] = useState<boolean>(false);
-  const [deptToDelete, setDeptToDelete] = useState<Department | null>(null);
+  // [삭제] 부서 삭제 모달 관련 상태 변수 제거 (isDeptModalOpen, deptToDelete)
 
   // 권한에 따른 부서 선택 상태 초기화
   useEffect(() => {
     if (user?.role === "MANAGER") {
-      // 관리자는 본인 부서 ID로 강제 고정
       setSelectedDepartmentId(user?.departmentId || null);
     }
-  }, [user]); // 의존성 배열 수정
+  }, [user]);
 
   // -------------------------
   //  핸들러 함수 (Async 적용)
@@ -116,31 +63,60 @@ export const DeptProjectAdminPage: FC = () => {
   // 1. 부서 추가
   const handleAddDepartment = async (name: string) => {
     if (isManager) return;
-    await addDepartment(name);
+    try {
+      await addDepartment(name);
+      // [추가] 성공 알림
+      dialog.alert({
+        message: "부서가 성공적으로 추가되었습니다.",
+        variant: "success",
+      });
+    } catch (error) {
+      console.error(error);
+      dialog.alert({ message: "부서 추가 실패", variant: "error" });
+    }
   };
 
-  // 2. 부서 삭제
-  const handleDeleteDepartment = async () => {
-    if (isManager || !deptToDelete) return;
+  const handleDeleteDepartment = async (dept: Department) => {
+    if (isManager) return;
 
-    await deleteDepartment(deptToDelete.id);
+    const confirmed = await dialog.confirm({
+      title: "부서 삭제",
+      message: `정말로 "${dept.dept_name}" 부서를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`,
+      variant: "error", // 빨간색 경고
+    });
 
-    setIsDeptModalOpen(false);
-    setDeptToDelete(null);
+    if (confirmed) {
+      try {
+        await deleteDepartment(dept.id);
 
-    if (selectedDepartmentId === deptToDelete.id) {
-      setSelectedDepartmentId(null);
+        if (selectedDepartmentId === dept.id) {
+          setSelectedDepartmentId(null);
+        }
+
+        dialog.alert({
+          message: "부서가 삭제되었습니다.",
+          variant: "success",
+        });
+      } catch (error) {
+        console.error(error);
+        dialog.alert({
+          message: "부서 삭제 중 오류가 발생했습니다.",
+          variant: "error",
+        });
+      }
     }
   };
 
   // 3. 프로젝트 추가
   const handleAddProject = async (name: string, departmentId: number) => {
     if (isManager && departmentId !== user?.departmentId) {
-      alert("본인 부서의 프로젝트만 생성할 수 있습니다.");
+      dialog.alert({
+        message: "본인 부서의 프로젝트만 생성할 수 있습니다.",
+        variant: "warning",
+      });
       return;
     }
 
-    // ID는 서버가 생성하므로 0으로 전송
     const newProject: Project = {
       id: 0,
       departmentId: departmentId,
@@ -150,23 +126,43 @@ export const DeptProjectAdminPage: FC = () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    await addProject(newProject);
+
+    try {
+      await addProject(newProject);
+      dialog.alert({
+        message: "프로젝트가 추가되었습니다.",
+        variant: "success",
+      });
+    } catch (error) {
+      console.error(error);
+      dialog.alert({ message: "프로젝트 추가 실패", variant: "error" });
+    }
   };
 
-  // 4. 프로젝트 삭제
+  // 4. 프로젝트 삭제 (기존 로직 유지)
   const handleConfirmProjectDelete = async (keepDocuments: boolean) => {
     if (!projectToDelete) return;
 
-    await deleteProject(projectToDelete.id);
+    try {
+      await deleteProject(projectToDelete.id);
 
-    if (!keepDocuments) {
-      console.log(
-        `[API 요청 필요] 프로젝트 ID ${projectToDelete.id} 관련 문서 삭제 로직 실행`
-      );
+      if (!keepDocuments) {
+        console.log(
+          `[API 요청 필요] 프로젝트 ID ${projectToDelete.id} 관련 문서 삭제 로직 실행`
+        );
+      }
+
+      setIsProjectModalOpen(false);
+      setProjectToDelete(null);
+
+      dialog.alert({
+        message: "프로젝트가 삭제되었습니다.",
+        variant: "success",
+      });
+    } catch (error) {
+      console.error(error);
+      dialog.alert({ message: "프로젝트 삭제 실패", variant: "error" });
     }
-
-    setIsProjectModalOpen(false);
-    setProjectToDelete(null);
   };
 
   // 부서 선택 핸들러
@@ -184,14 +180,11 @@ export const DeptProjectAdminPage: FC = () => {
         <DepartmentManager
           departments={departments}
           onAdd={handleAddDepartment}
-          onDeleteClick={(dept) => {
-            setDeptToDelete(dept);
-            setIsDeptModalOpen(true);
-          }}
+          onDeleteClick={handleDeleteDepartment} // [수정] 핸들러 직접 전달
           onSelectDept={handleSelectDepartment}
           selectedDeptId={selectedDepartmentId}
           readOnly={isManager}
-          isLoading={isLoading} //  로딩 상태 전달
+          isLoading={isLoading}
         />
 
         {/* 우측: 프로젝트 관리 */}
@@ -207,11 +200,11 @@ export const DeptProjectAdminPage: FC = () => {
           onSelectDept={handleSelectDepartment}
           currentUserRole={user?.role}
           currentUserDeptId={user?.departmentId}
-          isLoading={isLoading} //  로딩 상태 전달
+          isLoading={isLoading}
         />
       </div>
 
-      {/* 프로젝트 삭제 모달 */}
+      {/* 프로젝트 삭제 모달 (유지) */}
       {isProjectModalOpen && projectToDelete && (
         <DeleteConfirmationModal
           projectName={projectToDelete.name}
@@ -223,18 +216,7 @@ export const DeptProjectAdminPage: FC = () => {
         />
       )}
 
-      {/* 부서 삭제 모달 */}
-      {isDeptModalOpen && deptToDelete && (
-        <SimpleConfirmModal
-          name={deptToDelete.dept_name}
-          type="부서"
-          onConfirm={handleDeleteDepartment}
-          onClose={() => {
-            setIsDeptModalOpen(false);
-            setDeptToDelete(null);
-          }}
-        />
-      )}
+      {/* [삭제] SimpleConfirmModal 렌더링 제거 */}
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { Trash2, Plus, Search, Loader2 } from "lucide-react";
 import type { Department, Project, UserRole } from "@/types/UserType";
 import Pagination from "../../project/components/Pagination";
 import { FilterCombobox } from "@/components/common/FilterCombobox";
+import { useDialogStore } from "@/store/dialogStore";
 
 interface OptionItem<T> {
   value: T;
@@ -40,6 +41,8 @@ const ProjectManager: FC<ProjectManagerProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
 
   const isManager = currentUserRole === "MANAGER";
+
+  const dialog = useDialogStore();
 
   // 초기 부서 ID 설정
   useEffect(() => {
@@ -86,7 +89,10 @@ const ProjectManager: FC<ProjectManagerProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjectName.trim() || newProjectDeptId === 0) {
-      alert("프로젝트 이름과 부서를 확인해주세요.");
+      dialog.alert({
+        message: "프로젝트 이름과 부서를 확인해주세요.",
+        variant: "error",
+      });
       return;
     }
     onAdd(newProjectName, newProjectDeptId);

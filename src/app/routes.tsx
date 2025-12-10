@@ -10,7 +10,7 @@ import RequestAdminPage from "@/pages/admin/Request/RequestAdminPage";
 import LandingPage from "@/pages/about";
 
 import { useAuthStore } from "@/store/authStore";
-import AuthPage from "@/pages/auth/loginSignup";
+import AuthPage from "@/pages/auth/AuthPage";
 
 function ProtectedRoute() {
   const { isAuthenticated, user } = useAuthStore();
