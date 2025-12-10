@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useSystemStore } from "@/store/systemStore";
 import { useChatStore } from "@/store/chatStore";
-import { useUserStore } from "@/store/userStore";
 import { useDocumentStore } from "@/store/documentStore";
+import { loginAPI } from "@/services/auth.service"; // 실제 로그인 API
 import {
   FlaskConical,
   X,
@@ -11,6 +11,14 @@ import {
   Loader2,
   PowerOff,
 } from "lucide-react";
+
+// 테스트용 계정
+const TEST_ACCOUNTS: Record<number, { account_id: string; password: string }> =
+  {
+    1: { account_id: "super_admin", password: "2team" },
+    2: { account_id: "manager_dt", password: "2team" },
+    3: { account_id: "user_dt", password: "2team" },
+  };
 
 interface TestSelectProps {
   label: string;
@@ -20,6 +28,9 @@ interface TestSelectProps {
   disabled?: boolean;
 }
 
+/**
+ * 패널 내부 셀렉트 컴포넌트
+ */
 const TestSelect = ({
   label,
   value,
@@ -40,6 +51,10 @@ const TestSelect = ({
   </label>
 );
 
+/**
+ * 개발용 사용자 전환 패널
+ * - 미리 설정된 계정 정보로 '실제 로그인'을 수행합니다.
+ */
 export function TestAuthPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -51,10 +66,9 @@ export function TestAuthPanel() {
   // Stores
   const { user, login, logout } = useAuthStore();
   const { fetchSystemData } = useSystemStore();
-  const { fetchUserById } = useUserStore();
 
   // 상태 관리
-  const [selectedUserId, setSelectedUserId] = useState<string>("REAL"); // 기본값을 REAL로 설정하여 간섭 최소화
+  const [selectedUserId, setSelectedUserId] = useState<string>("REAL");
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const isDragging = useRef(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
@@ -66,14 +80,12 @@ export function TestAuthPanel() {
     }
   }, []);
 
-  // 현재 로그인한 유저 정보 UI 동기화
+  // UI 동기화
   useEffect(() => {
-    // Real Mode일 때는 드롭다운 값을 강제로 변경하지 않음 (단, UI 표시용으로만 활용 가능)
     if (isRealMode) {
       setSelectedUserId("REAL");
       return;
     }
-
     if (user) {
       setSelectedUserId(String(user.id));
     } else {
@@ -81,18 +93,22 @@ export function TestAuthPanel() {
     }
   }, [user, isRealMode]);
 
-  // 사용자 전환 핸들러
+  /**
+   * 사용자 전환 핸들러
+   * 1. Real Mode 처리
+   * 2. 로그아웃 처리
+   * 3. 자동 로그인 (API 호출) 처리
+   */
   const handleUserSwitch = async (targetIdStr: string) => {
-    // 1. Real Mode 진입 (패널 비활성화)
+    // 1. Real Mode 진입
     if (targetIdStr === "REAL") {
       setIsRealMode(true);
       return;
     }
 
-    // Real Mode 해제
     if (isRealMode) setIsRealMode(false);
 
-    // 2. 로그아웃 처리
+    // 2. 로그아웃
     if (targetIdStr === "0") {
       useChatStore.getState().resetAll();
       useDocumentStore.setState({ documents: [], selectedDocument: null });
@@ -100,10 +116,18 @@ export function TestAuthPanel() {
       return;
     }
 
-    // 3. 특정 유저로 강제 로그인 (DB 연동)
     try {
       setIsProcessing(true);
       const targetId = Number(targetIdStr);
+
+      // 해당 ID에 매핑된 계정 정보 가져오기
+      const credentials = TEST_ACCOUNTS[targetId];
+      if (!credentials) {
+        alert(
+          `ID ${targetId}에 대한 계정 정보가 설정되지 않았습니다.\nTestAuthPanel.tsx 상단의 TEST_ACCOUNTS를 확인해주세요.`
+        );
+        return;
+      }
 
       // 데이터 초기화
       useChatStore.getState().resetAll();
@@ -113,26 +137,56 @@ export function TestAuthPanel() {
         taskQueue: [],
       });
 
-      // 실제 DB 조회
-      const realUser = await fetchUserById(targetId);
+      // 3. [핵심] 실제 로그인 API 호출
+      // 여기서 진짜 Access Token을 받아옵니다.
+      const response = await loginAPI({
+        account_id: credentials.account_id,
+        password: credentials.password,
+      });
 
-      // 로그인 처리
-      login(realUser);
+      // 4. 데이터 매핑 (Snake_case -> CamelCase)
+      // SignInForm.tsx의 로직과 동일하게 맞춤
+      const rawUser = response.user;
+      const mappedUser = {
+        id: rawUser.id,
+        accountId: rawUser.account_id,
+        userName: rawUser.user_name,
+        role: rawUser.role,
+        departmentId: rawUser.dept_id || 0,
+        projectId: rawUser.project_id || 0,
+        profileImagePath: rawUser.profile_image_path || "",
+        isActive: true,
+        createdAt: "",
+        updatedAt: "",
+      };
 
-      // 시스템 데이터 최신화
+      // 5. 로그인 처리 (스토어에 유효한 토큰 저장)
+      login(mappedUser, response.access_token, response.refresh_token);
+
+      // 6. 시스템 데이터 최신화
       await fetchSystemData();
 
-      // 문서 컨텍스트 설정
-      if (realUser.departmentId) {
+      // 7. 문서 컨텍스트 설정
+      if (mappedUser.departmentId) {
         useDocumentStore
           .getState()
-          .setContext(realUser.departmentId, realUser.projectId || 0);
+          .setContext(mappedUser.departmentId, mappedUser.projectId || 0);
+      } else {
+        useDocumentStore.setState({ documents: [], selectedDocument: null });
       }
 
-      console.log(`[TestAuthPanel] Switched to User ID: ${targetId}`);
-    } catch (error) {
+      console.log(
+        `[TestAuthPanel] Logged in as: ${mappedUser.userName} (ID: ${mappedUser.id})`
+      );
+    } catch (error: unknown) {
       console.error("사용자 전환 실패:", error);
-      alert("사용자 정보를 불러오는데 실패했습니다.");
+      let errorMessage = "알 수 없는 오류";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      alert(
+        `로그인 실패: ${errorMessage}\n아이디와 비밀번호가 정확한지 확인해주세요.`
+      );
     } finally {
       setIsProcessing(false);
     }

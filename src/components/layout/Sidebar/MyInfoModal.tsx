@@ -172,7 +172,7 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
   };
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-30 animate-in fade-in duration-200">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 mx-4">
         {/* 헤더 */}
         <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50">
