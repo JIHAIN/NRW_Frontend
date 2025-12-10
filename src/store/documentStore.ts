@@ -33,7 +33,6 @@ export interface RequestTask {
   status: "PROCESSING" | "COMPLETED" | "ERROR";
   errorMessage?: string;
   eventSource?: EventSourcePolyfill;
-  // [수정 1] 공통 함수(clearSimulation)에서 접근할 수 있도록 속성 추가
   simulationInterval?: number;
 }
 
@@ -81,14 +80,17 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   currentProjectId: 0,
   taskQueue: [],
 
+  // 부서 및 프로젝트 컨텍스트 설정
   setContext: (deptId, projectId) => {
     const { currentDeptId, currentProjectId } = get();
     if (currentDeptId !== deptId || currentProjectId !== projectId) {
       set({ currentDeptId: deptId, currentProjectId: projectId });
+      // 컨텍스트 변경 시 즉시 목록 갱신
       get().fetchDocuments();
     }
   },
 
+  // 문서 목록 조회
   fetchDocuments: async () => {
     const { currentDeptId, currentProjectId, pollingIntervalId } = get();
 
@@ -99,12 +101,14 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       const docs = await fetchDocuments(currentDeptId, currentProjectId);
       set({ documents: docs });
 
+      // 선택된 문서 정보 갱신
       const currentSelected = get().selectedDocument;
       if (currentSelected) {
         const updated = docs.find((d) => d.id === currentSelected.id);
         if (updated) set({ selectedDocument: updated });
       }
 
+      // 작업 큐 상태 동기화 (완료된 작업 정리 등)
       get().taskQueue.forEach((task) => {
         if (task.type === "UPLOAD" && task.status === "PARSING") {
           const foundDoc = docs.find(
@@ -123,6 +127,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         }
       });
 
+      // 진행 중인 작업 확인 후 폴링 제어
       const hasServerProcessing = docs.some((d) =>
         ACTIVE_STATUSES.includes(d.status)
       );
@@ -216,6 +221,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     }
   },
 
+  // SSE 연결 시작 (승인 후 처리 상태 수신)
   startRequestSSE: (requestId, docName) => {
     const taskId = `req-${requestId}`;
 
@@ -236,34 +242,11 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       };
     });
 
-    // 2. 토큰 가져오기 (수정됨: any 제거)
-    const state = useAuthStore.getState();
-
-    // 임시 인터페이스 정의: 우리가 찾으려는 필드(token)만 명시
-    interface StateWithToken {
-      token?: string;
-      user?: { token?: string };
-    }
-
-    // unknown으로 먼저 변환 후, 우리가 정의한 구조로 단언 (Safe Casting)
-    const safeState = state as unknown as StateWithToken;
-
-    let token: string | null = null;
-
-    // 1순위: 스토어 최상위 토큰 확인
-    if (safeState.token) {
-      token = safeState.token;
-    }
-    // 2순위: 유저 객체 내부 토큰 확인
-    else if (safeState.user?.token) {
-      token = safeState.user.token;
-    }
-
-    // 디버깅용 로그 (나중에 지우세요)
-    console.log("현재 스토어 상태:", state);
-    console.log("추출된 토큰:", token);
+    // [수정 핵심] AuthStore에서 accessToken을 직접 가져옵니다.
+    const token = useAuthStore.getState().accessToken;
 
     if (!token) {
+      console.error("[StartRequestSSE] 토큰이 없습니다. SSE 연결 불가");
       get().updateTaskStatus(taskId, "ERROR", "인증 토큰 없음");
       return;
     }
@@ -304,6 +287,8 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
     eventSource.onerror = (err) => {
       console.error(`[Req-${requestId}] SSE 에러`, err);
+      // 연결 오류 시 상태 업데이트 및 종료
+      // (일시적인 오류일 수 있으나 여기서는 종료 처리)
       get().updateTaskStatus(taskId, "ERROR", "연결 끊김");
       eventSource.close();
     };
@@ -323,11 +308,11 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       ),
     })),
 
-  // [수정 2] any 제거 및 BackgroundTask 단언 사용
   updateTaskStatus: (id, status, error) =>
     set((state) => ({
       taskQueue: state.taskQueue.map((t) => {
         if (t.id === id) {
+          // 상태 변경 시 타입 단언을 통해 안전하게 업데이트
           return { ...t, status, errorMessage: error } as BackgroundTask;
         }
         return t;
@@ -360,7 +345,6 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     }));
   },
 
-  // [오류 해결] 이제 BackgroundTask 타입에 simulationInterval이 존재하므로 안전하게 접근 가능
   clearSimulation: (id) => {
     const task = get().taskQueue.find((t) => t.id === id);
     if (task?.simulationInterval) {

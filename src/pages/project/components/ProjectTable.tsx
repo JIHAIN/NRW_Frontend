@@ -41,7 +41,7 @@ export function ProjectTable({
   const { projects } = useSystemStore();
   const dialog = useDialogStore(); // [추가] 다이얼로그 훅
 
-  const [projectFilter, setProjectFilter] = useState<string>("1");
+  const [projectFilter, setProjectFilter] = useState<string>("");
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("ALL");
   const [categoryFilter, setCategoryFilter] = useState<FilterCategory>("ALL");
@@ -63,6 +63,7 @@ export function ProjectTable({
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["documents", selectedDeptId, projectFilter],
     queryFn: () => fetchDocuments(selectedDeptId, parseInt(projectFilter)),
+    // projectFilter가 빈 값이 아닐 때만 API를 호출합니다.
     enabled: selectedDeptId > 0 && !!projectFilter,
     select: (data) =>
       data.map((doc) => ({
@@ -410,7 +411,10 @@ export function ProjectTable({
               />
             ) : (
               <div className="text-center p-8 text-gray-500">
-                {documents.length === 0
+                {/* 프로젝트 미선택 시 안내 메시지 분기 처리 */}
+                {!projectFilter
+                  ? "프로젝트를 선택하여 문서를 조회해주세요."
+                  : documents.length === 0
                   ? "등록된 문서가 없습니다."
                   : "조건에 맞는 문서가 없습니다."}
               </div>

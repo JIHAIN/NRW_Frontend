@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuthStore } from "@/store/authStore";
 import { useSystemStore } from "@/store/systemStore";
-import { API_BASE_URL } from "@/lib/constants";
+
+const IMAGE_BASE_URL = "https://alain.r-e.kr";
 
 const data = {
   navMain: [
@@ -52,7 +53,6 @@ const data = {
           title: "부서 및 프로젝트 관리",
           url: "/admin/project",
         },
-
         {
           title: "요청 목록",
           url: "/admin/request",
@@ -82,9 +82,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [user, departments]);
 
   const profileUrl = React.useMemo(() => {
-    if (!user?.profileImagePath) return ""; // 없으면 빈 문자열 (AvatarFallback 보임)
+    if (!user?.profileImagePath) return "";
+
+    // 1. 이미 http로 시작하는 완전한 URL인 경우 그대로 사용
     if (user.profileImagePath.startsWith("http")) return user.profileImagePath;
-    return `${API_BASE_URL}${user.profileImagePath}`;
+
+    // 2. 서버 내부 경로인 경우 파일명만 추출하여 웹 경로로 재조립
+    // 예: "/app/app/data/profile/8_agumon.jpg" -> "8_agumon.jpg"
+    const fileName = user.profileImagePath.split("/").pop();
+
+    if (!fileName) return "";
+
+    // 웹 접근 가능한 정적 경로로 변환
+    return `${IMAGE_BASE_URL}/static/profile/${fileName}`;
   }, [user?.profileImagePath]);
 
   // [수정] 현재 유저 정보 표시 객체
@@ -92,7 +102,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     // 이제 user.userName이 매핑되어 있으므로 정상 출력됨
     name: user?.userName || ` 이름 없음`,
     email: `${deptName} / ${user?.role || "사용자"}`, // 부서명과 직급 표시
-    avatar: profileUrl || "CN",
+    avatar: profileUrl,
   };
 
   return (

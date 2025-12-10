@@ -1,4 +1,5 @@
 // src/components/ui/GlobalDialog.tsx
+import { createPortal } from "react-dom";
 import { useDialogStore } from "@/store/dialogStore";
 import {
   AlertCircle,
@@ -40,8 +41,12 @@ export function GlobalDialog() {
 
   const style = getVariantStyles();
 
-  return (
-    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+  // [수정] style={{ zIndex: 99999 }}로 최상위 보장 및 pointer-events-auto 추가
+  return createPortal(
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 pointer-events-auto"
+      style={{ zIndex: 99999 }}
+    >
       <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 p-6 transform transition-all scale-100 animate-in zoom-in-95 duration-200 border border-gray-100">
         <div className="flex flex-col items-center text-center gap-4">
           {/* 아이콘 */}
@@ -78,6 +83,7 @@ export function GlobalDialog() {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body // Portal Target
   );
 }

@@ -206,7 +206,7 @@ const TableControls: FC<TableControlsProps> = (props) => {
             currentFilter={props.projectFilter}
             onFilterChange={props.onProjectFilterChange}
             options={props.projectOptions} // 상위에서 전달받음
-            defaultLabel="전체 프로젝트"
+            defaultLabel="선택 안함"
             widthClass="w-40"
           />
         </div>

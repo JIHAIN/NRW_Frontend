@@ -37,7 +37,6 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
     user?.profileImagePath || null
   );
 
-  // ESC 키로 닫기 이벤트 리스너 등록
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -46,14 +45,11 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
     return () => window.removeEventListener("keydown", handleEsc);
   }, [onClose]);
 
-  // 에러 메시지 추출 헬퍼 함수
   const getErrorMessage = (error: unknown): string => {
     if (error instanceof Error) return error.message;
     return String(error);
   };
 
-  // 기본 정보 수정 핸들러
-  // 닉네임과 이름을 동일하게 처리하여 API에 전송
   const handleUpdateInfo = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -72,7 +68,6 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
         payload: { user_name: userName, nickname: userName },
       });
 
-      // 스토어 정보 업데이트 (낙관적 업데이트)
       login({ ...user, userName }, accessToken, "");
 
       await dialog.alert({
@@ -92,8 +87,6 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
     }
   };
 
-  // 비밀번호 변경 핸들러
-  // 새 비밀번호 일치 여부 확인 후 API 호출
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!accessToken) {
@@ -135,8 +128,6 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
     }
   };
 
-  // 프로필 이미지 업로드 핸들러
-  // 선택된 파일을 서버로 전송
   const handleImageUpload = async () => {
     if (!selectedFile || !accessToken) return;
 
@@ -162,7 +153,6 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
     }
   };
 
-  // 파일 선택 시 미리보기 URL 생성
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -174,7 +164,6 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
   return createPortal(
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 mx-4">
-        {/* 헤더 */}
         <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50">
           <h3 className="text-lg font-bold text-gray-800">내 정보 관리</h3>
           <button
@@ -185,7 +174,6 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
           </button>
         </div>
 
-        {/* 탭 메뉴 */}
         <div className="flex border-b border-gray-100">
           <button
             onClick={() => setActiveTab("INFO")}
@@ -219,9 +207,7 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
           </button>
         </div>
 
-        {/* 컨텐츠 영역 */}
         <div className="p-6 overflow-y-auto">
-          {/* 1. 기본 정보 수정 */}
           {activeTab === "INFO" && (
             <form onSubmit={handleUpdateInfo} className="space-y-5">
               <div>
@@ -235,6 +221,20 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
                   className="w-full p-2.5 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed text-sm"
                 />
               </div>
+
+              {/* [추가] 사원번호 필드 */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  사원번호
+                </label>
+                <input
+                  type="text"
+                  value={user?.employeeId || "사원번호 없음"}
+                  disabled
+                  className="w-full p-2.5 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed text-sm"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                   이름
@@ -257,7 +257,6 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
             </form>
           )}
 
-          {/* 2. 비밀번호 변경 */}
           {activeTab === "PASSWORD" && (
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div>
@@ -304,7 +303,6 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
             </form>
           )}
 
-          {/* 3. 프로필 이미지 */}
           {activeTab === "IMAGE" && (
             <div className="space-y-6 flex flex-col items-center py-4">
               <div

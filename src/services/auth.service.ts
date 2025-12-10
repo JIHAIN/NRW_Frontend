@@ -14,6 +14,7 @@ export interface BackendUser {
   dept_id: number | null;
   project_id: number | null;
   profile_image_path: string | null;
+  employee_id: string | null;
 }
 
 // 로그인 요청 데이터

@@ -11,6 +11,7 @@ import {
   Loader2,
   PowerOff,
 } from "lucide-react";
+import { getMyInfoAPI } from "@/services/user.service";
 
 // 테스트용 계정
 const TEST_ACCOUNTS: Record<number, { account_id: string; password: string }> =
@@ -137,46 +138,35 @@ export function TestAuthPanel() {
         taskQueue: [],
       });
 
-      // 3. [핵심] 실제 로그인 API 호출
-      // 여기서 진짜 Access Token을 받아옵니다.
-      const response = await loginAPI({
+      // 3. 실제 로그인 API 호출
+      const loginResponse = await loginAPI({
         account_id: credentials.account_id,
         password: credentials.password,
       });
 
-      // 4. 데이터 매핑 (Snake_case -> CamelCase)
-      // SignInForm.tsx의 로직과 동일하게 맞춤
-      const rawUser = response.user;
-      const mappedUser = {
-        id: rawUser.id,
-        accountId: rawUser.account_id,
-        userName: rawUser.user_name,
-        role: rawUser.role,
-        departmentId: rawUser.dept_id || 0,
-        projectId: rawUser.project_id || 0,
-        profileImagePath: rawUser.profile_image_path || "",
-        isActive: true,
-        createdAt: "",
-        updatedAt: "",
-      };
+      // getMyInfoAPI는 이미 내부적으로 Snake_case -> CamelCase 매핑을 수행함
+      const fullUserInfo = await getMyInfoAPI(loginResponse.access_token);
 
       // 5. 로그인 처리 (스토어에 유효한 토큰 저장)
-      login(mappedUser, response.access_token, response.refresh_token);
+      login(
+        fullUserInfo,
+        loginResponse.access_token,
+        loginResponse.refresh_token
+      );
 
       // 6. 시스템 데이터 최신화
       await fetchSystemData();
 
       // 7. 문서 컨텍스트 설정
-      if (mappedUser.departmentId) {
+      if (fullUserInfo.departmentId) {
         useDocumentStore
           .getState()
-          .setContext(mappedUser.departmentId, mappedUser.projectId || 0);
+          .setContext(fullUserInfo.departmentId, fullUserInfo.projectId || 0);
       } else {
         useDocumentStore.setState({ documents: [], selectedDocument: null });
       }
-
       console.log(
-        `[TestAuthPanel] Logged in as: ${mappedUser.userName} (ID: ${mappedUser.id})`
+        `[TestAuthPanel] Logged in as: ${fullUserInfo.userName} (ID: ${fullUserInfo.id})`
       );
     } catch (error: unknown) {
       console.error("사용자 전환 실패:", error);
