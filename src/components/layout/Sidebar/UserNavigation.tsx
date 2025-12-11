@@ -121,7 +121,7 @@ export function UserNavigation({
 
               <DropdownMenuGroup>
                 <DropdownMenuItem
-                  className="point-hover flex gap-3 p-3 cursor-pointer text-slate-600 focus:bg-slate-50 focus:text-blue-600"
+                  className="point-hover flex gap-3 p-2 text-[0.95rem] font-medium cursor-pointer items-center text-slate-600 focus:bg-slate-50 focus:text-blue-600"
                   onClick={() => setIsModalOpen(true)}
                 >
                   <BadgeCheck className="h-4 w-4" />내 정보 관리
@@ -131,7 +131,7 @@ export function UserNavigation({
               <DropdownMenuSeparator className="bg-slate-100 my-1" />
 
               <DropdownMenuItem
-                className="point-hover gap-3 flex p-3 cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700"
+                className="point-hover gap-3 flex p-2 text-[0.95rem] font-medium cursor-pointer items-center text-red-600 focus:bg-red-50 focus:text-red-700"
                 onClick={handleLogout}
               >
                 <LogOut className="h-4 w-4" />

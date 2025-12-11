@@ -177,8 +177,8 @@ export function ChatPanel() {
               <Card
                 className={`max-w-[75%] border-none p-0 ${
                   msg.role === "user"
-                    ? "bg-blue-500 text-white rounded-br-none shadow-md "
-                    : "bg-neutral-200  rounded-bl-none  shadow-md "
+                    ? "bg-blue-500 text-white rounded-br-none shadow-md text-[0.92rem] shadow-blue-500 "
+                    : "bg-gray-50  rounded-bl-none shadow-md text-[0.92rem] shadow-gray-300 "
                 }`}
               >
                 <CardContent className="p-3 leading-relaxed break-all">

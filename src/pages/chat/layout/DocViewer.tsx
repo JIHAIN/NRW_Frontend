@@ -165,9 +165,7 @@ export function DocViewer() {
           // [Mode 3] 대기 화면 (가운데 정렬을 위해 flex 사용)
           <div className="h-full flex flex-col items-center justify-center text-slate-300">
             <FileText className="size-16 mb-4 opacity-20" />
-            <p className="text-sm font-medium">
-              왼쪽 목록에서 문서를 선택하세요
-            </p>
+            <p className="text-sm font-medium">문서를 선택하세요</p>
           </div>
         )}
       </div>
