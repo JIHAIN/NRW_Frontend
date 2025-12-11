@@ -137,8 +137,7 @@ export const sendChatMessage = async (
 };
 
 /**
- * 5. 채팅 스트리밍 API
- * POST /api/v1/chat/stream (슬래시 없음!)
+ * 5. [수정] 채팅 스트리밍 API (줄바꿈/공백 완벽 대응)
  */
 export const streamChatResponse = async (
   data: SendMessageRequest,
@@ -170,50 +169,41 @@ export const streamChatResponse = async (
 
     // 줄바꿈 기준으로 청크 분리
     const lines = buffer.split("\n");
-    // 마지막 조각은 다음 청크와 합치기 위해 버퍼에 남김
+    // 마지막 조각은 다음 데이터와 합치기 위해 남겨둠
     buffer = lines.pop() || "";
 
     for (const line of lines) {
       // SSE 데이터 포맷인지 확인
       if (line.startsWith("data:")) {
-        // [핵심 로직 수정]
-        // data: 뒤의 내용을 추출할 때 trim()을 절대 사용하지 않음.
-        // 표준: "data: <content>" (index 5에 공백 존재)
-        // 상황: "data:  준" -> index 5는 구분자 공백, index 6은 ' ' (띄어쓰기)
+        // "data:" 뒤의 문자열 추출 (index 5부터)
+        let rawContent = line.slice(5);
 
-        let rawContent = "";
-
-        // 길이가 충분하고, 5번째 문자가 공백인 경우 (표준 SSE) -> 6번째부터가 실제 내용
-        if (line.length > 5 && line[5] === " ") {
-          rawContent = line.slice(6);
-        } else {
-          // "data:값" 처럼 공백 없이 붙어오는 비표준 케이스 대비
-          rawContent = line.slice(5);
+        // [SSE 표준] "data: " 처럼 공백이 하나 있으면 제거
+        if (rawContent.startsWith(" ")) {
+          rawContent = rawContent.slice(1);
         }
 
-        // 종료 신호 체크 (여기는 안전하게 trim해서 비교)
+        // 종료 신호 체크
         if (rawContent.trim() === "[DONE]" || rawContent.trim() === "END")
           continue;
 
-        // JSON 파싱 시도 (혹시 JSON 포맷으로 올 경우 대비)
-        if (rawContent.startsWith("{") || rawContent.startsWith("[")) {
-          try {
-            const parsed = JSON.parse(rawContent);
-            const content =
-              typeof parsed === "string" ? parsed : parsed.content || "";
-            onDelta(content);
-            continue; // JSON 파싱 성공 시 다음 라인으로
-          } catch (e) {
-            // JSON 파싱 실패 시, Raw Text로 취급하여 아래 로직 실행
-            console.error(e);
+        // [핵심 해결책]
+        // 내용이 빈 문자열("")이라면, 이는 서버가 보낸 '줄바꿈' 신호입니다.
+        if (rawContent === "") {
+          onDelta("\n"); // 강제로 줄바꿈 문자 주입
+        } else {
+          // 내용이 있으면 그대로 전송 (띄어쓰기 등은 이미 rawContent에 포함됨)
+          // 혹시 모를 JSON 포맷 대응
+          if (rawContent.startsWith("{")) {
+            try {
+              const parsed = JSON.parse(rawContent);
+              onDelta(parsed.content || "");
+            } catch {
+              onDelta(rawContent);
+            }
+          } else {
+            onDelta(rawContent);
           }
-        }
-
-        // Raw Text 처리
-        // 줄바꿈 문자(\n)가 포함되어 있다면 그대로 전달됨
-        // 띄어쓰기(" ")가 포함되어 있다면 그대로 전달됨
-        if (rawContent) {
-          onDelta(rawContent);
         }
       }
     }
