@@ -37,40 +37,62 @@ export function ChatPanel() {
     queryKey: ["sessionDetail", currentSessionId],
     queryFn: () => getChatSessionDetail(currentSessionId!),
     enabled: !!currentSessionId,
-    staleTime: 0,
+    // [최적화] 즉시 refetch 방지 (깜빡임 완화)
+    staleTime: 1000 * 5,
   });
 
   // DB에서 가져온 내용을 Store에 업데이트
   useEffect(() => {
     if (sessionDetail && currentSessionId) {
-      // 스트리밍 중이 아닐 때만 동기화
-      if (!isStreaming) {
-        // [수정 핵심 1] 스토어에 해당 세션이 존재하는지 확인
-        const sessionExists = store.sessions.some(
-          (s) => s.id === currentSessionId
+      // 스트리밍 중일 때는 절대 동기화 금지
+      if (isStreaming) return;
+
+      const sessionInStore = store.sessions.find(
+        (s) => s.id === currentSessionId
+      );
+
+      // [핵심 수정] 깜빡임/사라짐 방지
+      // 스토어(화면)에 있는 메시지가 DB보다 더 많다면(방금 생성된 답변이 있다면),
+      // DB 데이터로 덮어쓰지 않고 현재 상태를 유지합니다.
+      const storeMsgCount = sessionInStore?.messages.length || 0;
+      const dbMsgCount = sessionDetail.messages.length;
+
+      // 스토어가 더 최신 상태(개수가 더 많음)라면 동기화 스킵
+      if (storeMsgCount > dbMsgCount) {
+        return;
+      }
+
+      // 1. 세션이 없으면 생성 (껍데기)
+      if (!sessionInStore) {
+        store.createSession(
+          String(sessionDetail.session.id),
+          sessionDetail.session.title
         );
+      }
 
-        // [수정 핵심 2] 세션이 없으면(새로고침 직후 등), API 메타데이터로 세션 껍데기 먼저 생성
-        if (!sessionExists) {
-          store.createSession(
-            String(sessionDetail.session.id), // ID는 문자열로 변환하여 통일
-            sessionDetail.session.title
-          );
-        }
+      // 2. 메시지 변환
+      const loadedMessages: Message[] = sessionDetail.messages.map(
+        (msg, idx) => ({
+          // ID 안정화: index 기반으로 생성하여 불필요한 리렌더링 방지
+          id: `msg-${currentSessionId}-${idx}`,
+          role: (msg.role === "system" ? "assistant" : msg.role) as
+            | "user"
+            | "assistant",
+          content: msg.content,
+          createdAt: new Date().toISOString(),
+        })
+      );
 
-        // [수정 핵심 3] 메시지 변환 및 주입
-        const loadedMessages: Message[] = sessionDetail.messages.map(
-          (msg, idx) => ({
-            // 고유 ID 생성 (React key 오류 방지)
-            id: `msg-${currentSessionId}-${idx}-${Date.now()}`,
-            role: (msg.role === "system" ? "assistant" : msg.role) as
-              | "user"
-              | "assistant",
-            content: msg.content,
-            createdAt: new Date().toISOString(), // DB에 시간이 없다면 현재 시간 혹은 API의 created_at 활용
-          })
-        );
+      // 3. 실제 변경사항이 있을 때만 update (무한 루프 방지)
+      // 간단히 마지막 메시지나 길이를 비교
+      const lastStoreMsg =
+        sessionInStore?.messages[sessionInStore.messages.length - 1];
+      const lastDbMsg = loadedMessages[loadedMessages.length - 1];
 
+      if (
+        storeMsgCount !== dbMsgCount ||
+        lastStoreMsg?.content !== lastDbMsg?.content
+      ) {
         store.setMessages(currentSessionId, loadedMessages);
       }
     }

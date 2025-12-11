@@ -144,7 +144,6 @@ export const streamChatResponse = async (
   data: SendMessageRequest,
   onDelta: (token: string) => void
 ): Promise<void> => {
-  // [수정] 스웨거 명세에 맞춰 슬래시 제거
   const response = await fetch(`${API_BASE_URL}/api/v1/chat/stream`, {
     method: "POST",
     headers: {
@@ -161,28 +160,55 @@ export const streamChatResponse = async (
   const reader = response.body.getReader();
   const decoder = new TextDecoder("utf-8");
 
+  // [핵심 1] 불완전한 라인을 저장할 버퍼
+  let buffer = "";
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
 
+    // 버퍼에 청크 누적
     const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split("\n");
+    buffer += chunk;
+
+    // 줄바꿈 기준으로 분리
+    const lines = buffer.split("\n");
+
+    // [핵심 2] 마지막 요소는 불완전할 수 있으므로 버퍼에 남겨둠
+    buffer = lines.pop() || "";
 
     for (const line of lines) {
+      // SSE 데이터 라인인지 확인
       if (line.startsWith("data:")) {
-        let raw = line.slice(5);
-        if (raw.trim() === "END" || raw.trim() === "[DONE]") continue;
+        // "data:" (5글자)를 잘라냄
+        let rawData = line.slice(5);
 
-        let content = "";
-        try {
-          const parsed = JSON.parse(raw);
-          content = typeof parsed === "string" ? parsed : parsed.content || "";
-        } catch {
-          if (raw.startsWith(" ")) raw = raw.slice(1);
-          content = raw.replace(/\\n/g, "\n");
+        // [핵심 3] SSE 표준상 "data: " 뒤에 공백 1개가 올 수 있음.
+        // 문맥상 첫 번째 공백만 제거하고 나머지 공백(들여쓰기 등)은 유지해야 함.
+        if (rawData.startsWith(" ")) {
+          rawData = rawData.slice(1);
         }
 
-        if (content) onDelta(content);
+        // 종료 신호 체크 (양옆 공백 제거 후 비교는 안전)
+        if (rawData.trim() === "[DONE]" || rawData.trim() === "END") continue;
+
+        // JSON 파싱 시도 (혹시 모를 JSON 데이터 대비)
+        // 하지만 보내주신 예시는 Raw Text이므로 catch로 떨어져서 그대로 출력될 것임
+        if (rawData.startsWith("{") || rawData.startsWith("[")) {
+          try {
+            const parsed = JSON.parse(rawData);
+            const content =
+              typeof parsed === "string" ? parsed : parsed.content || "";
+            onDelta(content);
+          } catch (e) {
+            // 파싱 실패 시 원본 텍스트 그대로 전송 (줄바꿈/공백 보존)
+            onDelta(rawData);
+            console.error(e);
+          }
+        } else {
+          // Raw Text 처리
+          onDelta(rawData);
+        }
       }
     }
   }
