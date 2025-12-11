@@ -11,6 +11,21 @@ import { getChatSessionDetail } from "@/services/chat.service";
 import { useChatStore, type Message } from "@/store/chatStore";
 import { useAuthStore } from "@/store/authStore";
 
+// [추가] 마크다운 문법 교정 유틸 함수
+// 스트리밍 중 발생하는 불필요한 공백(예: "1 . " -> "1.")을 제거하여 마크다운이 깨지는 것을 방지합니다.
+const preprocessContent = (text: string) => {
+  if (!text) return "";
+  return (
+    text
+      // 1. 숫자 리스트 교정: "1 . " 또는 "1 ." -> "1."
+      .replace(/^(\d+)\s+\./gm, "$1.")
+      // 2. 볼드체 교정: "** 텍스트 **" -> "**텍스트**"
+      .replace(/\*\*\s+(.*?)\s+\*\*/g, "**$1**")
+    // 3. (옵션) 한글 자소 분리 방지용 공백 축소 (너무 넓은 간격이 있다면)
+    // .replace(/\s{2,}/g, " ")
+  );
+};
+
 export function ChatPanel() {
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -296,7 +311,7 @@ export function ChatPanel() {
                       ),
                     }}
                   >
-                    {msg.content}
+                    {preprocessContent(msg.content)}
                   </ReactMarkdown>
                 </CardContent>
               </Card>
@@ -323,6 +338,7 @@ export function ChatPanel() {
           </div>
         ))}
 
+        {/* 로딩 표시 (스트리밍 시작 전) */}
         {isStreaming &&
           messages.length > 0 &&
           messages[messages.length - 1].content.length === 0 && (
