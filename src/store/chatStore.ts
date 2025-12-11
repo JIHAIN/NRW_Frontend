@@ -32,6 +32,7 @@ interface ChatState {
   // 1. 데이터 상태 (State)
   sessions: ChatSession[]; // 전체 채팅 세션 목록
   selectedSessionId: string | null; // 현재 활성화된 세션 ID
+  pinnedSessionIds: string[]; // [추가] 상단 고정된 세션 ID 목록
 
   drafts: Record<string, string>; // 세션별 입력창에 작성 중인 텍스트 임시 저장
   isStreaming: boolean; // 현재 답변을 생성(스트리밍) 중인지 여부
@@ -47,6 +48,7 @@ interface ChatState {
   setSelectedSessionId: (sessionId: string | null) => void;
   deleteSession: (sessionId: string) => void;
   updateSessionTitle: (sessionId: string, title: string) => void;
+  toggleSessionPin: (sessionId: string) => void; // [추가] 핀 토글 액션
 
   // 메시지 및 입력 관리
   setDraft: (sessionId: string, text: string) => void;
@@ -82,6 +84,7 @@ export const useChatStore = create(
       // 초기 상태 값
       sessions: [],
       selectedSessionId: null,
+      pinnedSessionIds: [], // 핀 액션 [초기화]
       drafts: {},
       isStreaming: false,
       selectedReference: null,
@@ -114,6 +117,17 @@ export const useChatStore = create(
           };
         });
       },
+
+      // [추가] 상단 고정 토글 함수
+      toggleSessionPin: (sessionId) =>
+        set((state) => {
+          const isPinned = state.pinnedSessionIds.includes(sessionId);
+          return {
+            pinnedSessionIds: isPinned
+              ? state.pinnedSessionIds.filter((id) => id !== sessionId) // 해제
+              : [...state.pinnedSessionIds, sessionId], // 추가
+          };
+        }),
 
       setSelectedSessionId: (sessionId) =>
         set({ selectedSessionId: sessionId }),
@@ -152,11 +166,13 @@ export const useChatStore = create(
         set((state) => {
           const newDrafts = { ...state.drafts };
           delete newDrafts[sessionId];
-
           return {
             sessions: state.sessions.filter((s) => s.id !== sessionId),
+            // [수정] 삭제 시 핀 목록에서도 제거
+            pinnedSessionIds: state.pinnedSessionIds.filter(
+              (id) => id !== sessionId
+            ),
             drafts: newDrafts,
-            // 삭제된 세션이 현재 선택된 세션이었다면 선택 해제
             selectedSessionId:
               state.selectedSessionId === sessionId
                 ? null
@@ -302,6 +318,7 @@ export const useChatStore = create(
         set({
           sessions: [],
           selectedSessionId: null,
+          pinnedSessionIds: [], // [초기화]
           drafts: {},
           isStreaming: false,
           selectedReference: null,

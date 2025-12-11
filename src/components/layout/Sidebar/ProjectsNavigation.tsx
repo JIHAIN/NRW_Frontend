@@ -1,8 +1,15 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MessageSquare, Trash2, Plus, Loader2 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom"; // useNavigate 추가
+import { useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  MessageSquare,
+  Plus,
+  Loader2,
+  MoreHorizontal,
+  Pin,
+} from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -11,87 +18,67 @@ import {
   SidebarMenuItem,
   SidebarMenuAction,
 } from "@/components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 import { useChatStore } from "@/store/chatStore";
-import { useAuthStore } from "@/store/authStore"; // AuthStore 추가
-import { getChatSessions, deleteChatSession } from "@/services/chat.service";
-import { useEffect } from "react";
-import { useDialogStore } from "@/store/dialogStore";
+import { useAuthStore } from "@/store/authStore";
+import { getChatSessions } from "@/services/chat.service";
+import { SessionActionMenu } from "@/components/chat/SessionActionMenu";
 
 export function ProjectsNavigation() {
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const dialog = useDialogStore();
 
   const {
     selectedSessionId,
     setSelectedSessionId,
     createSession,
+    updateSessionTitle,
     sessions: storeSessions,
+    pinnedSessionIds, // [추가]
   } = useChatStore();
 
-  // [수정] 로그인한 유저 ID 가져오기
   const { user } = useAuthStore();
   const userId = user?.id;
 
-  // 1. API 목록 가져오기 (userId가 있을 때만)
+  // 1. API 목록 가져오기
   const { data: apiSessions, isLoading } = useQuery({
     queryKey: ["chatSessions", userId],
     queryFn: () => getChatSessions(userId!),
     enabled: !!userId,
   });
 
-  // API 목록을 Store와 동기화
+  // 동기화 로직
   useEffect(() => {
-    if (apiSessions && apiSessions.length > 0) {
-      apiSessions.forEach((s) => {
-        const strId = String(s.id);
-        const exists = storeSessions.some((local) => local.id === strId);
-        if (!exists) {
-          createSession(strId, s.title);
+    if (apiSessions) {
+      apiSessions.forEach((apiSess) => {
+        const strId = String(apiSess.id);
+        const localSession = storeSessions.find((s) => s.id === strId);
+
+        if (!localSession) {
+          createSession(strId, apiSess.title);
+        } else if (localSession.title !== apiSess.title) {
+          updateSessionTitle(strId, apiSess.title);
         }
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiSessions]);
 
-  // 2. 삭제 기능
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteChatSession(id),
-    onSuccess: (_, deletedId) => {
-      queryClient.invalidateQueries({ queryKey: ["chatSessions", userId] });
-      useChatStore.getState().deleteSession(String(deletedId));
-      if (selectedSessionId === String(deletedId)) {
-        setSelectedSessionId(null);
-      }
-      dialog.alert({ message: "삭제되었습니다.", variant: "success" });
-    },
-    onError: () => {
-      dialog.alert({ message: "삭제에 실패했습니다.", variant: "error" });
-    },
-  });
+  // [핵심] 정렬 로직: 핀 고정된 세션을 위로 올림
+  const sortedSessions = useMemo(() => {
+    return [...storeSessions].sort((a, b) => {
+      const isAPinned = pinnedSessionIds.includes(a.id);
+      const isBPinned = pinnedSessionIds.includes(b.id);
 
-  const handleDelete = async (id: number) => {
-    const confirmed = await dialog.confirm({
-      title: "채팅 삭제",
-      message: "정말 삭제하시겠습니까?",
-      variant: "warning",
+      if (isAPinned && !isBPinned) return -1; // a가 위로
+      if (!isAPinned && isBPinned) return 1; // b가 위로
+      // 둘 다 핀이거나 둘 다 아니면, 기존 순서(보통 날짜순) 유지
+      return 0;
     });
-    if (confirmed) {
-      deleteMutation.mutate(id);
-    }
-  };
+  }, [storeSessions, pinnedSessionIds]);
 
-  // [수정] 새 채팅 버튼 핸들러
   const handleNewChat = () => {
-    setSelectedSessionId(null); // 세션 선택 해제
-    navigate("/chat"); // 채팅 페이지로 이동 (자동으로 새 세션 준비됨)
+    setSelectedSessionId(null);
+    navigate("/chat");
   };
 
   return (
@@ -100,7 +87,7 @@ export function ProjectsNavigation() {
         <SidebarGroupLabel>채팅 목록</SidebarGroupLabel>
         <button
           onClick={handleNewChat}
-          className="text-xs flex gap-1 items-center hover:text-blue-500 cursor-pointer text-gray-500"
+          className="text-xs flex gap-1 items-center hover:text-blue-500 cursor-pointer text-gray-500 transition-colors"
         >
           <Plus size={14} /> 새 채팅
         </button>
@@ -108,39 +95,59 @@ export function ProjectsNavigation() {
 
       <SidebarMenu>
         {isLoading && (
-          <Loader2 className="animate-spin mx-auto my-4 text-slate-400" />
+          <div className="flex justify-center py-2">
+            <Loader2 className="animate-spin text-slate-300 w-4 h-4" />
+          </div>
         )}
 
-        {apiSessions?.map((session) => (
-          <SidebarMenuItem key={session.id}>
-            <SidebarMenuButton
-              isActive={String(session.id) === selectedSessionId}
-              className="data-[active=true]:bg-blue-100 data-[active=true]:text-blue-700"
-            >
-              <Link
-                to="/chat"
-                onClick={() => setSelectedSessionId(String(session.id))}
-                className="flex items-center gap-2 w-full overflow-hidden"
-              >
-                <MessageSquare size={12} className="shrink-0" />
-                <span className="truncate">{session.title}</span>
-              </Link>
-            </SidebarMenuButton>
+        {sortedSessions.map((session) => {
+          const isPinned = pinnedSessionIds.includes(session.id);
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuAction showOnHover>
-                  <Trash2 size={14} />
-                </SidebarMenuAction>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => handleDelete(session.id)}>
-                  삭제하기
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        ))}
+          return (
+            <SidebarMenuItem key={session.id}>
+              <SidebarMenuButton
+                isActive={session.id === selectedSessionId}
+                className="group-data-[collapsible=icon]:justify-center"
+              >
+                <Link
+                  to="/chat"
+                  onClick={() => setSelectedSessionId(session.id)}
+                  className="flex items-center gap-2 w-full overflow-hidden"
+                >
+                  <MessageSquare
+                    size={14}
+                    className="shrink-0 text-slate-500"
+                  />
+                  <span className="truncate text-sm flex-1">
+                    {session.title}
+                  </span>
+                  {/* 핀 아이콘 표시 */}
+                  {isPinned && (
+                    <Pin
+                      size={10}
+                      className="shrink-0 text-blue-500 fill-blue-500"
+                    />
+                  )}
+                </Link>
+              </SidebarMenuButton>
+
+              <SessionActionMenu
+                sessionId={session.id}
+                currentTitle={session.title}
+                // [설정] 사이드바용 위치 값
+                side="right" // 사이드바 옆으로 튈지, 아래로 내릴지 결정 (보통 right or bottom)
+                align="start" // 트리거 상단에 맞춤
+                sideOffset={4}
+                className="mt-2" // 사이드바용은 조금 좁게
+                trigger={
+                  <SidebarMenuAction showOnHover>
+                    <MoreHorizontal />
+                  </SidebarMenuAction>
+                }
+              />
+            </SidebarMenuItem>
+          );
+        })}
       </SidebarMenu>
     </SidebarGroup>
   );

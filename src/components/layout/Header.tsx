@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom"; // [추가] useLocation
 import { Button } from "../ui/button";
 import { useAuthStore } from "@/store/authStore";
 import { useSystemStore } from "@/store/systemStore";
-import { LogOut, BadgeCheck } from "lucide-react";
+import { LogOut, BadgeCheck, ChevronDown } from "lucide-react";
 
 // 드롭다운 및 아바타 컴포넌트 임포트
 import {
@@ -19,16 +19,29 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // 내 정보 수정 모달 임포트 (경로 확인 필요, UserNavigation과 동일한 곳에서 가져옵니다)
 import MyInfoModal from "@/components/layout/Sidebar/MyInfoModal";
+import { useChatStore } from "@/store/chatStore";
+import { SessionActionMenu } from "../chat/SessionActionMenu";
 
 const IMAGE_BASE_URL = "https://alain.r-e.kr";
 
 function Header() {
   const navigate = useNavigate();
+  const location = useLocation(); // [추가] 현재 경로 확인
   const { isAuthenticated, user, logout } = useAuthStore();
   const { departments } = useSystemStore();
 
+  // 현재 선택된 세션 정보 가져오기
+  const { selectedSessionId, sessions } = useChatStore();
+  const currentSession = useMemo(
+    () => sessions.find((s) => s.id === selectedSessionId),
+    [selectedSessionId, sessions]
+  );
+
   // 모달 상태 관리
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // 현재 페이지 경로가 '/chat' 이어야 함
+  const shouldShowHeaderTitle = currentSession && location.pathname === "/chat";
 
   // 1. 부서 이름 찾기
   const deptName = useMemo(() => {
@@ -61,7 +74,7 @@ function Header() {
     <div className="w-full ">
       <nav className="z-50">
         <div className="h-14 px-4 flex items-center justify-between ">
-          {/* 로고 영역 */}
+          {/* 1. 로고 영역 */}
           <div className="  p-0.5 ">
             <Link
               to="/"
@@ -73,7 +86,36 @@ function Header() {
             </Link>
           </div>
 
-          {/* 우측 영역 */}
+          {/* 2. 중앙: 현재 세션 타이틀 (조건부 렌더링) */}
+          <div className="flex-1 flex justify-center max-w-md">
+            {shouldShowHeaderTitle && (
+              <SessionActionMenu
+                sessionId={currentSession!.id}
+                currentTitle={currentSession!.title}
+                // [설정] 헤더용 위치 값
+                side="bottom"
+                align="start" // 버튼의 왼쪽 라인에 맞춤
+                sideOffset={8} // 버튼과 8px 띄움
+                className="ml-30"
+                trigger={
+                  <Button
+                    variant="ghost"
+                    className="flex  text-sm font-semibold bg-slate-50 shadow-md shadow-slate-200 text-slate-600 cursor-pointer hover:bg-slate-100/80 transition-colors rounded-lg truncate"
+                  >
+                    <span className="truncate text-[1.2rem]">
+                      {currentSession!.title}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      className="text-slate-400 shrink-0"
+                    />
+                  </Button>
+                }
+              />
+            )}
+          </div>
+
+          {/* 3. 사용자 정보 영역 */}
           <div className="flex gap-6 items-center">
             {isAuthenticated && user ? (
               <>

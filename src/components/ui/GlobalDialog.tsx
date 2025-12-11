@@ -18,8 +18,8 @@ export function GlobalDialog() {
     switch (options.variant) {
       case "success":
         return {
-          icon: <CheckCircle2 className="w-10 h-10 text-green-500" />,
-          btn: "bg-green-600 hover:bg-green-700",
+          icon: <CheckCircle2 className="w-10 h-10 text-blue-500" />,
+          btn: "bg-blue-600 hover:bg-blue-700",
         };
       case "error":
         return {
@@ -33,8 +33,8 @@ export function GlobalDialog() {
         };
       default: // info
         return {
-          icon: <AlertCircle className="w-10 h-10 text-blue-500" />,
-          btn: "bg-blue-600 hover:bg-blue-700",
+          icon: <AlertCircle className="w-10 h-10 text-green-500" />,
+          btn: "bg-green-600 hover:bg-green-700",
         };
     }
   };

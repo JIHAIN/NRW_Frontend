@@ -251,3 +251,24 @@ export const deleteChatSession = async (
 
   return response.json();
 };
+
+/**
+ * 7. [추가] 채팅 세션 제목 수정
+ * PUT /api/v1/chat/sessions/{session_id}
+ */
+export const updateChatSessionTitle = async (
+  sessionId: number | string,
+  title: string
+): Promise<string> => {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/chat/sessions/${sessionId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    }
+  );
+
+  if (!response.ok) throw new Error("제목 수정 실패");
+  return response.json();
+};
