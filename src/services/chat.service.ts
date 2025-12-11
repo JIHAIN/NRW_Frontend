@@ -167,18 +167,19 @@ export const streamChatResponse = async (
     const chunk = decoder.decode(value, { stream: true });
     buffer += chunk;
 
-    // 줄바꿈 기준으로 청크 분리
+    // 줄바꿈(\n)을 기준으로 청크 분리
     const lines = buffer.split("\n");
-    // 마지막 조각은 다음 데이터와 합치기 위해 남겨둠
+    // 마지막 조각은 다음 청크와 합치기 위해 버퍼에 남김
     buffer = lines.pop() || "";
 
     for (const line of lines) {
-      // SSE 데이터 포맷인지 확인
+      // 1. "data:" 로 시작하는 경우 -> 실제 텍스트 내용 처리
       if (line.startsWith("data:")) {
         // "data:" 뒤의 문자열 추출 (index 5부터)
         let rawContent = line.slice(5);
 
-        // [SSE 표준] "data: " 처럼 공백이 하나 있으면 제거
+        // [SSE 표준] "data: " 처럼 첫 번째 공백은 구분자이므로 제거
+        // (주의: 뒤따라오는 두 번째 공백부터는 실제 내용인 '띄어쓰기'이므로 보존)
         if (rawContent.startsWith(" ")) {
           rawContent = rawContent.slice(1);
         }
@@ -187,24 +188,25 @@ export const streamChatResponse = async (
         if (rawContent.trim() === "[DONE]" || rawContent.trim() === "END")
           continue;
 
-        // [핵심 해결책]
-        // 내용이 빈 문자열("")이라면, 이는 서버가 보낸 '줄바꿈' 신호입니다.
-        if (rawContent === "") {
-          onDelta("\n"); // 강제로 줄바꿈 문자 주입
-        } else {
-          // 내용이 있으면 그대로 전송 (띄어쓰기 등은 이미 rawContent에 포함됨)
-          // 혹시 모를 JSON 포맷 대응
-          if (rawContent.startsWith("{")) {
-            try {
-              const parsed = JSON.parse(rawContent);
-              onDelta(parsed.content || "");
-            } catch {
-              onDelta(rawContent);
-            }
-          } else {
+        // JSON 형식 대응 (혹시 모를 상황 대비)
+        if (rawContent.startsWith("{")) {
+          try {
+            const parsed = JSON.parse(rawContent);
+            onDelta(parsed.content || "");
+          } catch {
             onDelta(rawContent);
           }
+        } else {
+          // 순수 텍스트 전송
+          onDelta(rawContent);
         }
+      }
+      // 2. [핵심 수정] 라인이 비어있는 경우 ("") -> 줄바꿈(\n)으로 처리
+      // 사용자가 관찰한 "Enter 한번" 구간을 여기서 잡습니다.
+      else if (line.trim() === "") {
+        // 단, 연속된 빈 줄로 인해 너무 많은 줄바꿈이 생길 수 있으므로,
+        // 필요에 따라 조건을 걸 수도 있지만, 현재 요청사항은 "빈 줄 = \n"이므로 그대로 적용
+        onDelta("\n");
       }
     }
   }
