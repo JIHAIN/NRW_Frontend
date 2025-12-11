@@ -158,7 +158,10 @@ export const streamChatResponse = async (
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder("utf-8");
+
   let buffer = "";
+  // [핵심] 연속된 빈 줄 횟수를 카운트하는 변수
+  let emptyLineCount = 0;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -167,46 +170,65 @@ export const streamChatResponse = async (
     const chunk = decoder.decode(value, { stream: true });
     buffer += chunk;
 
-    // 줄바꿈(\n)을 기준으로 청크 분리
+    // 줄바꿈 문자로 전체를 쪼갭니다 (서버가 보내는 물리적인 줄바꿈)
     const lines = buffer.split("\n");
-    // 마지막 조각은 다음 청크와 합치기 위해 버퍼에 남김
     buffer = lines.pop() || "";
 
     for (const line of lines) {
-      // 1. "data:" 로 시작하는 경우 -> 실제 텍스트 내용 처리
+      // 1. 데이터 라인인지 확인
       if (line.startsWith("data:")) {
-        // "data:" 뒤의 문자열 추출 (index 5부터)
+        // 내용 추출
         let rawContent = line.slice(5);
-
-        // [SSE 표준] "data: " 처럼 첫 번째 공백은 구분자이므로 제거
-        // (주의: 뒤따라오는 두 번째 공백부터는 실제 내용인 '띄어쓰기'이므로 보존)
         if (rawContent.startsWith(" ")) {
           rawContent = rawContent.slice(1);
         }
 
-        // 종료 신호 체크
-        if (rawContent.trim() === "[DONE]" || rawContent.trim() === "END")
+        // 종료 신호
+        if (rawContent.trim() === "[DONE]" || rawContent.trim() === "END") {
           continue;
+        }
 
-        // JSON 형식 대응 (혹시 모를 상황 대비)
-        if (rawContent.startsWith("{")) {
-          try {
-            const parsed = JSON.parse(rawContent);
-            onDelta(parsed.content || "");
-          } catch {
+        // 2. 내용이 비어있는지 확인
+        // 주의: trim()을 해서 비어있다면, 화면상에 보이지 않는 공백문자만 있거나 아예 없는 경우
+        if (!rawContent || rawContent.trim() === "") {
+          // 빈 줄 카운트 증가
+          emptyLineCount++;
+        } else {
+          // 3. 내용이 있는 경우 (글자 도착)
+          // 이전에 쌓여있던 빈 줄들을 처리하고, 현재 글자를 보냄
+
+          // [규칙 적용]
+          if (emptyLineCount === 0 || emptyLineCount === 1) {
+            // 0개: 그냥 씀
+            // 1개: 무시 (글자 사이 끊김 연결)
+          } else if (emptyLineCount === 2) {
+            // 2개 연속 빈 줄 -> 줄바꿈 1번
+            onDelta("\n");
+          } else if (emptyLineCount >= 3) {
+            // 3개 이상 연속 빈 줄 -> 문단 바꿈
+            onDelta("\n\n");
+          }
+
+          // 빈 줄 카운트 리셋
+          emptyLineCount = 0;
+
+          // 실제 텍스트 전송
+          // 혹시 모를 JSON 체크
+          if (rawContent.startsWith("{")) {
+            try {
+              const parsed = JSON.parse(rawContent);
+              onDelta(parsed.content || "");
+            } catch {
+              onDelta(rawContent);
+            }
+          } else {
             onDelta(rawContent);
           }
-        } else {
-          // 순수 텍스트 전송
-          onDelta(rawContent);
         }
       }
-      // 2. [핵심 수정] 라인이 비어있는 경우 ("") -> 줄바꿈(\n)으로 처리
-      // 사용자가 관찰한 "Enter 한번" 구간을 여기서 잡습니다.
+      // data: 가 아닌 완전 빈 줄도 카운트에 포함 (안전장치)
       else if (line.trim() === "") {
-        // 단, 연속된 빈 줄로 인해 너무 많은 줄바꿈이 생길 수 있으므로,
-        // 필요에 따라 조건을 걸 수도 있지만, 현재 요청사항은 "빈 줄 = \n"이므로 그대로 적용
-        onDelta("\n");
+        emptyLineCount++;
       }
     }
   }
