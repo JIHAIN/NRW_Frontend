@@ -102,10 +102,10 @@ export function DocList() {
 
                     {/* 메타데이터 라인 */}
                     <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-400 leading-none">
-                      {/* 용량 */}
+                      {/* 용량
                       <span className="shrink-0">
                         {((doc.fileSize || 0) / 1024).toFixed(0)} KB
-                      </span>
+                      </span> */}
 
                       <span className="w-0.5 h-2 bg-gray-300 rounded-full" />
 
