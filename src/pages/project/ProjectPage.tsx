@@ -125,13 +125,18 @@ export default function ProjectPage() {
             <RequestModal
               projectId={currentProjectData?.id}
               projectName={currentProjectData?.name || ""}
+              // [수정] departmentId props 전달
+              // currentProjectData.departmentId를 쓰거나, 선택된 부서 ID를 전달
+              departmentId={
+                currentProjectData?.departmentId || Number(selectedDeptId)
+              }
             />
           ) : (
             <UploadModal
               departmentId={currentDeptData?.id}
               projectId={currentProjectData?.id}
               projectName={currentProjectData?.name || "프로젝트 미선택"}
-              disabled={!currentProjectData} // 프로젝트가 선택되어야 업로드 가능
+              disabled={!currentProjectData}
             />
           )}
         </div>
