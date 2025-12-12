@@ -15,7 +15,7 @@ interface MyInfoModalProps {
 
 type TabType = "INFO" | "PASSWORD" | "IMAGE";
 
-// [추가] 이미지 기본 경로 상수
+// 이미지 기본 경로 상수
 const IMAGE_BASE_URL = "https://alain.r-e.kr";
 
 export default function MyInfoModal({ onClose }: MyInfoModalProps) {
@@ -37,7 +37,7 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
   // 프로필 이미지 상태
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // [수정] 초기 이미지 URL 설정 로직 추가
+  //  초기 이미지 URL 설정 로직 추가
   // UserNavigation 등에서 사용하는 변환 로직을 동일하게 적용
   const [previewUrl, setPreviewUrl] = useState<string | null>(() => {
     if (!user?.profileImagePath) return null;

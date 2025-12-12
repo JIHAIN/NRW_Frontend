@@ -17,12 +17,12 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   sidebarMenuButtonVariants,
-  SidebarMenuButton, // [추가] 접힌 상태에서 아이콘 버튼으로 사용
+  SidebarMenuButton, // 접힌 상태에서 아이콘 버튼으로 사용
 } from "@/components/ui/sidebar";
 
 import { useSidebar } from "@/hooks/useSidebar";
 
-// [추가] 접힌 상태에서 사용할 드롭다운 컴포넌트
+//  접힌 상태에서 사용할 드롭다운 컴포넌트
 import {
   DropdownMenu,
   DropdownMenuContent,

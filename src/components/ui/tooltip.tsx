@@ -49,7 +49,7 @@ function TooltipContent({
           "animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
           "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
 
-          // ✨✨✨ 유리 효과를 위한 스타일 추가 ✨✨✨
+          //  유리 효과를 위한 스타일 추가
           "bg-white/20", // 투명한 흰색 배경 (20% 불투명도)
           "text-black", // 배경 위에 잘 보이도록 흰색 텍스트
           "border border-gray-200/50", // 얇고 투명한 테두리

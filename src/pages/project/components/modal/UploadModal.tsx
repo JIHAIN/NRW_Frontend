@@ -186,7 +186,7 @@ export function UploadModal({
             disabled={!files.length}
             className="bg-blue-600 text-white hover:bg-blue-700"
           >
-            업로드 시작 (백그라운드)
+            업로드 시작
           </Button>
         </DialogFooter>
       </DialogContent>

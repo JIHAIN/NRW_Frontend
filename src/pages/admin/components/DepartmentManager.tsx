@@ -96,7 +96,7 @@ const DepartmentManager: FC<DepartmentManagerProps> = ({
           <button
             type="submit"
             disabled={isLoading} //  로딩 중 비활성화
-            className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 flex items-center cursor-pointer min-w-[70px] justify-center disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="bg-blue-400 shadow-md shadow-blue-600 hover:shadow-md  text-white p-2 rounded-full hover:bg-blue-600 flex items-center cursor-pointer min-w-[70px] justify-center disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             <Plus size={18} className="mr-1" /> 추가
           </button>

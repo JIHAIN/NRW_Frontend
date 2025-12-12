@@ -1,18 +1,15 @@
 import { useState, useMemo, type FC, useEffect } from "react";
-import { Trash2, Settings, Search, Plus } from "lucide-react"; // Plus 아이콘 추가
+import { Trash2, Settings, Search, Plus } from "lucide-react";
 
 import type { User, UserRole } from "@/types/UserType";
 import { useAuthStore } from "@/store/authStore";
-
 import type { CreateUserRequest } from "@/services/user.service";
-
-// Store 임포트
 import { useSystemStore } from "@/store/systemStore";
 import { useUserStore } from "@/store/userStore";
 
 import Pagination from "../project/components/Pagination";
 import { FilterCombobox } from "@/components/common/FilterCombobox";
-import { useDialogStore } from "@/store/dialogStore"; // Dialog 사용 (선택사항)
+import { useDialogStore } from "@/store/dialogStore";
 import UserEditModal from "./UserModal/UserEditModal";
 import UserCreateModal from "./UserModal/UserCreateModal";
 
@@ -41,7 +38,6 @@ const ROLE_FILTER_OPTIONS: OptionItem<string>[] = [
   { value: "USER", label: "일반 사용자" },
 ];
 
-// 삭제 확인 모달
 interface DeleteConfirmModalProps {
   userName: string;
   onConfirm: () => void;
@@ -84,16 +80,12 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
   );
 };
 
-// --------------------------------------------------------------------------
-// 메인 페이지 컴포넌트
-// --------------------------------------------------------------------------
 export const UserManagementPage: FC = () => {
   const { departments, projects, fetchSystemData } = useSystemStore();
-  // [수정] addUser 액션 추가
   const { users, fetchUsers, deleteUser, updateUser, addUser } = useUserStore();
   const { user: currentUser } = useAuthStore();
 
-  const dialog = useDialogStore(); // 알림용
+  const dialog = useDialogStore();
 
   useEffect(() => {
     fetchSystemData();
@@ -119,14 +111,12 @@ export const UserManagementPage: FC = () => {
 
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  // 모달 상태들
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false); // [신규] 생성 모달
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
-  // ... (필터링 로직: 기존 유지) ...
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       if (user.role === "SUPER_ADMIN") return false;
@@ -142,8 +132,15 @@ export const UserManagementPage: FC = () => {
       }
       const searchLower = searchText.toLowerCase();
       const userName = user.userName.toLowerCase();
+      // 검색 조건에 사원번호도 포함
+      const employeeId = user.employeeId?.toLowerCase() || "";
       const accountId = user.accountId.toLowerCase();
-      if (!userName.includes(searchLower) && !accountId.includes(searchLower)) {
+
+      if (
+        !userName.includes(searchLower) &&
+        !accountId.includes(searchLower) &&
+        !employeeId.includes(searchLower)
+      ) {
         return false;
       }
       return true;
@@ -171,7 +168,6 @@ export const UserManagementPage: FC = () => {
     setCurrentPage(1);
   }, [searchText, roleFilter, deptFilter]);
 
-  // 핸들러
   const handleEditUser = (user: User) => {
     setSelectedUser(user);
     setIsEditModalOpen(true);
@@ -195,7 +191,6 @@ export const UserManagementPage: FC = () => {
     setIsEditModalOpen(false);
   };
 
-  // [신규] 사용자 생성 핸들러
   const handleCreateUser = async (data: CreateUserRequest) => {
     try {
       await addUser(data);
@@ -233,7 +228,7 @@ export const UserManagementPage: FC = () => {
             <Search size={20} className="text-blue-400 mx-2" />
             <input
               type="text"
-              placeholder="이름 또는 아이디 검색"
+              placeholder="이름 또는 사원번호 검색"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="w-full p-1 focus:outline-none"
@@ -258,11 +253,10 @@ export const UserManagementPage: FC = () => {
           )}
         </div>
 
-        {/* [신규] 사용자 등록 버튼 (총괄 관리자 전용) */}
         {isSuperAdmin && (
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-sm"
+            className="flex items-center gap-2 px-3 py-2 bg-blue-400 shadow-md shadow-blue-600 hover:shadow-md text-white rounded-4xl hover:bg-blue-600 cursor-pointer  transition-colors font-medium "
           >
             <Plus size={18} />
             사용자 등록
@@ -270,13 +264,12 @@ export const UserManagementPage: FC = () => {
         )}
       </div>
 
-      {/* 테이블 영역 (기존 코드 유지) */}
       <div className="overflow-x-auto bg-white rounded-lg shadow-lg border-2xl border-blue-200">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
               <th className="w-3/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                이름 / 아이디
+                이름 / 사원번호
               </th>
               <th className="w-2/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 권한
@@ -312,8 +305,9 @@ export const UserManagementPage: FC = () => {
                   <tr key={user.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div className="font-medium">{user.userName}</div>
+                      {/* [수정] accountId 대신 employeeId 표시 (없으면 '-' 표시) */}
                       <div className="text-xs text-gray-500">
-                        {user.accountId}
+                        {user.employeeId || "-"}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -369,7 +363,6 @@ export const UserManagementPage: FC = () => {
         />
       )}
 
-      {/* 수정 모달 */}
       {isEditModalOpen && selectedUser && (
         <UserEditModal
           user={selectedUser}
@@ -382,7 +375,6 @@ export const UserManagementPage: FC = () => {
         />
       )}
 
-      {/* [신규] 생성 모달 */}
       {isCreateModalOpen && (
         <UserCreateModal
           departments={departments}
