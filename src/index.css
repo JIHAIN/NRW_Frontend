@@ -53,12 +53,24 @@ body {
     /* padding: 0.5rem; */
   }
 
-  .point-hover {
+  @layer components {
+    .point-hover {
+      @apply cursor-pointer transition-all duration-200;
+
+      /* @apply hover:shadow-md  hover:bg-blue-50 hover:shadow-blue-100; */
+
+      @apply hover:bg-blue-100;
+
+      @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50;
+    }
+  }
+
+  /* .point-hover {
     cursor: pointer;
     &:hover {
       background: var(--color-blue-100);
     }
-  }
+  } */
   .page-title {
     /* text-2xl */
     font-size: 1.5rem; /* 24px */

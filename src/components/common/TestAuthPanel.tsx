@@ -18,7 +18,7 @@ const TEST_ACCOUNTS: Record<number, { account_id: string; password: string }> =
   {
     1: { account_id: "super_admin", password: "2team" },
     2: { account_id: "manager_dt", password: "2team" },
-    3: { account_id: "user_dt", password: "2team" },
+    3: { account_id: "user_3rd", password: "2team" },
   };
 
 interface TestSelectProps {

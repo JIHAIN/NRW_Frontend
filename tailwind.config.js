@@ -1,5 +1,9 @@
+import tailwindcssAnimate from "tailwindcss-animate";
+import twAnimateCss from "tw-animate-css";
+import tailwindColors from "tailwindcss/colors";
+
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   // 다크 모드 클래스 전략
   darkMode: ["class"],
 
@@ -7,7 +11,7 @@ module.exports = {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
-    "./components/**/*.{ts,tsx}",
+    "./src/components/**/*.{ts,tsx}",
   ],
 
   theme: {
@@ -90,5 +94,5 @@ module.exports = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require("tw-animate-css")],
+  plugins: [tailwindcssAnimate, twAnimateCss],
 };

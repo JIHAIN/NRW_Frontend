@@ -23,11 +23,6 @@ import { useChatStore } from "@/store/chatStore";
 import { useAuthStore } from "@/store/authStore";
 import { getChatSessions } from "@/services/chat.service";
 import { SessionActionMenu } from "@/components/chat/SessionActionMenu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 export function ProjectsNavigation() {
   const navigate = useNavigate();
@@ -38,20 +33,20 @@ export function ProjectsNavigation() {
     createSession,
     updateSessionTitle,
     sessions: storeSessions,
-    pinnedSessionIds, // [추가]
+    pinnedSessionIds,
   } = useChatStore();
 
   const { user } = useAuthStore();
   const userId = user?.id;
 
-  // 1. API 목록 가져오기
+  // 2. API 목록 가져오기 및 동기화 로직은 기존과 동일
+
   const { data: apiSessions, isLoading } = useQuery({
     queryKey: ["chatSessions", userId],
     queryFn: () => getChatSessions(userId!),
     enabled: !!userId,
   });
 
-  // 동기화 로직
   useEffect(() => {
     if (apiSessions) {
       apiSessions.forEach((apiSess) => {
@@ -68,15 +63,13 @@ export function ProjectsNavigation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiSessions]);
 
-  // [핵심] 정렬 로직: 핀 고정된 세션을 위로 올림
   const sortedSessions = useMemo(() => {
     return [...storeSessions].sort((a, b) => {
       const isAPinned = pinnedSessionIds.includes(a.id);
       const isBPinned = pinnedSessionIds.includes(b.id);
 
-      if (isAPinned && !isBPinned) return -1; // a가 위로
-      if (!isAPinned && isBPinned) return 1; // b가 위로
-      // 둘 다 핀이거나 둘 다 아니면, 기존 순서(보통 날짜순) 유지
+      if (isAPinned && !isBPinned) return -1;
+      if (!isAPinned && isBPinned) return 1;
       return 0;
     });
   }, [storeSessions, pinnedSessionIds]);
@@ -92,7 +85,7 @@ export function ProjectsNavigation() {
         <SidebarGroupLabel>채팅 목록</SidebarGroupLabel>
         <button
           onClick={handleNewChat}
-          className="text-xs flex gap-1 items-center hover:text-blue-500 cursor-pointer text-gray-500 transition-colors"
+          className="text-xs flex gap-1 items-center hover:text-blue-500 cursor-pointer text-gray-500 transition-colors rounded-xl  hover:py-1 hover:bg-blue-50"
         >
           <Plus size={14} /> 새 채팅
         </button>
@@ -107,58 +100,47 @@ export function ProjectsNavigation() {
 
         {sortedSessions.map((session) => {
           const isPinned = pinnedSessionIds.includes(session.id);
-
           return (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <SidebarMenuItem key={session.id}>
-                  <SidebarMenuButton
-                    isActive={session.id === selectedSessionId}
-                    className="group-data-[collapsible=icon]:justify-center"
-                  >
-                    <Link
-                      to="/chat"
-                      onClick={() => setSelectedSessionId(session.id)}
-                      className="flex items-center gap-2 w-full overflow-hidden"
-                    >
-                      <MessageSquare
-                        size={14}
-                        className="shrink-0 text-slate-500"
-                      />
-
-                      <TooltipContent side="right" sideOffset={10}>
-                        <p>{session.title}</p>
-                      </TooltipContent>
-                      <span className="truncate text-sm flex-1">
-                        {session.title}
-                      </span>
-                      {/* 핀 아이콘 표시 */}
-                      {isPinned && (
-                        <Pin
-                          size={10}
-                          className="shrink-0 text-blue-500 fill-blue-500"
-                        />
-                      )}
-                    </Link>
-                  </SidebarMenuButton>
-
-                  <SessionActionMenu
-                    sessionId={session.id}
-                    currentTitle={session.title}
-                    // [설정] 사이드바용 위치 값
-                    side="right" // 사이드바 옆으로 튈지, 아래로 내릴지 결정 (보통 right or bottom)
-                    align="start" // 트리거 상단에 맞춤
-                    sideOffset={4}
-                    className="mt-2" // 사이드바용은 조금 좁게
-                    trigger={
-                      <SidebarMenuAction showOnHover>
-                        <MoreHorizontal />
-                      </SidebarMenuAction>
-                    }
+            <SidebarMenuItem key={session.id}>
+              <SidebarMenuButton
+                isActive={session.id === selectedSessionId}
+                className="group-data-[collapsible=icon]:justify-center hover:bg-blue-100 cursor-pointer"
+                tooltip={session.title}
+              >
+                <Link
+                  to="/chat"
+                  onClick={() => setSelectedSessionId(session.id)}
+                  className="flex items-center gap-2 w-full overflow-hidden"
+                >
+                  <MessageSquare
+                    size={14}
+                    className="shrink-0 text-slate-500"
                   />
-                </SidebarMenuItem>
-              </TooltipTrigger>
-            </Tooltip>
+                  <span className="truncate text-sm flex-1">
+                    {session.title}
+                  </span>
+                  {isPinned && (
+                    <Pin
+                      size={10}
+                      className="shrink-0 text-blue-500 fill-blue-500"
+                    />
+                  )}
+                </Link>
+              </SidebarMenuButton>
+
+              <SessionActionMenu
+                sessionId={session.id}
+                currentTitle={session.title}
+                trigger={
+                  <SidebarMenuAction
+                    showOnHover
+                    className="cursor-pointer hover:bg-blue-100 rounded-full p-1"
+                  >
+                    <MoreHorizontal />
+                  </SidebarMenuAction>
+                }
+              />
+            </SidebarMenuItem>
           );
         })}
       </SidebarMenu>
