@@ -23,6 +23,11 @@ import { useChatStore } from "@/store/chatStore";
 import { useAuthStore } from "@/store/authStore";
 import { getChatSessions } from "@/services/chat.service";
 import { SessionActionMenu } from "@/components/chat/SessionActionMenu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function ProjectsNavigation() {
   const navigate = useNavigate();
@@ -104,48 +109,56 @@ export function ProjectsNavigation() {
           const isPinned = pinnedSessionIds.includes(session.id);
 
           return (
-            <SidebarMenuItem key={session.id}>
-              <SidebarMenuButton
-                isActive={session.id === selectedSessionId}
-                className="group-data-[collapsible=icon]:justify-center"
-              >
-                <Link
-                  to="/chat"
-                  onClick={() => setSelectedSessionId(session.id)}
-                  className="flex items-center gap-2 w-full overflow-hidden"
-                >
-                  <MessageSquare
-                    size={14}
-                    className="shrink-0 text-slate-500"
-                  />
-                  <span className="truncate text-sm flex-1">
-                    {session.title}
-                  </span>
-                  {/* 핀 아이콘 표시 */}
-                  {isPinned && (
-                    <Pin
-                      size={10}
-                      className="shrink-0 text-blue-500 fill-blue-500"
-                    />
-                  )}
-                </Link>
-              </SidebarMenuButton>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SidebarMenuItem key={session.id}>
+                  <SidebarMenuButton
+                    isActive={session.id === selectedSessionId}
+                    className="group-data-[collapsible=icon]:justify-center"
+                  >
+                    <Link
+                      to="/chat"
+                      onClick={() => setSelectedSessionId(session.id)}
+                      className="flex items-center gap-2 w-full overflow-hidden"
+                    >
+                      <MessageSquare
+                        size={14}
+                        className="shrink-0 text-slate-500"
+                      />
 
-              <SessionActionMenu
-                sessionId={session.id}
-                currentTitle={session.title}
-                // [설정] 사이드바용 위치 값
-                side="right" // 사이드바 옆으로 튈지, 아래로 내릴지 결정 (보통 right or bottom)
-                align="start" // 트리거 상단에 맞춤
-                sideOffset={4}
-                className="mt-2" // 사이드바용은 조금 좁게
-                trigger={
-                  <SidebarMenuAction showOnHover>
-                    <MoreHorizontal />
-                  </SidebarMenuAction>
-                }
-              />
-            </SidebarMenuItem>
+                      <TooltipContent side="right" sideOffset={10}>
+                        <p>{session.title}</p>
+                      </TooltipContent>
+                      <span className="truncate text-sm flex-1">
+                        {session.title}
+                      </span>
+                      {/* 핀 아이콘 표시 */}
+                      {isPinned && (
+                        <Pin
+                          size={10}
+                          className="shrink-0 text-blue-500 fill-blue-500"
+                        />
+                      )}
+                    </Link>
+                  </SidebarMenuButton>
+
+                  <SessionActionMenu
+                    sessionId={session.id}
+                    currentTitle={session.title}
+                    // [설정] 사이드바용 위치 값
+                    side="right" // 사이드바 옆으로 튈지, 아래로 내릴지 결정 (보통 right or bottom)
+                    align="start" // 트리거 상단에 맞춤
+                    sideOffset={4}
+                    className="mt-2" // 사이드바용은 조금 좁게
+                    trigger={
+                      <SidebarMenuAction showOnHover>
+                        <MoreHorizontal />
+                      </SidebarMenuAction>
+                    }
+                  />
+                </SidebarMenuItem>
+              </TooltipTrigger>
+            </Tooltip>
           );
         })}
       </SidebarMenu>

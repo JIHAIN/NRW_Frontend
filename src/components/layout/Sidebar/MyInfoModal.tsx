@@ -15,6 +15,9 @@ interface MyInfoModalProps {
 
 type TabType = "INFO" | "PASSWORD" | "IMAGE";
 
+// [추가] 이미지 기본 경로 상수
+const IMAGE_BASE_URL = "https://alain.r-e.kr";
+
 export default function MyInfoModal({ onClose }: MyInfoModalProps) {
   const { user, accessToken, login } = useAuthStore();
   const dialog = useDialogStore();
@@ -33,9 +36,23 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
 
   // 프로필 이미지 상태
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(
-    user?.profileImagePath || null
-  );
+
+  // [수정] 초기 이미지 URL 설정 로직 추가
+  // UserNavigation 등에서 사용하는 변환 로직을 동일하게 적용
+  const [previewUrl, setPreviewUrl] = useState<string | null>(() => {
+    if (!user?.profileImagePath) return null;
+
+    // 1. 이미 완전한 URL인 경우
+    if (user.profileImagePath.startsWith("http")) {
+      return user.profileImagePath;
+    }
+
+    // 2. 서버 내부 경로인 경우 파일명만 추출하여 웹 경로로 조합
+    const fileName = user.profileImagePath.split("/").pop();
+    if (!fileName) return null;
+
+    return `${IMAGE_BASE_URL}/static/profile/${fileName}`;
+  });
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -222,7 +239,6 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
                 />
               </div>
 
-              {/* [추가] 사원번호 필드 */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                   사원번호
@@ -310,16 +326,27 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
                 onClick={() => fileInputRef.current?.click()}
               >
                 <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-50 flex items-center justify-center group-hover:brightness-90 transition-all">
+                  {/* [수정] 이미지가 유효할 때만 렌더링, 아니면 아이콘 표시 */}
                   {previewUrl ? (
                     <img
                       src={previewUrl}
-                      alt="Preview"
+                      alt="Profile"
                       className="w-full h-full object-cover"
+                      // 혹시 모를 로딩 에러 대비 (선택 사항)
+                      onError={(e) => {
+                        e.currentTarget.src = ""; // 에러 시 이미지 숨김
+                        e.currentTarget.style.display = "none";
+                        // 아이콘을 다시 보여주려면 상태 관리가 필요하므로 일단 숨김 처리
+                      }}
                     />
                   ) : (
                     <User size={48} className="text-gray-300" />
                   )}
+
+                  {/* 이미지가 에러나서 안 보일 때를 위한 백업 아이콘 (img 태그와 겹쳐 보일 수 있으니 조건부 렌더링 추천) */}
+                  {!previewUrl && <User size={48} className="text-gray-300" />}
                 </div>
+
                 <div className="absolute bottom-0 right-0 bg-blue-600 text-white p-2.5 rounded-full hover:bg-blue-700 transition-colors shadow-md border-2 border-white">
                   <Camera size={18} />
                 </div>

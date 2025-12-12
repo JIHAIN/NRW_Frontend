@@ -45,7 +45,7 @@ export function TeamSwitcher() {
                   className="w-8 h-8  cursor-ew-resize rounded-md hover:bg-blue-100 opacity-80 "
                 />
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side={isSidebarOpen ? "bottom" : "right"}>
                 <p>{tooltipText}</p>
               </TooltipContent>
             </Tooltip>
