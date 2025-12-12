@@ -87,7 +87,7 @@ export function UserNavigation({
               className="w-(--radix-dropdown-menu-trigger-width)flex flex-col  min-w-56 rounded-xl border border-slate-200 shadow-lg bg-white/95 backdrop-blur-sm"
               side={isMobile ? "bottom" : "right"}
               align="end"
-              sideOffset={-80}
+              sideOffset={20}
             >
               {/* [수정] 라벨 영역: 세로 배치 적용 (flex-col) */}
               <DropdownMenuLabel className="p-0 font-normal ">
