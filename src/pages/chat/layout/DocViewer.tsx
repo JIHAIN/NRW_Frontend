@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   FileText,
   X,
@@ -19,6 +21,7 @@ import {
   downloadDocument,
 } from "@/services/documents.service";
 import type { DocumentDetailResponse } from "@/types/UserType";
+import { parseContentWithTables } from "@/utils/markdownParser";
 
 // 텍스트 정규화 (특수문자 제거, 공백 제거 후 비교)
 const normalizeText = (text: string) => {
@@ -60,21 +63,29 @@ export function DocViewer() {
     staleTime: 1000 * 60 * 5,
   });
 
-  // 2. 참조(Reference) 변경 시 이동 로직 (개선됨)
+  // useMemo를 컴포넌트 최상위 레벨로 이동
+  const sortedChunks = useMemo(() => {
+    if (!docDetail?.chunks || docDetail.chunks.length === 0) {
+      return [];
+    }
+
+    // 원본 배열 불변성 유지를 위해 slice() 후 sort()
+    return docDetail.chunks.slice().sort((a, b) => {
+      const idxA = a.paragraph_idx ?? 0;
+      const idxB = b.paragraph_idx ?? 0;
+      return idxA - idxB;
+    });
+  }, [docDetail]);
+
+  // 2. 참조(Reference) 변경 시 이동 로직
   useEffect(() => {
     if (!selectedReference || !docDetail?.chunks) return;
 
-    // 1. 검색어 준비 (근거 텍스트에서 일부만 잘라서 검색할 수도 있음)
-    // contextUsed 전체가 너무 길면 검색이 안 될 수 있으므로,
-    // 여기서는 전체를 정규화해서 비교하거나, chunks를 순회하며 유사도를 봅니다.
     const targetText = normalizeText(selectedReference.text);
     if (!targetText) return;
 
-    // 2. 가장 유사한 청크 찾기
-    // (단순 includes 비교)
     const foundChunk = docDetail.chunks.find((chunk) => {
       const chunkText = normalizeText(chunk.content);
-      // 근거 텍스트가 청크의 일부이거나, 청크가 근거 텍스트의 일부인 경우
       return chunkText.includes(targetText) || targetText.includes(chunkText);
     });
 
@@ -82,12 +93,13 @@ export function DocViewer() {
       const pIdx = foundChunk.paragraph_idx;
       setHighlightedIdx(pIdx);
 
-      const element = paragraphRefs.current[pIdx];
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
+      setTimeout(() => {
+        const element = paragraphRefs.current[pIdx];
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
     } else {
-      // 못 찾았을 경우: 전체 텍스트에서라도 검색 시도 (Optional)
       setHighlightedIdx(null);
       console.warn("일치하는 문단을 찾을 수 없습니다.");
     }
@@ -107,7 +119,7 @@ export function DocViewer() {
     }
   };
 
-  // 4. 화면 렌더링 로직 (상태별 분기)
+  // 4. 화면 렌더링 로직
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -127,7 +139,6 @@ export function DocViewer() {
       );
     }
 
-    // [복구됨] 문서 내용은 비어있고 청크도 없는 경우 (빈 문서 상태)
     if (
       (!docDetail.content || docDetail.content.trim() === "") &&
       (!docDetail.chunks || docDetail.chunks.length === 0)
@@ -145,11 +156,14 @@ export function DocViewer() {
 
     return (
       <div className="max-w-4xl mx-auto bg-white min-h-full p-8 md:p-12 shadow-sm">
-        <div className="space-y-4 font-serif text-slate-800 leading-relaxed text-[15px]">
-          {docDetail.chunks && docDetail.chunks.length > 0 ? (
-            // Chunks 기반 렌더링 (하이라이팅 가능)
-            docDetail.chunks.map((chunk) => {
+        <div className="space-y-6 font-serif text-slate-800 leading-relaxed text-[15px]">
+          {sortedChunks.length > 0 ? (
+            sortedChunks.map((chunk) => {
               const isHighlighted = chunk.paragraph_idx === highlightedIdx;
+              const { cleanText, tables } = parseContentWithTables(
+                chunk.content
+              );
+
               return (
                 <div
                   key={chunk.paragraph_idx}
@@ -157,18 +171,81 @@ export function DocViewer() {
                   ref={(el) => {
                     paragraphRefs.current[chunk.paragraph_idx] = el;
                   }}
-                  className={`transition-colors duration-1000 ease-in-out px-2 py-1 rounded ${
+                  className={`transition-colors duration-1000 ease-in-out px-4 py-2 rounded-lg border border-transparent ${
                     isHighlighted
-                      ? "bg-yellow-100 ring-2 ring-yellow-300/50"
+                      ? "bg-yellow-100 border-yellow-200 shadow-sm"
                       : "hover:bg-gray-50"
                   }`}
                 >
-                  {chunk.content}
+                  {/* [수정 1] className 오류 해결을 위해 div로 감쌈 */}
+                  {cleanText && (
+                    <div className="whitespace-pre-wrap mb-2">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          // [수정 2] node 변수 미사용 오류 해결 (node: _node)
+                          p: ({ ...props }) => (
+                            <p className="mb-2 last:mb-0" {...props} />
+                          ),
+                          ul: ({ ...props }) => (
+                            <ul className="list-disc pl-5 mb-2" {...props} />
+                          ),
+                          ol: ({ ...props }) => (
+                            <ol className="list-decimal pl-5 mb-2" {...props} />
+                          ),
+                        }}
+                      >
+                        {cleanText}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+
+                  {/* 표 렌더링 */}
+                  {tables.length > 0 && (
+                    <div className="flex flex-col gap-4 mt-3 mb-2">
+                      {tables.map((table, idx) => (
+                        <div
+                          key={idx}
+                          className="overflow-hidden rounded-lg border border-gray-200 shadow-sm bg-white"
+                        >
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  {table.headers.map((h, i) => (
+                                    <th
+                                      key={i}
+                                      className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200 whitespace-nowrap"
+                                    >
+                                      {h}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-100">
+                                {table.rows.map((row, rIdx) => (
+                                  <tr key={rIdx} className="hover:bg-gray-50">
+                                    {row.map((cell, cIdx) => (
+                                      <td
+                                        key={cIdx}
+                                        className="px-4 py-2 text-sm text-gray-700 whitespace-pre-wrap break-all"
+                                      >
+                                        {cell}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })
           ) : (
-            // Chunks가 없는 경우 통문장 렌더링 (하위 호환)
             <pre className="whitespace-pre-wrap font-sans text-sm text-slate-600">
               {docDetail.content}
             </pre>
