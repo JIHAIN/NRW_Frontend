@@ -18,9 +18,9 @@ export interface ChatSession {
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
-  // [추가] 출처 및 근거 데이터 필드
-  sources?: string[]; // 예: ["주차장관리지침.hwpx", "복무규정.hwp"]
-  contextUsed?: string; // 예: "[주차장관리지침] ... 주차장 명칭 및 구역 ..." (하이라이트용 원문)
+  // [수정] 출처는 백엔드 DB상 문자열 배열로 저장되어 있다고 가정
+  sources?: string[];
+  contextUsed?: string;
 }
 
 // 3. 세션 상세 조회 응답
@@ -58,6 +58,7 @@ export interface SourceItem {
   score: number;
   type?: string | null;
   table_id?: string | null;
+  paragraph_idx: number; // [수정] 문단 인덱스 추가 (LLM 응답 반영)
 }
 
 // [NEW] 스트림 메타데이터 전체 타입
@@ -65,8 +66,6 @@ export interface ChatMetadata {
   answer?: string;
   sources?: SourceItem[];
   context_used?: string;
-  // 추후 확장 가능성을 위해 인덱스 시그니처 허용 (선택사항)
-  // [key: string]: unknown;
 }
 
 // --------------------------------------------------------------------------
@@ -157,12 +156,11 @@ export const sendChatMessage = async (
  * 5. [수정] 채팅 스트리밍 API
  * - data: 라인의 불필요한 공백 제거 로직 개선
  * - 물리적인 빈 줄만 줄바꿈 카운트로 인식
- * - 메타데이터 타입(any 제거) 적용
+ * - 메타데이터 타입(ChatMetadata) 적용
  */
 export const streamChatResponse = async (
   data: SendMessageRequest,
   onDelta: (token: string) => void,
-  // [수정] any 대신 ChatMetadata 타입 사용
   onMetadata?: (metadata: ChatMetadata) => void
 ): Promise<void> => {
   const response = await fetch(`${API_BASE_URL}/api/v1/chat/stream`, {
@@ -204,14 +202,13 @@ export const streamChatResponse = async (
 
       // 2. 데이터 라인 처리
       if (line.startsWith("data:")) {
-        // [핵심] 이전에 쌓인 물리적 빈 줄 처리 (data: 라인이 오면 이전 빈줄 정산)
+        // [핵심] 이전에 쌓인 물리적 빈 줄 처리
         if (emptyLineCount > 0) {
           if (emptyLineCount >= 3) {
             onDelta("\n\n"); // 3줄 이상 -> 문단 바꿈
           } else if (emptyLineCount === 2) {
             onDelta("\n"); // 2줄 -> 줄바꿈
           }
-          // 1줄은 무시 (연결된 문장으로 취급하여 공백 없이 붙임)
           emptyLineCount = 0;
         }
 
@@ -240,11 +237,9 @@ export const streamChatResponse = async (
         }
 
         // [텍스트 처리]
-        // data: 로 들어온 내용은 공백이 포함되어 있어도(스페이스 2개 등) 텍스트로 간주
-        // 빈 줄 카운트를 증가시키지 않고 바로 전송
         if (rawContent.startsWith("{") && rawContent.endsWith("}")) {
           try {
-            // 혹시 JSON 형태의 문자열이 올 경우 방어 로직
+            // JSON 형태의 문자열이 올 경우 방어 로직
             const parsed = JSON.parse(rawContent);
             onDelta(parsed.content || "");
           } catch {
@@ -254,7 +249,7 @@ export const streamChatResponse = async (
           onDelta(rawContent);
         }
       }
-      // 3. 물리적인 빈 줄 처리 (data: 로 시작하지 않는 진짜 빈 줄)
+      // 3. 물리적인 빈 줄 처리
       else if (line.trim() === "") {
         emptyLineCount++;
       }

@@ -23,15 +23,23 @@ import {
 import type { DocumentDetailResponse } from "@/types/UserType";
 import { parseContentWithTables } from "@/utils/markdownParser";
 
-// 텍스트 정규화 (특수문자 제거, 공백 제거 후 비교)
+/**
+ * 텍스트 정규화 함수 (폴백 용도)
+ * - paragraphId가 없을 경우 텍스트 매칭을 위해 사용
+ */
 const normalizeText = (text: string) => {
   return text
-    .replace(/\[.*?\]/g, "") // [파일명] 같은 대괄호 태그 제거
-    .replace(/[^\w\s가-힣]/g, "") // 특수문자 제거 (한글,영문,숫자만 남김)
+    .replace(/\[.*?\]/g, "") // [파일명] 태그 제거
+    .replace(/[^\w\s가-힣]/g, "") // 특수문자 제거
     .replace(/\s+/g, "") // 공백 제거
     .toLowerCase();
 };
 
+/**
+ * DocViewer 컴포넌트
+ * - 선택된 문서의 내용을 표시하고, 채팅방에서 참조된 문단을 하이라이팅합니다.
+ * - 백엔드에서 제공하는 paragraph_idx를 기준으로 스크롤 이동 및 강조 표시를 수행합니다.
+ */
 export function DocViewer() {
   const {
     selectedReference,
@@ -42,7 +50,7 @@ export function DocViewer() {
 
   const dialog = useDialogStore();
 
-  // 문단 요소들을 참조하기 위한 Refs
+  // 특정 문단으로 스크롤하기 위한 Refs (key: paragraph_idx)
   const paragraphRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   // 현재 하이라이트된 문단 인덱스
@@ -63,47 +71,59 @@ export function DocViewer() {
     staleTime: 1000 * 60 * 5,
   });
 
-  // useMemo를 컴포넌트 최상위 레벨로 이동
-  const sortedChunks = useMemo(() => {
-    if (!docDetail?.chunks || docDetail.chunks.length === 0) {
-      return [];
-    }
-
-    // 원본 배열 불변성 유지를 위해 slice() 후 sort()
-    return docDetail.chunks.slice().sort((a, b) => {
-      const idxA = a.paragraph_idx ?? 0;
-      const idxB = b.paragraph_idx ?? 0;
-      return idxA - idxB;
-    });
+  // [수정] 프론트엔드 정렬 로직 제거
+  // 백엔드에서 이미 순서대로 정렬된 chunks를 제공하므로 그대로 사용
+  const chunks = useMemo(() => {
+    if (!docDetail?.chunks) return [];
+    return docDetail.chunks;
   }, [docDetail]);
 
-  // 2. 참조(Reference) 변경 시 이동 로직
+  /**
+   * 2. 참조(Reference) 변경 시 하이라이팅 및 스크롤 이동 로직
+   * - 우선순위 1: paragraphId가 있는 경우 해당 ID로 직접 이동
+   * - 우선순위 2: paragraphId가 없고 텍스트만 있는 경우 (구버전 호환) 텍스트 매칭 시도
+   */
   useEffect(() => {
-    if (!selectedReference || !docDetail?.chunks) return;
+    if (!selectedReference || !chunks.length) return;
 
-    const targetText = normalizeText(selectedReference.text);
-    if (!targetText) return;
+    let targetIdx: number | undefined = undefined;
 
-    const foundChunk = docDetail.chunks.find((chunk) => {
-      const chunkText = normalizeText(chunk.content);
-      return chunkText.includes(targetText) || targetText.includes(chunkText);
-    });
+    // Case A: 명시적인 문단 ID가 있는 경우 (정확도 높음)
+    if (typeof selectedReference.paragraphId === "number") {
+      targetIdx = selectedReference.paragraphId;
+    }
+    // Case B: ID가 없고 텍스트만 있는 경우 (텍스트 매칭 시도 - Fallback)
+    else if (selectedReference.text) {
+      const targetText = normalizeText(selectedReference.text);
+      if (targetText) {
+        const foundChunk = chunks.find((chunk) => {
+          const chunkText = normalizeText(chunk.content);
+          return (
+            chunkText.includes(targetText) || targetText.includes(chunkText)
+          );
+        });
+        if (foundChunk) {
+          targetIdx = foundChunk.paragraph_idx;
+        }
+      }
+    }
 
-    if (foundChunk) {
-      const pIdx = foundChunk.paragraph_idx;
-      setHighlightedIdx(pIdx);
+    // 타겟을 찾았으면 하이라이트 및 스크롤 실행
+    if (targetIdx !== undefined) {
+      setHighlightedIdx(targetIdx);
 
+      // DOM 렌더링 시간을 고려하여 약간의 지연 후 스크롤
       setTimeout(() => {
-        const element = paragraphRefs.current[pIdx];
+        const element = paragraphRefs.current[targetIdx!];
         if (element) {
           element.scrollIntoView({ behavior: "smooth", block: "center" });
         }
-      }, 100);
+      }, 150);
     } else {
+      // 찾지 못한 경우 하이라이트 해제
       setHighlightedIdx(null);
-      console.warn("일치하는 문단을 찾을 수 없습니다.");
     }
-  }, [selectedReference, docDetail]);
+  }, [selectedReference, chunks]);
 
   // 3. 다운로드 핸들러
   const handleDownload = async () => {
@@ -141,7 +161,7 @@ export function DocViewer() {
 
     if (
       (!docDetail.content || docDetail.content.trim() === "") &&
-      (!docDetail.chunks || docDetail.chunks.length === 0)
+      chunks.length === 0
     ) {
       return (
         <div className="flex flex-col items-center justify-center h-full text-slate-400">
@@ -156,9 +176,10 @@ export function DocViewer() {
 
     return (
       <div className="max-w-4xl mx-auto bg-white min-h-full p-8 md:p-12 shadow-sm">
-        <div className="space-y-6 font-serif text-slate-800 leading-relaxed text-[15px]">
-          {sortedChunks.length > 0 ? (
-            sortedChunks.map((chunk) => {
+        {/* 전체 컨테이너의 줄간격과 폰트 설정 */}
+        <div className="space-y-2 font-serif text-slate-800 text-[15px] leading-relaxed">
+          {chunks.length > 0 ? (
+            chunks.map((chunk) => {
               const isHighlighted = chunk.paragraph_idx === highlightedIdx;
               const { cleanText, tables } = parseContentWithTables(
                 chunk.content
@@ -171,27 +192,38 @@ export function DocViewer() {
                   ref={(el) => {
                     paragraphRefs.current[chunk.paragraph_idx] = el;
                   }}
-                  className={`transition-colors duration-1000 ease-in-out px-4 py-2 rounded-lg border border-transparent ${
+                  // 하이라이트 시 배경색 변경
+                  className={`transition-colors duration-1000 ease-in-out px-4 py-1 rounded-lg border border-transparent ${
                     isHighlighted
                       ? "bg-yellow-100 border-yellow-200 shadow-sm"
                       : "hover:bg-gray-50"
                   }`}
                 >
-                  {/* [수정 1] className 오류 해결을 위해 div로 감쌈 */}
                   {cleanText && (
-                    <div className="whitespace-pre-wrap mb-2">
+                    <div className="text-slate-800">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
-                          // [수정 2] node 변수 미사용 오류 해결 (node: _node)
                           p: ({ ...props }) => (
-                            <p className="mb-2 last:mb-0" {...props} />
+                            <p
+                              className="mb-1 leading-7 last:mb-0"
+                              {...props}
+                            />
                           ),
                           ul: ({ ...props }) => (
-                            <ul className="list-disc pl-5 mb-2" {...props} />
+                            <ul
+                              className="list-disc pl-5 mb-2 space-y-1"
+                              {...props}
+                            />
                           ),
                           ol: ({ ...props }) => (
-                            <ol className="list-decimal pl-5 mb-2" {...props} />
+                            <ol
+                              className="list-decimal pl-5 mb-2 space-y-1"
+                              {...props}
+                            />
+                          ),
+                          li: ({ ...props }) => (
+                            <li className="pl-1 leading-7" {...props} />
                           ),
                         }}
                       >
@@ -200,9 +232,9 @@ export function DocViewer() {
                     </div>
                   )}
 
-                  {/* 표 렌더링 */}
+                  {/* 표 렌더링 영역 */}
                   {tables.length > 0 && (
-                    <div className="flex flex-col gap-4 mt-3 mb-2">
+                    <div className="flex flex-col gap-4 mt-2 mb-2">
                       {tables.map((table, idx) => (
                         <div
                           key={idx}
@@ -246,7 +278,8 @@ export function DocViewer() {
               );
             })
           ) : (
-            <pre className="whitespace-pre-wrap font-sans text-sm text-slate-600">
+            // Chunks가 없을 때 (기존 텍스트 렌더링)
+            <pre className="whitespace-pre-wrap font-sans text-sm text-slate-600 leading-relaxed">
               {docDetail.content}
             </pre>
           )}

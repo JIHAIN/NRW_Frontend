@@ -1,413 +1,401 @@
-import { useState, useMemo, type FC, useEffect } from "react";
-import { Trash2, Settings, Search, Plus } from "lucide-react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  CheckCircle,
+  XCircle,
+  FileText,
+  User,
+  Calendar,
+  Loader2,
+  AlertCircle,
+  Hash,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
-import type { User, UserRole } from "@/types/UserType";
+import {
+  fetchRequests,
+  approveRequest,
+  rejectRequest,
+} from "@/services/request.service";
+import type { RequestItem, RequestStatus } from "@/types/UserType";
 import { useAuthStore } from "@/store/authStore";
+import { RequestDetailModal } from "./RequestDetailModal";
 
-import type { CreateUserRequest } from "@/services/user.service";
-
-import { useSystemStore } from "@/store/systemStore";
-import { useUserStore } from "@/store/userStore";
-
-import { FilterCombobox } from "@/components/common/FilterCombobox";
-import { useDialogStore } from "@/store/dialogStore";
-import Pagination from "@/pages/project/components/Pagination";
-import UserEditModal from "../UserModal/UserEditModal";
-import UserCreateModal from "../UserModal/UserCreateModal";
-
-const ITEMS_PER_PAGE: number = 10;
-
-const ROLE_LABELS: Record<UserRole, string> = {
-  SUPER_ADMIN: "총괄 관리자",
-  MANAGER: "관리자",
-  USER: "일반 사용자",
-};
-
-const ROLE_COLOR_MAP: Record<UserRole, { bg: string; text: string }> = {
-  SUPER_ADMIN: { bg: "bg-red-100", text: "text-red-700" },
-  MANAGER: { bg: "bg-yellow-100", text: "text-yellow-700" },
-  USER: { bg: "bg-blue-100", text: "text-blue-500" },
-};
-
-interface OptionItem<T> {
-  value: T;
-  label: string;
-}
-
-const ROLE_FILTER_OPTIONS: OptionItem<string>[] = [
-  { value: "ALL", label: "전체 권한" },
-  { value: "MANAGER", label: "관리자" },
-  { value: "USER", label: "일반 사용자" },
+const TABS: { label: string; value: RequestStatus | "" }[] = [
+  { label: "대기중", value: "PENDING" },
+  { label: "승인됨", value: "APPROVED" },
+  { label: "반려됨", value: "REJECTED" },
+  { label: "전체 보기", value: "" },
 ];
 
-// 삭제 확인 모달
-interface DeleteConfirmModalProps {
-  userName: string;
-  onConfirm: () => void;
-  onClose: () => void;
-}
-const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
-  userName,
-  onConfirm,
-  onClose,
-}) => {
-  return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="bg-white p-6 rounded-lg shadow-xl w-80 relative">
-        <h3 className="text-lg font-bold mb-4 text-gray-800">
-          사용자 삭제 확인
-        </h3>
-        <p className="mb-6 text-sm text-gray-600">
-          <span className="font-semibold text-red-600">{userName}</span> 님을
-          삭제하시겠습니까?
-        </p>
-        <div className="flex justify-end space-x-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border rounded-md text-sm hover:bg-gray-50"
-          >
-            취소
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
-          >
-            삭제
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+import { useDocumentStore } from "@/store/documentStore";
+import { useDialogStore } from "@/store/dialogStore";
 
-export const UserManagementPage: FC = () => {
-  const { departments, projects, fetchSystemData } = useSystemStore();
-  const { users, fetchUsers, deleteUser, updateUser, addUser } = useUserStore();
-  const { user: currentUser } = useAuthStore();
+export default function RequestAdminPage() {
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
 
   const dialog = useDialogStore();
 
-  useEffect(() => {
-    fetchSystemData();
-    fetchUsers();
-  }, [fetchSystemData, fetchUsers]);
+  const { startRequestSSE } = useDocumentStore();
 
-  const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
-  const isManager = currentUser?.role === "MANAGER";
+  const [currentTab, setCurrentTab] = useState<RequestStatus | "">("PENDING");
 
-  const deptOptions: OptionItem<string>[] = useMemo(() => {
-    return [
-      { value: "ALL", label: "전체 부서" },
-      ...departments.map((dept) => ({
-        value: dept.dept_name,
-        label: dept.dept_name,
-      })),
-    ];
-  }, [departments]);
+  // 반려 관련 상태
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [selectedReqId, setSelectedReqId] = useState<number | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
-  const [searchText, setSearchText] = useState<string>("");
-  const [roleFilter, setRoleFilter] = useState<string>("ALL");
-  const [deptFilter, setDeptFilter] = useState<string>("ALL");
+  // 상세 모달 관련 상태
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<RequestItem | null>(
+    null
+  );
 
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  // 1. 요청 목록 조회
+  const { data: requests = [], isLoading } = useQuery<RequestItem[]>({
+    queryKey: ["requests", currentTab, user?.departmentId],
+    queryFn: () =>
+      fetchRequests(
+        currentTab,
+        user?.role === "SUPER_ADMIN" ? undefined : user?.departmentId
+      ),
+    enabled: !!user,
+  });
 
-  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
-
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
-
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
-      if (user.role === "SUPER_ADMIN") return false;
-      if (isManager) {
-        if (user.departmentId !== currentUser?.departmentId) return false;
-      }
-      if (roleFilter !== "ALL" && user.role !== roleFilter) return false;
-      if (deptFilter !== "ALL") {
-        const userDeptName = departments.find(
-          (dept) => dept.id === user.departmentId
-        )?.dept_name;
-        if (userDeptName !== deptFilter) return false;
-      }
-      const searchLower = searchText.toLowerCase();
-      const userName = user.userName.toLowerCase();
-      const employeeId = user.employeeId?.toLowerCase() || "";
-      const accountId = user.accountId.toLowerCase();
-
-      if (
-        !userName.includes(searchLower) &&
-        !accountId.includes(searchLower) &&
-        !employeeId.includes(searchLower)
-      ) {
-        return false;
-      }
-      return true;
-    });
-  }, [
-    users,
-    searchText,
-    roleFilter,
-    deptFilter,
-    departments,
-    currentUser,
-    isManager,
-  ]);
-
-  const totalItems: number = filteredUsers.length;
-  const totalPages: number = Math.ceil(totalItems / ITEMS_PER_PAGE);
-
-  const currentTableData: User[] = useMemo(() => {
-    const firstPageIndex: number = (currentPage - 1) * ITEMS_PER_PAGE;
-    const lastPageIndex: number = firstPageIndex + ITEMS_PER_PAGE;
-    return filteredUsers.slice(firstPageIndex, lastPageIndex);
-  }, [currentPage, filteredUsers]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchText, roleFilter, deptFilter]);
-
-  const handleEditUser = (user: User) => {
-    setSelectedUser(user);
-    setIsEditModalOpen(true);
-  };
-
-  const handleDeleteClick = (user: User) => {
-    setUserToDelete(user);
-  };
-
-  const handleConfirmDelete = () => {
-    if (!userToDelete) return;
-    deleteUser(userToDelete.id);
-    setUserToDelete(null);
-    if (currentTableData.length === 1 && currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  // [수정] 이미지가 없으므로 단순 업데이트만 수행
-  const handleSaveUser = async (updatedUser: User) => {
-    try {
-      await updateUser(updatedUser);
+  // 2. 승인 Mutation
+  const approveMutation = useMutation({
+    mutationFn: approveRequest,
+    onSuccess: (_, reqId) => {
+      // reqId: 승인한 요청 ID
       dialog.alert({
-        title: "수정 완료",
-        message: "사용자 정보가 수정되었습니다.",
+        title: "승인 완료",
+        message:
+          "승인 요청이 전송되었습니다.\n백그라운드에서 문서 처리가 시작됩니다.",
+        variant: "info", // 초록색 체크 아이콘 대신 파란색 정보 아이콘 사용 (백그라운드 처리 중임을 의미)
+      });
+
+      // 스토어 액션 호출
+      const targetReq = requests.find((r) => r.id === reqId);
+      const docName = targetReq?.document_name || `요청 #${reqId}`;
+
+      startRequestSSE(reqId, docName); // SSE 시작 및 상태창 표시
+
+      queryClient.invalidateQueries({ queryKey: ["requests"] });
+      setDetailModalOpen(false);
+    },
+    onError: (error) =>
+      dialog.alert({
+        title: "승인 실패",
+        message: `승인 처리에 실패했습니다.\n(오류: ${
+          error.message || "서버 응답 오류"
+        })`,
+        variant: "error", // warning -> error로 변경 (명확하게 실패임을 알림)
+      }),
+  });
+
+  // 3. 반려 Mutation
+  const rejectMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      rejectRequest(id, reason),
+    onSuccess: (_, variables) => {
+      dialog.alert({
+        title: "반려 완료",
+        message: "요청이 성공적으로 반려되었습니다.",
         variant: "success",
       });
-      setIsEditModalOpen(false);
-    } catch (error) {
-      console.error(error);
+      setRejectModalOpen(false);
+      setRejectReason("");
+
+      // 1. 목록 갱신
+      queryClient.invalidateQueries({ queryKey: ["requests"] });
+
+      // 2. 상세 데이터 갱신
+      queryClient.invalidateQueries({
+        queryKey: ["requestDetail", variables.id],
+      });
+
+      setDetailModalOpen(false);
+    },
+    onError: (error) =>
       dialog.alert({
-        title: "오류 발생",
-        message: "정보 수정 중 오류가 발생했습니다.",
+        title: "반려 실패",
+        message: `반려 처리에 실패했습니다.\n(오류: ${
+          error.message || "서버 응답 오류"
+        })`,
         variant: "error",
-      });
+      }),
+  });
+
+  // 핸들러
+
+  const handleApprove = async (id: number) => {
+    const confirmed = await dialog.confirm({
+      title: "요청 승인",
+      message:
+        "해당 요청을 승인하시겠습니까?\n승인 시 문서 처리가 즉시 시작됩니다.",
+      variant: "info", // 파란색
+    });
+
+    if (confirmed) {
+      approveMutation.mutate(id);
     }
   };
 
-  const handleCreateUser = async (data: CreateUserRequest) => {
-    try {
-      await addUser(data);
+  const handleRejectClick = (id: number) => {
+    setSelectedReqId(id);
+    setRejectModalOpen(true);
+  };
+
+  // [수정] 반려 제출 핸들러: 확인 창 추가
+  const submitReject = async () => {
+    if (selectedReqId && rejectReason.trim()) {
+      // 반려 전 한 번 더 확인 (실수 방지)
+      const confirmed = await dialog.confirm({
+        title: "반려 확인",
+        message: "작성하신 사유로 요청을 반려하시겠습니까?",
+        variant: "warning", // 주황색 경고
+      });
+
+      if (confirmed) {
+        rejectMutation.mutate({ id: selectedReqId, reason: rejectReason });
+      }
+    } else {
       dialog.alert({
-        title: "생성 완료",
-        message: "새로운 사용자가 등록되었습니다.",
-        variant: "success",
+        message: "반려 사유를 입력해주세요.",
+        variant: "warning",
       });
-      setIsCreateModalOpen(false);
-    } catch (e) {
-      console.error(e);
     }
   };
 
-  const handleRoleChange = (value: string) => setRoleFilter(value);
-  const handleDeptChange = (value: string) => setDeptFilter(value);
+  // 상세 모달에서 사용하는 핸들러
+  const handleDetailApprove = (id: number) => handleApprove(id);
+  const handleDetailReject = (id: number) => {
+    setSelectedReqId(id);
+    setRejectModalOpen(true);
+  };
 
-  const availableEditRoles: OptionItem<string>[] = useMemo(() => {
-    if (isSuperAdmin) {
-      return [
-        { value: "MANAGER", label: "관리자" },
-        { value: "USER", label: "일반 사용자" },
-      ];
+  const handleRowClick = (req: RequestItem) => {
+    setSelectedRequest(req);
+    setDetailModalOpen(true);
+  };
+
+  // 상태 뱃지 (리스트용)
+  const renderStatusBadge = (status: string) => {
+    switch (status) {
+      case "PENDING":
+        return (
+          <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold border border-yellow-200">
+            대기중
+          </span>
+        );
+      case "APPROVED":
+        return (
+          <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold border border-green-200">
+            승인됨
+          </span>
+        );
+      case "REJECTED":
+        return (
+          <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold border border-red-200">
+            반려됨
+          </span>
+        );
+      default:
+        return null;
     }
-    return [{ value: "USER", label: "일반 사용자" }];
-  }, [isSuperAdmin]);
+  };
+
+  // 타입 뱃지 (리스트용)
+  const renderTypeBadge = (status: string) => {
+    switch (status) {
+      case "CREATE":
+        return (
+          <span className="bg-blue-200 text-blue-700 px-2 py-1 rounded text-xs font-bold border border-blue-200">
+            문서 추가
+          </span>
+        );
+      case "UPDATE":
+        return (
+          <span className="bg-green-200 text-green-700 px-2 py-1 rounded text-xs font-bold border border-green-200">
+            문서 수정
+          </span>
+        );
+      case "DELETE":
+        return (
+          <span className="bg-red-200 text-red-700 px-2 py-1 rounded text-xs font-bold border border-red-200">
+            문서 삭제
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div className="flex flex-col gap-4 page-layout">
-      <h1 className="page-title"> 요청 관리 </h1>
-
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center border border-blue-100 rounded-2xl p-1 bg-white w-80 min-w-100">
-            <Search size={20} className="text-blue-400 mx-2" />
-            <input
-              type="text"
-              placeholder="이름 또는 사원번호 검색"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="w-full p-1 focus:outline-none"
-            />
-          </div>
-
-          {isSuperAdmin && (
-            <>
-              <FilterCombobox<string>
-                options={ROLE_FILTER_OPTIONS}
-                selectedValue={roleFilter}
-                onValueChange={handleRoleChange}
-                placeholder={"권한 필터"}
-              />
-              <FilterCombobox<string>
-                options={deptOptions}
-                selectedValue={deptFilter}
-                onValueChange={handleDeptChange}
-                placeholder={"부서 필터"}
-              />
-            </>
-          )}
-        </div>
-
-        {isSuperAdmin && (
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-sm"
+    <div className="w-full h-full flex flex-col gap-6 page-layout p-8">
+      {/* ... (상단 헤더 및 탭 부분은 동일) ... */}
+      <div className="flex flex-col gap-4">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-800">요청 승인 관리</h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="border border-blue-100 point-hover"
+            onClick={() =>
+              queryClient.invalidateQueries({ queryKey: ["requests"] })
+            }
           >
-            <Plus size={18} />
-            사용자 등록
-          </button>
+            새로고침
+          </Button>
+        </div>
+        <div className="flex gap-2">
+          {TABS.map((tab) => (
+            <button
+              key={tab.label}
+              onClick={() => setCurrentTab(tab.value)}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+                currentTab === tab.value
+                  ? "border-blue-600 text-blue-600 bg-blue-50/50"
+                  : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto bg-slate-50 rounded-xl border border-slate-200 p-4">
+        {isLoading ? (
+          <div className="flex justify-center items-center h-full text-slate-400 gap-2">
+            <Loader2 className="animate-spin" /> 로딩 중...
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="flex flex-col justify-center items-center h-full text-slate-400 gap-2">
+            <FileText size={48} className="opacity-20" />
+            <p>요청 내역이 없습니다.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {requests.map((req) => (
+              <div
+                key={req.id}
+                onClick={() => handleRowClick(req)}
+                className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row gap-4 cursor-pointer group"
+              >
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-4">
+                    {renderTypeBadge(req.request_type)}
+                    {renderStatusBadge(req.status)}
+
+                    <span className="text-sm text-slate-500 flex items-center gap-1">
+                      <Calendar size={12} />{" "}
+                      {new Date(req.created_at).toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="font-medium flex items-center gap-2 ">
+                      <span className=" text-slate-600 text-sm  bg-slate-100 px-2 py-0.5 rounded">
+                        {req.document_name || "-"}
+                      </span>
+                    </h3>
+                    <div className="text-sm text-slate-600 mt-2 bg-slate-50 p-3 rounded border border-slate-100">
+                      <span className="font-bold text-slate-700 block mb-1 text-xs">
+                        요청 사유
+                      </span>
+                      {req.content || "내용 없음"}
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-slate-400 flex gap-4 pt-1 items-center">
+                    <span className="flex items-center gap-1 font-medium text-slate-600">
+                      <User size={12} /> {req.user_name}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Hash size={12} />
+                      {req.project_name}
+                    </span>
+                  </div>
+                </div>
+
+                {req.status === "PENDING" && (
+                  <div
+                    className="flex md:flex-col justify-center gap-2 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-4 min-w-[120px]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      onClick={() => handleApprove(req.id)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white w-full gap-2 shadow-sm"
+                    >
+                      <CheckCircle size={16} /> 승인
+                    </Button>
+                    <Button
+                      onClick={() => handleRejectClick(req.id)}
+                      variant="outline"
+                      className="text-red-600 hover:bg-red-50 border-red-200 w-full gap-2"
+                    >
+                      <XCircle size={16} /> 반려
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
-      <div className="overflow-x-auto bg-white rounded-lg shadow-lg border-2xl border-blue-200">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-blue-50">
-            <tr>
-              <th className="w-3/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                이름 / 사원번호
-              </th>
-              <th className="w-2/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                권한
-              </th>
-              <th className="w-3/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                소속 부서
-              </th>
-              <th className="w-1/12 px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                관리
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {currentTableData.length > 0 ? (
-              currentTableData.map((user) => {
-                const roleStyle = ROLE_COLOR_MAP[user.role] || {
-                  bg: "bg-gray-100",
-                  text: "text-gray-500",
-                };
-                const roleLabel = ROLE_LABELS[user.role] || user.role;
-                const deptName =
-                  departments.find((d) => d.id === user.departmentId)
-                    ?.dept_name || "-";
+      {/* 상세 정보 모달 */}
+      <RequestDetailModal
+        baseInfo={selectedRequest}
+        open={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        onApprove={handleDetailApprove}
+        onReject={handleDetailReject}
+      />
 
-                let canEdit = false;
-                if (isSuperAdmin) {
-                  canEdit = true;
-                } else if (isManager) {
-                  canEdit = user.role === "USER";
-                }
-
-                return (
-                  <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="font-medium">{user.userName}</div>
-                      <div className="text-xs text-gray-500">
-                        {user.employeeId || user.accountId}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`p-1 text-xs rounded font-semibold ${roleStyle.bg} ${roleStyle.text}`}
-                      >
-                        {roleLabel}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {deptName}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center space-x-2">
-                      {canEdit && (
-                        <>
-                          <button
-                            onClick={() => handleEditUser(user)}
-                            className="text-blue-600 hover:text-blue-900 cursor-pointer p-1"
-                          >
-                            <Settings size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(user)}
-                            className="text-red-600 hover:text-red-900 cursor-pointer p-1"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </>
-                      )}
-                      {!canEdit && (
-                        <span className="text-xs text-gray-300">-</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td colSpan={4} className="text-center py-8 text-gray-500">
-                  사용자가 없습니다.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {totalPages > 1 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
-      )}
-
-      {isEditModalOpen && selectedUser && (
-        <UserEditModal
-          user={selectedUser}
-          roles={availableEditRoles}
-          departments={departments}
-          projects={projects}
-          currentRole={currentUser?.role}
-          onSave={handleSaveUser}
-          onClose={() => setIsEditModalOpen(false)}
-        />
-      )}
-
-      {isCreateModalOpen && (
-        <UserCreateModal
-          departments={departments}
-          onSave={handleCreateUser}
-          onClose={() => setIsCreateModalOpen(false)}
-        />
-      )}
-
-      {userToDelete && (
-        <DeleteConfirmModal
-          userName={userToDelete.userName}
-          onConfirm={handleConfirmDelete}
-          onClose={() => setUserToDelete(null)}
-        />
-      )}
+      {/* 반려 사유 입력 모달 (동일) */}
+      <Dialog open={rejectModalOpen} onOpenChange={setRejectModalOpen}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex gap-2 ">
+              <AlertCircle size={20} /> 요청 반려
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="반려 사유 입력"
+              className="resize-none h-52 border-gray-300  "
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setRejectModalOpen(false)}
+              className="border border-gray-300 cursor-pointer hover:bg-gray-200"
+            >
+              취소
+            </Button>
+            <Button
+              onClick={submitReject}
+              className="bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+            >
+              반려 확정
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-};
-
-export default UserManagementPage;
+}

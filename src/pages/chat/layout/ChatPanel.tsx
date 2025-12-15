@@ -5,19 +5,22 @@ import { ArrowBigUpIcon, Loader2 } from "lucide-react";
 import { getChatSessionDetail } from "@/services/chat.service";
 import { useChatStore, type Message } from "@/store/chatStore";
 import { useAuthStore } from "@/store/authStore";
-import { useDocumentStore } from "@/store/documentStore"; // [추가] 문서를 찾기 위해 필요
-import { useDialogStore } from "@/store/dialogStore"; // [추가] 알림용
+import { useDocumentStore } from "@/store/documentStore";
+import { useDialogStore } from "@/store/dialogStore";
 import { MessageBubble } from "@/utils/MessageBubble";
 import { extractMetadataFromContent } from "@/utils/messageParser";
 
-// MessageBubble 컴포넌트 임포트
-
+/**
+ * ChatPanel 컴포넌트
+ * - 채팅 세션 관리, 메시지 송수신, 문서 소스 연결 기능을 담당합니다.
+ * - 메시지 증발 현상을 방지하기 위해 로컬 상태와 DB 상태 동기화 로직이 강화되었습니다.
+ */
 export function ChatPanel() {
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const store = useChatStore();
-  const docStore = useDocumentStore(); // [추가] 문서 스토어 연결
+  const docStore = useDocumentStore();
   const dialog = useDialogStore();
   const { user } = useAuthStore();
 
@@ -30,17 +33,29 @@ export function ChatPanel() {
   const draftKey = currentSessionId || "new";
   const inputValue = store.drafts[draftKey] || "";
 
-  const [isDragging, setIsDragging] = useState(false);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
 
-  // 1. 세션 상세 데이터 동기화
-  const { data: sessionDetail } = useQuery({
+  // 세션 상세 데이터 동기화 쿼리
+  const { data: sessionDetail, refetch } = useQuery({
     queryKey: ["sessionDetail", currentSessionId],
     queryFn: () => getChatSessionDetail(currentSessionId!),
     enabled: !!currentSessionId,
+    // [중요] 스트리밍 직후에는 즉시 refetch를 하므로 staleTime을 짧게 유지하지 않아도 되지만,
+    // 일반적인 상황에서의 부하를 줄이기 위해 설정
     staleTime: 1000 * 5,
   });
 
-  // DB 데이터 동기화 로직 (기존 유지)
+  // [추가] 스트리밍이 끝나면 DB 데이터를 최신으로 갱신 요청
+  useEffect(() => {
+    if (!isStreaming && currentSessionId) {
+      refetch();
+    }
+  }, [isStreaming, currentSessionId, refetch]);
+
+  /**
+   * DB 데이터와 로컬 스토어 메시지 동기화 및 메타데이터 파싱
+   * - [수정] 로컬 메시지가 DB보다 많은 경우(방금 대화함) 덮어쓰기를 방지하는 로직 추가
+   */
   useEffect(() => {
     if (!sessionDetail || !currentSessionId || isStreaming) return;
 
@@ -61,17 +76,26 @@ export function ChatPanel() {
 
     // 2. 메시지 파싱 및 변환
     const loadedMessages: Message[] = dbMessages.map((msg, idx) => {
-      // 2-1. 소스/근거 데이터 확보
-      let sources = msg.sources;
+      // DB의 sources는 string[] 이므로 SourceInfo[] 형태로 변환 필요
+      // (DB 저장 시점에는 paragraphId가 없을 수 있으므로 undefined 처리)
+      let sources =
+        msg.sources?.map((name) => ({
+          name: name,
+          paragraphId: undefined, // 과거 데이터는 ID가 없음
+        })) || [];
+
       let contextUsed = msg.contextUsed;
 
-      // 백엔드에 정보가 없고(과거 데이터) + 봇의 메시지라면 -> 본문 파싱 시도
+      // 백엔드에 정보가 없고 봇의 메시지라면 -> 본문 파싱 시도 (하위 호환성)
       if ((!sources || sources.length === 0) && msg.role === "assistant") {
         const parsed = extractMetadataFromContent(msg.content);
 
         // 파싱 결과가 있다면 적용
         if (parsed.sources.length > 0) {
-          sources = parsed.sources;
+          sources = parsed.sources.map((name) => ({
+            name,
+            paragraphId: undefined,
+          }));
           contextUsed = parsed.contextUsed;
         }
       }
@@ -83,18 +107,25 @@ export function ChatPanel() {
           | "assistant",
         content: msg.content,
         createdAt: new Date().toISOString(),
-        sources, // 파싱된 소스
-        contextUsed, // 파싱된 근거
+        sources,
+        contextUsed,
       };
     });
 
-    // 3. 업데이트 조건 체크 (여기가 문제였음)
+    // 3. 업데이트 조건 체크
     const storeMsgs = sessionInStore?.messages || [];
 
-    // 개수가 다르거나
+    // [핵심 수정] 메시지 증발 방지 로직
+    // 로컬 스토어의 메시지가 DB보다 더 많다면, 아직 DB에 저장이 덜 된 상태이거나
+    // 방금 대화를 마친 상태이므로 DB 데이터로 덮어쓰지 않고 기다립니다.
+    if (storeMsgs.length > loadedMessages.length) {
+      return;
+    }
+
+    // 개수가 다르다면 (DB가 더 많거나 같은 경우만 진입) 업데이트 대상
     const countMismatch = storeMsgs.length !== loadedMessages.length;
 
-    // 개수는 같은데, 스토어의 마지막 봇 메시지에 소스가 없지만 파싱된 것엔 소스가 있는 경우 (캐시 갱신 필요)
+    // 소스 업데이트 필요 여부 체크 (개수는 같은데 메타데이터가 늦게 온 경우)
     const lastStoreBotMsg = [...storeMsgs]
       .reverse()
       .find((m) => m.role === "assistant");
@@ -105,30 +136,30 @@ export function ChatPanel() {
     const needSourceUpdate =
       lastStoreBotMsg &&
       lastLoadedBotMsg &&
-      (!lastStoreBotMsg.sources || lastStoreBotMsg.sources.length === 0) && // 스토어엔 없고
+      (!lastStoreBotMsg.sources || lastStoreBotMsg.sources.length === 0) &&
       lastLoadedBotMsg.sources &&
-      lastLoadedBotMsg.sources.length > 0; // 파싱된거엔 있을 때
+      lastLoadedBotMsg.sources.length > 0;
 
-    // 내용이 다르거나, 소스 업데이트가 필요하면 덮어쓰기
+    // 내용이 다르거나(DB가 더 최신), 소스 업데이트가 필요하면 덮어쓰기
     if (countMismatch || needSourceUpdate) {
-      // console.log("메시지 동기화 및 소스 파싱 업데이트 실행");
       store.setMessages(currentSessionId, loadedMessages);
     }
   }, [sessionDetail, currentSessionId, isStreaming, store]);
 
-  // ========================================================================
-  // [수정 2] 소스 클릭 핸들러 개선 (확장자 무시 매칭)
-  // ========================================================================
-  const handleSourceClick = (sourceName: string, context: string) => {
-    // LLM이 말하는 파일명에서 확장자를 제거하거나 정규화
-    // 예: "주차장관리지침(2023년도 4월 개정)" vs "주차장관리지침(2023년도 4월 개정).hwpx"
-
+  /**
+   * 소스 클릭 핸들러 (paragraph_idx 활용)
+   */
+  const handleSourceClick = (
+    sourceName: string,
+    context: string,
+    paragraphId?: number
+  ) => {
     const normalize = (name: string) => name.replace(/\s+/g, "").toLowerCase();
     const cleanSourceName = normalize(
       sourceName.replace(/\.(hwp|hwpx|pdf)$/i, "")
     );
 
-    // 문서 목록에서 찾기 (포함 여부로 검색)
+    // 문서 목록에서 찾기
     const targetDoc = docStore.documents.find((d) => {
       const dbFileName = normalize(
         d.originalFilename.replace(/\.(hwp|hwpx|pdf)$/i, "")
@@ -141,7 +172,11 @@ export function ChatPanel() {
 
     if (targetDoc) {
       store.openDocument(targetDoc);
-      store.setSelectedReference({ sourceName, text: context });
+      store.setSelectedReference({
+        sourceName,
+        text: context,
+        paragraphId: paragraphId,
+      });
     } else {
       dialog.alert({
         title: "문서 열기 실패",
@@ -186,10 +221,7 @@ export function ChatPanel() {
         )}
 
         {messages.map((msg, i) => {
-          // 이 메시지가 전체 목록의 마지막인지 체크
           const isLatest = i === messages.length - 1;
-
-          // 스트리밍 중인가? (마지막 메시지이면서 스트리밍 상태일 때)
           const isMsgStreaming =
             isStreaming && msg.role === "assistant" && isLatest;
 
@@ -199,11 +231,15 @@ export function ChatPanel() {
               role={msg.role as "user" | "assistant"}
               content={msg.content}
               isStreaming={isMsgStreaming}
-              // 최신 메시지 여부 전달 (true면 근거 자동 펼침, false면 접힘)
               isLatest={isLatest}
-              sources={msg.sources}
+              // [수정] 스토어의 sources(객체 배열)를 MessageBubble 호환을 위해 이름만 추출하여 전달
+              sources={msg.sources?.map((s) => s.name) || []}
               contextUsed={msg.contextUsed}
-              onSourceClick={handleSourceClick}
+              // [핵심] 클릭 시 해당 소스의 paragraphId를 찾아 핸들러에 전달
+              onSourceClick={(name, ctx) => {
+                const targetSource = msg.sources?.find((s) => s.name === name);
+                handleSourceClick(name, ctx, targetSource?.paragraphId);
+              }}
             />
           );
         })}
