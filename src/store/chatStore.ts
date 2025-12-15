@@ -3,7 +3,11 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Document } from "@/types/UserType";
-import { createChatSession, streamChatResponse } from "@/services/chat.service";
+import {
+  createChatSession,
+  streamChatResponse,
+  type ChatMetadata,
+} from "@/services/chat.service";
 
 // ----------------------------------------------------------------------
 // 타입 정의
@@ -249,19 +253,43 @@ export const useChatStore = create(
               message: trimmed,
               user_id: userId,
             },
-            // 콜백: 토큰(한 글자 혹은 덩어리)이 올 때마다 실행
+            // (1) 텍스트 델타 콜백
             (token) => {
               set((state) => ({
                 sessions: state.sessions.map((session) => {
                   if (session.id === activeId) {
                     const msgs = [...session.messages];
                     const lastIdx = msgs.length - 1;
-
-                    // 마지막 메시지(위에서 만든 botMsg)에 토큰을 이어 붙임
                     if (lastIdx >= 0) {
                       msgs[lastIdx] = {
                         ...msgs[lastIdx],
                         content: msgs[lastIdx].content + token,
+                      };
+                      return { ...session, messages: msgs };
+                    }
+                  }
+                  return session;
+                }),
+              }));
+            },
+            // (2) [추가] 메타데이터 콜백 (여기서 sources와 contextUsed를 저장)
+            (metadata: ChatMetadata) => {
+              set((state) => ({
+                sessions: state.sessions.map((session) => {
+                  if (session.id === activeId) {
+                    const msgs = [...session.messages];
+                    const lastIdx = msgs.length - 1;
+
+                    if (lastIdx >= 0) {
+                      // sources 배열 생성 (doc_name 추출)
+                      const sourceNames =
+                        metadata.sources?.map((s) => s.doc_name) || [];
+
+                      msgs[lastIdx] = {
+                        ...msgs[lastIdx],
+                        // 메타데이터 업데이트
+                        sources: sourceNames,
+                        contextUsed: metadata.context_used || "",
                       };
                       return { ...session, messages: msgs };
                     }

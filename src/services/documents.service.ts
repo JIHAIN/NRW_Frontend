@@ -1,5 +1,9 @@
 import { API_BASE_URL } from "@/lib/constants";
-import type { Document, DocumentStatus } from "@/types/UserType";
+import type {
+  Document,
+  DocumentDetailResponse,
+  DocumentStatus,
+} from "@/types/UserType";
 
 // --------------------------------------------------------------------------
 // 📝 타입 정의
@@ -21,13 +25,6 @@ export interface BackendDocument {
   created_at: string;
   updated_at: string;
   version: string;
-}
-
-// 문서 상세 내용 (content)
-interface DocumentContentResponse {
-  doc_id: string;
-  total_chunks: number;
-  content: string;
 }
 
 export interface UploadMetadata {
@@ -96,13 +93,15 @@ export const fetchDocuments = async (
 // --------------------------------------------------------------------------
 // 2. 문서 내용 조회
 // --------------------------------------------------------------------------
-export const fetchDocumentContent = async (docId: number): Promise<string> => {
+export const fetchDocumentContent = async (
+  docId: number
+): Promise<DocumentDetailResponse> => {
   const response = await fetch(`${API_BASE_URL}/api/v1/documents/${docId}`);
 
   if (!response.ok) throw new Error("Failed to fetch document content");
 
-  const data = (await response.json()) as DocumentContentResponse;
-  return data.content;
+  // [수정] 전체 JSON 객체를 반환하도록 변경
+  return response.json() as Promise<DocumentDetailResponse>;
 };
 
 // --------------------------------------------------------------------------

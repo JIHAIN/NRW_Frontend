@@ -28,6 +28,32 @@ export type DocumentStatus =
   | "PROCESSING" // 처리중
   | "REJECTED"; // 거부
 
+/**
+ * 문서 상세 조회 응답 (Chunks 포함)
+ */
+export interface DocumentChunkMetadata {
+  chunk_id: number;
+  paragraph_idx: number;
+  file_path: string;
+  // 필요하다면 다른 메타데이터 필드 추가
+}
+
+export interface DocumentChunk {
+  chunk_id: number;
+  paragraph_idx: number; // 문단 번호 (스크롤 타겟팅용)
+  content: string; // 문단 내용
+  metadata: DocumentChunkMetadata;
+}
+
+export interface DocumentDetailResponse {
+  id: number;
+  external_doc_id: string;
+  original_filename: string;
+  total_chunks: number;
+  content: string; // 전체 텍스트 (하위 호환용)
+  chunks: DocumentChunk[]; // [핵심] 문단 리스트
+}
+
 // =============================================================================
 // 2. Interfaces (DB 테이블 구조 반영)
 // =============================================================================

@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "@/lib/constants";
 
 // --------------------------------------------------------------------------
-// 📝 타입 정의 (Swagger 명세 반영)
+// 📝 타입 정의 (Swagger 명세 및 메타데이터 반영)
 // --------------------------------------------------------------------------
 
 // 1. 채팅방(세션) 정보
@@ -18,6 +18,9 @@ export interface ChatSession {
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
+  // [추가] 출처 및 근거 데이터 필드
+  sources?: string[]; // 예: ["주차장관리지침.hwpx", "복무규정.hwp"]
+  contextUsed?: string; // 예: "[주차장관리지침] ... 주차장 명칭 및 구역 ..." (하이라이트용 원문)
 }
 
 // 3. 세션 상세 조회 응답
@@ -32,7 +35,7 @@ export interface CreateSessionRequest {
   title: string;
 }
 
-// [NEW] 채팅방 생성 응답 DTO
+// 채팅방 생성 응답 DTO
 interface CreateSessionResponse {
   session_id: number;
   user_id: number;
@@ -41,9 +44,29 @@ interface CreateSessionResponse {
 
 // 5. 메시지 전송 요청
 export interface SendMessageRequest {
-  conversation_id: string; // 백엔드 명세에 맞춤
+  conversation_id: string;
   message: string;
   user_id: number;
+}
+
+// [NEW] 메타데이터 내 소스 정보 타입
+export interface SourceItem {
+  index: number;
+  doc_name: string;
+  doc_id: number;
+  chunk_id: number;
+  score: number;
+  type?: string | null;
+  table_id?: string | null;
+}
+
+// [NEW] 스트림 메타데이터 전체 타입
+export interface ChatMetadata {
+  answer?: string;
+  sources?: SourceItem[];
+  context_used?: string;
+  // 추후 확장 가능성을 위해 인덱스 시그니처 허용 (선택사항)
+  // [key: string]: unknown;
 }
 
 // --------------------------------------------------------------------------
@@ -52,12 +75,11 @@ export interface SendMessageRequest {
 
 /**
  * 1. 채팅 세션(대화방) 생성
- * POST /api/v1/chat/sessions/ (슬래시 있음)
+ * POST /api/v1/chat/sessions/
  */
 export const createChatSession = async (
   data: CreateSessionRequest
 ): Promise<string> => {
-  // 슬래시 필수 확인
   const response = await fetch(`${API_BASE_URL}/api/v1/chat/sessions/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -70,13 +92,10 @@ export const createChatSession = async (
     throw new Error(`세션 생성 실패: ${response.status}`);
   }
 
-  // [수정 유지] JSON 파싱 후 session_id만 추출하여 문자열로 반환
-  // 이게 안 되면 conversation_id가 "[object Object]"가 되어 422 에러 발생함
   try {
     const resData: CreateSessionResponse = await response.json();
     return String(resData.session_id);
   } catch (e) {
-    // 혹시라도 텍스트로 오면 그대로 반환
     const text = await response.text();
     console.error(e);
     return text;
@@ -104,7 +123,6 @@ export const getChatSessions = async (
 export const getChatSessionDetail = async (
   sessionId: number | string
 ): Promise<SessionDetailResponse> => {
-  // [방어 코드]
   if (!sessionId || sessionId.toString() === "[object Object]") {
     throw new Error("유효하지 않은 세션 ID입니다.");
   }
@@ -120,7 +138,6 @@ export const getChatSessionDetail = async (
 
 /**
  * 4. 메시지 전송 (단건)
- * POST /api/v1/chat/
  */
 export const sendChatMessage = async (
   data: SendMessageRequest
@@ -137,11 +154,16 @@ export const sendChatMessage = async (
 };
 
 /**
- * 5. [수정] 채팅 스트리밍 API (줄바꿈/공백 완벽 대응)
+ * 5. [수정] 채팅 스트리밍 API
+ * - data: 라인의 불필요한 공백 제거 로직 개선
+ * - 물리적인 빈 줄만 줄바꿈 카운트로 인식
+ * - 메타데이터 타입(any 제거) 적용
  */
 export const streamChatResponse = async (
   data: SendMessageRequest,
-  onDelta: (token: string) => void
+  onDelta: (token: string) => void,
+  // [수정] any 대신 ChatMetadata 타입 사용
+  onMetadata?: (metadata: ChatMetadata) => void
 ): Promise<void> => {
   const response = await fetch(`${API_BASE_URL}/api/v1/chat/stream`, {
     method: "POST",
@@ -160,8 +182,8 @@ export const streamChatResponse = async (
   const decoder = new TextDecoder("utf-8");
 
   let buffer = "";
-  // [핵심] 연속된 빈 줄 횟수를 카운트하는 변수
-  let emptyLineCount = 0;
+  let emptyLineCount = 0; // 물리적인 빈 줄(엔터) 카운트
+  let currentEvent = "message"; // 현재 처리 중인 이벤트 타입
 
   while (true) {
     const { done, value } = await reader.read();
@@ -170,63 +192,69 @@ export const streamChatResponse = async (
     const chunk = decoder.decode(value, { stream: true });
     buffer += chunk;
 
-    // 줄바꿈 문자로 전체를 쪼갭니다 (서버가 보내는 물리적인 줄바꿈)
     const lines = buffer.split("\n");
     buffer = lines.pop() || "";
 
     for (const line of lines) {
-      // 1. 데이터 라인인지 확인
+      // 1. 이벤트 타입 체크 (event: metadata 등)
+      if (line.startsWith("event:")) {
+        currentEvent = line.slice(6).trim();
+        continue;
+      }
+
+      // 2. 데이터 라인 처리
       if (line.startsWith("data:")) {
-        // 내용 추출
+        // [핵심] 이전에 쌓인 물리적 빈 줄 처리 (data: 라인이 오면 이전 빈줄 정산)
+        if (emptyLineCount > 0) {
+          if (emptyLineCount >= 3) {
+            onDelta("\n\n"); // 3줄 이상 -> 문단 바꿈
+          } else if (emptyLineCount === 2) {
+            onDelta("\n"); // 2줄 -> 줄바꿈
+          }
+          // 1줄은 무시 (연결된 문장으로 취급하여 공백 없이 붙임)
+          emptyLineCount = 0;
+        }
+
         let rawContent = line.slice(5);
+
+        // 앞쪽 공백 1칸은 SSE 프로토콜상 분리자일 수 있으므로 제거
         if (rawContent.startsWith(" ")) {
           rawContent = rawContent.slice(1);
         }
 
-        // 종료 신호
+        // 종료 신호 체크
         if (rawContent.trim() === "[DONE]" || rawContent.trim() === "END") {
           continue;
         }
 
-        // 2. 내용이 비어있는지 확인
-        // 주의: trim()을 해서 비어있다면, 화면상에 보이지 않는 공백문자만 있거나 아예 없는 경우
-        if (!rawContent || rawContent.trim() === "") {
-          // 빈 줄 카운트 증가
-          emptyLineCount++;
-        } else {
-          // 3. 내용이 있는 경우 (글자 도착)
-          // 이전에 쌓여있던 빈 줄들을 처리하고, 현재 글자를 보냄
-
-          // [규칙 적용]
-          if (emptyLineCount === 0 || emptyLineCount === 1) {
-            // 0개: 그냥 씀
-            // 1개: 무시 (글자 사이 끊김 연결)
-          } else if (emptyLineCount === 2) {
-            // 2개 연속 빈 줄 -> 줄바꿈 1번
-            onDelta("\n");
-          } else if (emptyLineCount >= 3) {
-            // 3개 이상 연속 빈 줄 -> 문단 바꿈
-            onDelta("\n\n");
+        // [Metadata 처리]
+        if (currentEvent === "metadata") {
+          try {
+            const parsedMeta = JSON.parse(rawContent) as ChatMetadata;
+            if (onMetadata) onMetadata(parsedMeta);
+          } catch (e) {
+            console.error("메타데이터 파싱 실패", e);
           }
+          currentEvent = "message"; // 다시 기본 상태로 복귀
+          continue;
+        }
 
-          // 빈 줄 카운트 리셋
-          emptyLineCount = 0;
-
-          // 실제 텍스트 전송
-          // 혹시 모를 JSON 체크
-          if (rawContent.startsWith("{")) {
-            try {
-              const parsed = JSON.parse(rawContent);
-              onDelta(parsed.content || "");
-            } catch {
-              onDelta(rawContent);
-            }
-          } else {
+        // [텍스트 처리]
+        // data: 로 들어온 내용은 공백이 포함되어 있어도(스페이스 2개 등) 텍스트로 간주
+        // 빈 줄 카운트를 증가시키지 않고 바로 전송
+        if (rawContent.startsWith("{") && rawContent.endsWith("}")) {
+          try {
+            // 혹시 JSON 형태의 문자열이 올 경우 방어 로직
+            const parsed = JSON.parse(rawContent);
+            onDelta(parsed.content || "");
+          } catch {
             onDelta(rawContent);
           }
+        } else {
+          onDelta(rawContent);
         }
       }
-      // data: 가 아닌 완전 빈 줄도 카운트에 포함 (안전장치)
+      // 3. 물리적인 빈 줄 처리 (data: 로 시작하지 않는 진짜 빈 줄)
       else if (line.trim() === "") {
         emptyLineCount++;
       }
@@ -253,8 +281,7 @@ export const deleteChatSession = async (
 };
 
 /**
- * 7. [추가] 채팅 세션 제목 수정
- * PUT /api/v1/chat/sessions/{session_id}
+ * 7. 채팅 세션 제목 수정
  */
 export const updateChatSessionTitle = async (
   sessionId: number | string,

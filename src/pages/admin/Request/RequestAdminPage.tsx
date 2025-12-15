@@ -237,7 +237,7 @@ export const UserManagementPage: FC = () => {
 
   return (
     <div className="flex flex-col gap-4 page-layout">
-      <h1 className="page-title"> 사용자 관리 </h1>
+      <h1 className="page-title"> 요청 관리 </h1>
 
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
