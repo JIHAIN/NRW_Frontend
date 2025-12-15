@@ -181,14 +181,14 @@ export function DocViewer() {
   return (
     <div className="h-full flex flex-col bg-white overflow-hidden border-l border-gray-200">
       {/* 헤더 영역 */}
-      <div className="flex-none flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white z-10">
+      <div className="flex-none flex items-center justify-between px-4 py-1 border-b border-gray-100 shadow-md shadow-gray-100 bg-white z-10">
         <div className="flex items-center gap-2 overflow-hidden">
           {!selectedReference && (
             <Button
               variant="ghost"
               size="icon"
               onClick={closeDocument}
-              className="h-8 w-8 hover:bg-gray-100 text-gray-600 shrink-0"
+              className="h-8 w-8 hover:bg-gray-100 text-gray-600 shrink-0 cursor-pointer"
             >
               <ArrowLeft size={18} />
             </Button>
@@ -199,7 +199,7 @@ export function DocViewer() {
               {selectedReference ? (
                 <>
                   <Quote className="size-4 text-blue-600 shrink-0" />
-                  <span className="truncate">문맥 확인 모드</span>
+                  <span className="truncate">문맥 확인</span>
                 </>
               ) : (
                 <>
@@ -219,10 +219,9 @@ export function DocViewer() {
         <div className="flex items-center gap-1 shrink-0">
           {!selectedReference && selectedDocument && (
             <Button
-              variant="outline"
               size="sm"
               onClick={handleDownload}
-              className="h-8 text-slate-600 gap-1.5 px-3 text-xs"
+              className="h-8 text-slate-600 gap-1.5 px-3 text-xs cursor-pointer hover:bg-gray-100 hover:text-slate-900"
             >
               <Download size={14} />
               다운로드
@@ -237,7 +236,7 @@ export function DocViewer() {
                 setSelectedReference(null);
                 setHighlightedIdx(null);
               }}
-              className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+              className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
               title="문맥 모드 종료"
             >
               <X size={18} />

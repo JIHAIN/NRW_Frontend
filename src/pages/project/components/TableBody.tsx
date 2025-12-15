@@ -107,7 +107,7 @@ const TableBody: FC<TableBodyProps> = ({
             <div className="w-2/12 flex justify-center items-center gap-2  transition-opacity">
               <button
                 onClick={() => onAction("download", item)}
-                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
+                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-full transition-colors"
               >
                 <Download size={16} />
               </button>

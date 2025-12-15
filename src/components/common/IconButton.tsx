@@ -13,7 +13,7 @@ export function IconButton({
         <Tooltip.Trigger asChild>
           <button
             type="button"
-            className="inline-flex items-center justify-center size-8 rounded-lg hover:bg-blue-100 text-blue-700"
+            className="inline-flex items-center justify-center size-8 rounded-lg hover:bg-gray-100 text-blue-700"
           >
             {children}
           </button>

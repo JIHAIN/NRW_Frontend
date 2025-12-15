@@ -128,7 +128,7 @@ const DepartmentManager: FC<DepartmentManagerProps> = ({
                 ${
                   isSelected
                     ? "bg-blue-500 text-white border-blue-500 font-bold"
-                    : "bg-blue-50 text-gray-800 hover:bg-blue-100"
+                    : "bg-blue-50 text-gray-800 hover:bg-gray-100"
                 }
                 ${readOnly ? "cursor-default" : "cursor-pointer"}
                 ${isDisabled ? "opacity-50" : ""}

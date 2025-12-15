@@ -1,9 +1,8 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, Loader2 } from "lucide-react";
-// [중요] markdownParser도 src/utils로 이동했다고 가정합니다.
+import { BookOpen, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import {
   parseContentWithTables,
   type ParsedTable,
@@ -13,12 +12,13 @@ interface MessageBubbleProps {
   role: "user" | "assistant";
   content: string;
   isStreaming?: boolean;
+  isLatest?: boolean; // [추가] 최신 메시지 여부
   sources?: string[];
   contextUsed?: string;
   onSourceClick?: (source: string, context: string) => void;
 }
 
-// 텍스트 전처리 (마크다운 깨짐 방지)
+// 텍스트 전처리
 const preprocessContent = (text: string) => {
   if (!text) return "";
   return text
@@ -30,11 +30,16 @@ export const MessageBubble = ({
   role,
   content,
   isStreaming = false,
+  isLatest = false, // 기본값 false
   sources,
   contextUsed,
   onSourceClick,
 }: MessageBubbleProps) => {
-  // 표 분리 로직 (스트리밍 중이 아닐 때만 실행)
+  // 1. 소스 목록 토글 상태 관리
+  // 스트리밍 중이거나 최신 메시지라면 기본적으로 열어둠 (true), 아니면 닫아둠 (false)
+  const [isSourceOpen, setIsSourceOpen] = useState(isStreaming || isLatest);
+
+  // 2. 표 분리 로직
   const { cleanText, tables } = useMemo(() => {
     if (isStreaming) {
       return { cleanText: content, tables: [] };
@@ -87,7 +92,6 @@ export const MessageBubble = ({
                   {...props}
                 />
               ),
-              // [수정] any 타입 제거 -> React.ComponentPropsWithoutRef<"code"> 사용
               code: ({
                 className,
                 children,
@@ -122,7 +126,7 @@ export const MessageBubble = ({
                       />
                     </div>
                   )
-                : () => <></>, // 스트리밍이 아닐 땐 숨김 (하단에 렌더링)
+                : () => <></>,
               th: ({ ...props }) => (
                 <th
                   className="bg-gray-100 px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b"
@@ -196,21 +200,41 @@ export const MessageBubble = ({
         </div>
       )}
 
-      {/* 소스 버튼 */}
+      {/* 소스(근거) 영역 */}
       {role === "assistant" && sources && sources.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-2 max-w-[85%]">
-          {sources.map((source, idx) => (
-            <button
-              key={idx}
-              onClick={() =>
-                onSourceClick && onSourceClick(source, contextUsed || "")
-              }
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-xs text-blue-700 hover:bg-blue-100 hover:border-blue-200 transition-all"
-            >
-              <BookOpen size={12} />
-              <span className="truncate max-w-[150px]">{source}</span>
-            </button>
-          ))}
+        <div className="mt-2 max-w-[85%]">
+          {/* 1. 토글 버튼 (닫혀있을 때만 보임, 혹은 항상 보여서 접기/펴기 가능하게) */}
+          <button
+            onClick={() => setIsSourceOpen(!isSourceOpen)}
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 font-medium transition-colors mb-2 ml-1"
+          >
+            {isSourceOpen ? (
+              <ChevronDown size={14} />
+            ) : (
+              <ChevronRight size={14} />
+            )}
+            {isSourceOpen
+              ? "근거 자료 접기"
+              : `근거 자료 ${sources.length}개 보기`}
+          </button>
+
+          {/* 2. 실제 소스 버튼 목록 (열려있을 때만 보임) */}
+          {isSourceOpen && (
+            <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+              {sources.map((source, idx) => (
+                <button
+                  key={idx}
+                  onClick={() =>
+                    onSourceClick && onSourceClick(source, contextUsed || "")
+                  }
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-xs text-blue-700 hover:bg-gray-100 hover:border-blue-200 transition-all shadow-sm"
+                >
+                  <BookOpen size={12} />
+                  <span className="truncate max-w-[200px]">{source}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

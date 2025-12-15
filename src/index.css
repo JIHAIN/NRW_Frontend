@@ -59,7 +59,7 @@ body {
 
       /* @apply hover:shadow-md  hover:bg-blue-50 hover:shadow-blue-100; */
 
-      @apply hover:bg-blue-100;
+      @apply hover:bg-gray-100;
 
       @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50;
     }

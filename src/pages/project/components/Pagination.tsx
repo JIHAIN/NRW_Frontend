@@ -32,7 +32,7 @@ const Pagination: FC<PaginationProps> = ({
       <button
         onClick={() => handlePageClick(currentPage - 1)}
         disabled={currentPage === 1}
-        className="p-2 rounded-lg text-gray-500 hover:bg-blue-100 disabled:opacity-50"
+        className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-50"
       >
         <ChevronLeft size={20} />
       </button>
@@ -49,7 +49,7 @@ const Pagination: FC<PaginationProps> = ({
             ${
               page === currentPage
                 ? "bg-blue-600 text-white font-bold"
-                : "text-gray-700 hover:bg-blue-100 hover:text-blue-600"
+                : "text-gray-700 hover:bg-gray-100 hover:text-blue-600"
             }`}
           >
             {page}
@@ -61,7 +61,7 @@ const Pagination: FC<PaginationProps> = ({
       <button
         onClick={() => handlePageClick(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="p-2 rounded-lg text-gray-500 hover:bg-blue-100 disabled:opacity-50"
+        className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-50"
       >
         <ChevronRight size={20} />
       </button>

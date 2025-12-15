@@ -104,7 +104,7 @@ export function ProjectsNavigation() {
             <SidebarMenuItem key={session.id}>
               <SidebarMenuButton
                 isActive={session.id === selectedSessionId}
-                className="group-data-[collapsible=icon]:justify-center hover:bg-blue-100 cursor-pointer"
+                className="group-data-[collapsible=icon]:justify-center hover:bg-gray-100 cursor-pointer"
                 tooltip={session.title}
               >
                 <Link
@@ -134,7 +134,7 @@ export function ProjectsNavigation() {
                 trigger={
                   <SidebarMenuAction
                     showOnHover
-                    className="cursor-pointer hover:bg-blue-100 rounded-full p-1"
+                    className="cursor-pointer hover:bg-gray-100 rounded-full p-1"
                   >
                     <MoreHorizontal />
                   </SidebarMenuAction>

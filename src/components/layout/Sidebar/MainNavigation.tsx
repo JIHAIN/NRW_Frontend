@@ -128,7 +128,7 @@ export function MainNavigation({
                       <SidebarMenuSubItem key={subItem.title}>
                         <SidebarMenuSubButton
                           asChild
-                          className="hover:bg-blue-100"
+                          className="hover:bg-gray-100"
                         >
                           <Link to={subItem.url}>
                             <span>{subItem.title}</span>

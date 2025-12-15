@@ -17,7 +17,7 @@ import {
   BadgeCheckIcon,
 } from "lucide-react";
 
-import type { Document } from "@/types/UserType";
+import type { Document, DocumentDetailResponse } from "@/types/UserType";
 import {
   fetchDocumentContent,
   downloadDocument,
@@ -36,17 +36,15 @@ export function DocumentDetailModal({
   open,
   onClose,
 }: DocumentDetailModalProps) {
-  // 1. 데이터 패칭 Hook (조건부 호출 오류 방지를 위해 최상단 배치)
+  // 1. 데이터 패칭 Hook
+  // 변수명을 docDetail로 변경하여 명확하게 하고, 제네릭 타입<DocumentDetailResponse> 명시
   const {
-    data: parsedText,
+    data: docDetail,
     isLoading,
     isError,
-  } = useQuery({
-    queryKey: ["docContent", document?.id], // 키는 ID 유지
-    queryFn: () =>
-      // [수정] user_id 제거, doc_id(파일명)만 전달
-      fetchDocumentContent(document!.id),
-
+  } = useQuery<DocumentDetailResponse>({
+    queryKey: ["docContent", document?.id],
+    queryFn: () => fetchDocumentContent(document!.id), // null assertion은 enabled가 막아주므로 안전
     enabled: open && !!document,
     staleTime: 1000 * 60 * 5,
   });
@@ -69,10 +67,12 @@ export function DocumentDetailModal({
   };
 
   const statusConfig =
-    // STATUS_CONFIG[document.status] || STATUS_CONFIG["PARSED"];
-    STATUS_CONFIG[document.status] || document.status;
-
+    STATUS_CONFIG[document.status] || STATUS_CONFIG["PARSED"];
   const categoryLabel = CATEGORY_LABEL[document.category] || document.category;
+
+  // [핵심 수정] 렌더링할 텍스트 추출 로직
+  // docDetail이 로드되었을 때 객체 내부의 content(전체 텍스트)를 가져옴
+  const contentToRender = docDetail?.content || "";
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -92,7 +92,6 @@ export function DocumentDetailModal({
           <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 text-sm">
             <div className="flex flex-col gap-1">
               <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
-                {" "}
                 <FileText size={10} />
                 파일명
               </span>
@@ -152,8 +151,9 @@ export function DocumentDetailModal({
                   </span>
                 </div>
               ) : (
-                <pre className="whitespace-pre-wrap font-sans">
-                  {parsedText || "파싱된 텍스트 내용이 없습니다."}
+                <pre className="whitespace-pre-wrap">
+                  {/* [수정] 변수명 일치 및 속성 접근 */}
+                  {contentToRender}
                 </pre>
               )}
             </div>
