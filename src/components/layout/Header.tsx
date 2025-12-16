@@ -80,8 +80,8 @@ function Header() {
               to="/"
               className="grid flex-1 p-1 text-sm leading-tight group-data-[collapsible=icon]:hidden"
             >
-              <span className="truncate font-bold text-gray-500 text-[16px] ">
-                NEURON WAY
+              <span className="truncate font-bold text-gray-500 text-[20px] ">
+                Alain
               </span>
             </Link>
           </div>

@@ -35,7 +35,9 @@ export interface DocumentChunkMetadata {
   chunk_id: number;
   paragraph_idx: number;
   file_path: string;
-  // 필요하다면 다른 메타데이터 필드 추가
+  // [수정 포인트] 문단 병합 시(표 등) 포함된 원본 문단 ID들을 추적하기 위한 필드 추가
+  related_paragraphs?: number[];
+  type?: string; // table, text 등 타입 명시
 }
 
 export interface DocumentChunk {

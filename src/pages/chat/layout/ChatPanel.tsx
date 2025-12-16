@@ -11,15 +11,29 @@ import { useChatStore, type Message } from "@/store/chatStore";
 import { useAuthStore } from "@/store/authStore";
 import { useDocumentStore } from "@/store/documentStore";
 import { useDialogStore } from "@/store/dialogStore";
-import { MessageBubble } from "@/utils/MessageBubble";
 import { extractMetadataFromContent } from "@/utils/messageParser";
 import type { Document, DocumentStatus } from "@/types/UserType";
+import { MessageBubble, type SourceItem } from "@/utils/MessageBubble";
 
-/**
- * ChatPanel 컴포넌트
- * - 채팅 세션 관리, 메시지 송수신, 문서 소스 연결 기능을 담당합니다.
- * - 소스 클릭 시 [로컬 리스트 -> API 조회 -> 에러]의 3단계 폴백 로직을 수행합니다.
- */
+// [수정 포인트] 백엔드 소스 참조 데이터 타입 정의 (Any 제거)
+interface BackendSourceRef {
+  doc_id: number;
+  paragraph_idx: number;
+  chunk_id: number; // 무시할 값이지만 타입 정의에는 포함
+  doc_name?: string;
+  original_filename?: string;
+  name?: string;
+}
+
+// [수정 포인트] 백엔드 메시지 타입 정의
+interface BackendMessage {
+  role: string;
+  content: string;
+  source_refs?: BackendSourceRef[];
+  sources?: BackendSourceRef[]; // 구버전 호환
+  contextUsed?: string;
+}
+
 export function ChatPanel() {
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -41,7 +55,6 @@ export function ChatPanel() {
 
   const [isDragging, setIsDragging] = useState<boolean>(false);
 
-  // 세션 상세 데이터 동기화 쿼리
   const { data: sessionDetail, refetch } = useQuery({
     queryKey: ["sessionDetail", currentSessionId],
     queryFn: () => getChatSessionDetail(currentSessionId!),
@@ -49,7 +62,6 @@ export function ChatPanel() {
     staleTime: 1000 * 5,
   });
 
-  // 스트리밍이 끝나면 DB 데이터를 최신으로 갱신 요청 (메시지 누락 방지)
   useEffect(() => {
     if (!isStreaming && currentSessionId) {
       refetch();
@@ -57,7 +69,7 @@ export function ChatPanel() {
   }, [isStreaming, currentSessionId, refetch]);
 
   /**
-   * DB 데이터와 로컬 스토어 메시지 동기화 및 메타데이터 파싱
+   * DB 데이터 동기화 로직
    */
   useEffect(() => {
     if (!sessionDetail || !currentSessionId || isStreaming) return;
@@ -66,9 +78,8 @@ export function ChatPanel() {
       (s) => s.id === currentSessionId
     );
 
-    const dbMessages = sessionDetail.messages;
+    const dbMessages = sessionDetail.messages as unknown as BackendMessage[];
 
-    // 1. 스토어에 세션 없으면 생성
     if (!sessionInStore) {
       store.createSession(
         String(sessionDetail.session.id),
@@ -76,30 +87,41 @@ export function ChatPanel() {
       );
     }
 
-    // 2. 메시지 파싱 및 변환
     const loadedMessages: Message[] = dbMessages.map((msg, idx) => {
-      // 2-1. 소스 정보 초기화
-      // DB의 sources는 string[] 이거나, 메타데이터가 포함된 구조일 수 있음
-      // 여기서는 string[]이라고 가정하고 객체로 변환 (docId는 아직 없음)
-      let sources =
-        msg.sources?.map((name) => ({
-          name: name,
-          paragraphId: undefined,
-          docId: undefined,
-        })) || [];
+      // [수정 포인트] 소스 매핑 로직 강화 및 타입 안전성 확보
+      const rawRefs = msg.source_refs || msg.sources || [];
+
+      let sources: SourceItem[] = rawRefs.map((ref) => {
+        // [수정] 근거목록에 문서 이름과 문단 번호를 명시적으로 표시
+        const baseName =
+          ref.doc_name ||
+          ref.original_filename ||
+          ref.name ||
+          `문서 ${ref.doc_id}`;
+
+        // 화면 표시용 이름에 (문단 123) 형태 추가
+        const displayName = `${baseName}${
+          ref.paragraph_idx !== undefined ? ` (문단 ${ref.paragraph_idx})` : ""
+        }`;
+
+        return {
+          name: displayName,
+          // ID 매핑: 명확하게 number 타입 할당
+          docId: ref.doc_id,
+          paragraphId: ref.paragraph_idx,
+        };
+      });
 
       let contextUsed = msg.contextUsed;
 
-      // 2-2. 백엔드에 정보가 없고 봇의 메시지라면 -> 본문 파싱 시도 (구버전 데이터 호환)
-      if ((!sources || sources.length === 0) && msg.role === "assistant") {
+      // 소스가 비어있고 봇 메시지라면 텍스트 파싱 시도 (레거시 데이터 대응)
+      if (sources.length === 0 && msg.role === "assistant") {
         const parsed = extractMetadataFromContent(msg.content);
-
         if (parsed.sources.length > 0) {
-          // [수정] docId 속성을 명시적으로 추가하여 타입 불일치 오류 해결
           sources = parsed.sources.map((name) => ({
             name,
-            paragraphId: undefined,
             docId: undefined,
+            paragraphId: undefined,
           }));
           contextUsed = parsed.contextUsed;
         }
@@ -117,17 +139,16 @@ export function ChatPanel() {
       };
     });
 
-    // 3. 업데이트 조건 체크 (메시지 증발 방지 로직 포함)
     const storeMsgs = sessionInStore?.messages || [];
 
-    // 로컬 스토어의 메시지가 더 많다면(방금 대화함), 아직 DB 갱신 전이므로 덮어쓰지 않음
+    // 로컬 메시지가 더 최신이면(개수가 많으면) 대기
     if (storeMsgs.length > loadedMessages.length) {
       return;
     }
 
+    // 변경사항 감지 및 업데이트
     const countMismatch = storeMsgs.length !== loadedMessages.length;
 
-    // 마지막 봇 메시지의 소스 정보가 스토어엔 없는데 DB엔 있는지 체크
     const lastStoreBotMsg = [...storeMsgs]
       .reverse()
       .find((m) => m.role === "assistant");
@@ -135,6 +156,7 @@ export function ChatPanel() {
       .reverse()
       .find((m) => m.role === "assistant");
 
+    // 로컬의 마지막 봇 메시지에 소스가 없는데, 로드된 메시지에는 소스가 있다면 업데이트 필요
     const needSourceUpdate =
       lastStoreBotMsg &&
       lastLoadedBotMsg &&
@@ -142,36 +164,41 @@ export function ChatPanel() {
       lastLoadedBotMsg.sources &&
       lastLoadedBotMsg.sources.length > 0;
 
-    // 개수가 다르거나 소스 업데이트가 필요하면 덮어쓰기
     if (countMismatch || needSourceUpdate) {
       store.setMessages(currentSessionId, loadedMessages);
     }
   }, [sessionDetail, currentSessionId, isStreaming, store]);
 
   /**
-   * 소스 클릭 핸들러 (3단계 폴백 로직 적용)
-   * 1. 로컬 문서 리스트 확인
-   * 2. API 상세 조회 (로컬에 없고 docId 있을 시)
-   * 3. 실패 시 에러 팝업
+   * 소스 클릭 핸들러 (API 직접 조회 로직 강화)
    */
-  const handleSourceClick = async (
-    sourceName: string,
-    context: string,
-    paragraphId?: number,
-    docId?: number
-  ) => {
-    const normalize = (name: string) => name.replace(/\s+/g, "").toLowerCase();
+  const handleSourceClick = async (sourceItem: SourceItem, context: string) => {
+    // [수정] 클릭된 버튼의 데이터 로그 출력
+    console.log("🖱️ [Click] Source Button Data:", {
+      name: sourceItem.name,
+      docId: sourceItem.docId,
+      paragraphId: sourceItem.paragraphId,
+      contextPreview: context.slice(0, 30) + "...",
+    });
+
+    const { name, docId, paragraphId } = sourceItem;
+
+    // 문서 이름 정규화 (확장자 제거 및 공백 제거)
+    // 표시용 이름에 붙은 (문단 123) 제거 후 파일명만 추출 시도
+    const rawName = name.replace(/\s*\(문단\s*\d+\)$/, "");
+    const normalize = (n: string) => n.replace(/\s+/g, "").toLowerCase();
     const cleanSourceName = normalize(
-      sourceName.replace(/\.(hwp|hwpx|pdf)$/i, "")
+      rawName.replace(/\.(hwp|hwpx|pdf)$/i, "")
     );
 
-    // 1. [로컬 검색] 문서 목록에서 찾기 (ID 우선, 그 다음 이름)
+    // 1. [로컬 검색] DocStore에 이미 로드된 문서 목록에서 찾기
     let targetDoc: Document | undefined = undefined;
 
     if (docId) {
       targetDoc = docStore.documents.find((d) => d.id === docId);
     }
 
+    // ID로 못 찾았으면 이름으로 검색 (차선책)
     if (!targetDoc) {
       targetDoc = docStore.documents.find((d) => {
         const dbFileName = normalize(
@@ -184,28 +211,23 @@ export function ChatPanel() {
       });
     }
 
-    // 2. [API 조회] 로컬에 없고 docId는 있는 경우 -> 서버에서 직접 조회
+    // 2. [API 조회] 로컬에 없고 ID는 있는 경우 직접 fetch
     if (!targetDoc && docId) {
       try {
         const docDetailResponse = await fetchDocumentContent(docId);
 
-        // [수정] 타입 단언을 통해 BackendDocument 필드에 안전하게 접근
-        // (fetchDocumentContent는 DocumentDetailResponse를 반환하지만,
-        //  실제로는 BackendDocument의 필드들을 포함하고 있다고 가정)
-        const rawData = docDetailResponse as unknown as BackendDocument & {
-          content?: string;
-        };
+        // [수정 포인트] BackendDocument 타입으로 캐스팅하여 Document 객체 생성 (Any 제거)
+        const rawData = docDetailResponse as unknown as BackendDocument;
 
         targetDoc = {
-          id: rawData.id,
-          userId: rawData.user_id,
-          departmentId: rawData.dept_id,
-          projectId: rawData.project_id,
-          title: rawData.original_filename,
-          // content가 비어있다면 뷰어에서 다시 로드하므로 빈 문자열 처리
-          content: rawData.content || "",
-          originalFilename: rawData.original_filename,
-          storedPath: rawData.stored_path,
+          id: docDetailResponse.id,
+          userId: rawData.user_id || 0,
+          departmentId: rawData.dept_id || 0,
+          projectId: rawData.project_id || 0,
+          title: docDetailResponse.original_filename,
+          content: docDetailResponse.content || "",
+          originalFilename: docDetailResponse.original_filename,
+          storedPath: rawData.stored_path || "",
           fileExt: rawData.file_ext
             ? rawData.file_ext.replace(".", "")
             : "unknown",
@@ -213,30 +235,39 @@ export function ChatPanel() {
           category: "GENERAL",
           status: (rawData.status as DocumentStatus) || "COMPLETED",
           version: rawData.version || "1.0",
-          createdAt: rawData.created_at,
-          updatedAt: rawData.updated_at,
+          createdAt: rawData.created_at || new Date().toISOString(),
+          updatedAt: rawData.updated_at || new Date().toISOString(),
         };
 
-        // 뷰어 오픈 시 재요청 방지를 위해 캐시 프리로딩 (선택 사항)
+        // React Query 캐시 수동 업데이트 (DocViewer에서 사용됨)
         queryClient.setQueryData(["docContent", docId], docDetailResponse);
       } catch (error) {
         console.error("문서 직접 조회 실패:", error);
-        // 여기서 에러가 나면 targetDoc은 undefined 상태 유지 -> 3단계 에러 팝업으로 이동
       }
     }
 
-    // 3. [결과 처리]
+    // 3. [문서 열기]
     if (targetDoc) {
       store.openDocument(targetDoc);
-      store.setSelectedReference({
-        sourceName,
-        text: context,
-        paragraphId: paragraphId,
-      });
+
+      // [수정 포인트] paragraphId가 0인 경우도 유효하므로 null/undefined 체크만 수행
+      if (paragraphId !== undefined && paragraphId !== null) {
+        store.setSelectedReference({
+          sourceName: name, // 원본 이름 사용
+          text: context,
+          paragraphId: paragraphId,
+        });
+      } else {
+        // ID가 없으면 텍스트 컨텍스트만 전달
+        store.setSelectedReference({
+          sourceName: name,
+          text: context,
+        });
+      }
     } else {
       dialog.alert({
         title: "문서 열기 실패",
-        message: `원본 문서(${sourceName})를 찾을 수 없습니다.\n삭제되었거나 권한이 없는 파일일 수 있습니다.`,
+        message: `원본 문서(${rawName})를 찾을 수 없습니다.\n삭제되었거나 권한이 없습니다.`,
         variant: "warning",
       });
     }
@@ -268,7 +299,6 @@ export function ChatPanel() {
         <div className="pointer-events-none absolute inset-0 z-20 rounded-3xl border-dashed border-blue-400/70 bg-blue-100/50" />
       )}
 
-      {/* 메시지 목록 */}
       <div className="flex-1 overflow-y-auto overflow-w-auto min-h-0 px-4 pt-2 flex flex-col gap-10 rounded-t-2xl">
         {messages.length === 0 && (
           <div className="flex h-full items-center justify-center text-slate-400">
@@ -288,18 +318,10 @@ export function ChatPanel() {
               content={msg.content}
               isStreaming={isMsgStreaming}
               isLatest={isLatest}
-              // MessageBubble 호환을 위해 소스 이름 배열 전달
-              sources={msg.sources?.map((s) => s.name) || []}
+              sources={msg.sources}
               contextUsed={msg.contextUsed}
-              // [핵심] 클릭 핸들러에 docId, paragraphId를 포함하여 전달
-              onSourceClick={(name, ctx) => {
-                const targetSource = msg.sources?.find((s) => s.name === name);
-                handleSourceClick(
-                  name,
-                  ctx,
-                  targetSource?.paragraphId,
-                  targetSource?.docId
-                );
+              onSourceClick={(sourceItem, ctx) => {
+                handleSourceClick(sourceItem, ctx);
               }}
             />
           );
@@ -307,7 +329,6 @@ export function ChatPanel() {
         <div ref={chatEndRef} />
       </div>
 
-      {/* 입력 폼 */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
