@@ -40,10 +40,10 @@ export function DocViewer() {
   } = useChatStore();
 
   const dialog = useDialogStore();
-  // 문단 번호(paragraph_idx)를 키로 사용하여 요소 참조
   const paragraphRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const containerRef = useRef<HTMLDivElement | null>(null); // [추가] 컨테이너 스크롤 제어용
 
-  // [수정] 하이라이트할 문단 번호 (paragraph_idx)
+  // 하이라이트할 문단 번호
   const [highlightedParagraphIdx, setHighlightedParagraphIdx] = useState<
     number | null
   >(null);
@@ -67,71 +67,72 @@ export function DocViewer() {
     return docDetail.chunks;
   }, [docDetail]);
 
-  // [핵심 기능] 스크롤 및 하이라이트 타겟팅 (paragraph_idx 기준)
+  // --------------------------------------------------------------------------
+  // [핵심 로직 수정] 스크롤 및 하이라이트 타겟팅
+  // --------------------------------------------------------------------------
   useEffect(() => {
     if (!selectedReference || !chunks.length) return;
 
-    let targetParagraphIdx: number | undefined = undefined;
+    let targetIdx: number | undefined = undefined;
 
-    // 1. paragraphId(문단 번호)가 명확히 있는 경우 (가장 우선)
+    // 1. 목표 문단 번호 추출
     if (
       selectedReference.paragraphId !== undefined &&
       selectedReference.paragraphId !== null
     ) {
-      targetParagraphIdx = Number(selectedReference.paragraphId);
-    }
-    // 2. 번호가 없을 때 텍스트 검색 (Fallback)
-    else if (selectedReference.text) {
+      targetIdx = Number(selectedReference.paragraphId);
+    } else if (selectedReference.text) {
+      // 텍스트 검색 fallback
       const targetText = normalizeText(selectedReference.text);
       if (targetText) {
-        const foundChunk = chunks.find((chunk) => {
-          const chunkText = normalizeText(chunk.content);
-          return (
-            chunkText.includes(targetText) || targetText.includes(chunkText)
-          );
+        const found = chunks.find((c) => {
+          const cText = normalizeText(c.content);
+          return cText.includes(targetText) || targetText.includes(cText);
         });
-        if (foundChunk) {
-          targetParagraphIdx = foundChunk.paragraph_idx;
-        }
+        if (found) targetIdx = found.paragraph_idx;
       }
     }
 
-    if (targetParagraphIdx !== undefined) {
-      // 1. 하이라이트 목표 문단 번호 설정
-      setHighlightedParagraphIdx(targetParagraphIdx);
+    if (targetIdx !== undefined) {
+      // 하이라이트 목표 설정 (원하는 번호 그대로)
+      setHighlightedParagraphIdx(targetIdx);
 
-      // 2. 실제 화면에 렌더링된 청크 중에서 해당 문단 번호를 가진(혹은 포함한) 녀석 찾기
-      const foundChunk = chunks.find((chunk) => {
-        // (A) 문단 번호가 직접 일치하는 경우
-        if (Number(chunk.paragraph_idx) === targetParagraphIdx) return true;
-
-        // (B) [중요] 병합된 문단(표 등) 내부에 숨겨진 문단 번호인 경우
-        if (chunk.metadata?.related_paragraphs?.includes(targetParagraphIdx))
+      // [중요] 실제 화면에 존재하는 청크 찾기 (표 병합 대응)
+      const visibleChunk = chunks.find((chunk) => {
+        // A. 직접 일치
+        if (Number(chunk.paragraph_idx) === targetIdx) return true;
+        // B. 병합된 자식들(related_paragraphs) 중에 포함됨
+        if (chunk.metadata?.related_paragraphs?.includes(targetIdx))
           return true;
-
         return false;
       });
 
-      // 3. 스크롤해야 할 타겟 문단 번호 결정
-      const scrollTargetParagraphIdx = foundChunk
-        ? foundChunk.paragraph_idx
-        : targetParagraphIdx;
+      // 스크롤해야 할 실제 ID 결정
+      // visibleChunk가 있으면 그 녀석(부모/본인)으로, 없으면 그냥 targetIdx 시도
+      const scrollId = visibleChunk ? visibleChunk.paragraph_idx : targetIdx;
 
       setTimeout(() => {
-        if (
-          scrollTargetParagraphIdx !== null &&
-          scrollTargetParagraphIdx !== undefined
-        ) {
-          const element = paragraphRefs.current[scrollTargetParagraphIdx];
-          if (element) {
-            element.scrollIntoView({ behavior: "smooth", block: "center" });
-          } else {
-            console.warn(
-              `스크롤 대상 문단(paragraph_idx: ${scrollTargetParagraphIdx})을 찾을 수 없습니다.`
-            );
+        const element = paragraphRefs.current[scrollId];
+
+        if (element) {
+          // A. 요소를 찾았으면 거기로 스크롤
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          console.log(
+            `📜 [DocViewer] ID ${scrollId}번으로 이동 성공 (타겟: ${targetIdx})`
+          );
+        } else {
+          // B. [요청사항 반영] 요소를 못 찾았으면(DocViewer에 없는 번호) -> 최하단으로 이동
+          console.warn(
+            `⚠️ [DocViewer] ID ${scrollId}를 찾을 수 없음. 최하단으로 이동.`
+          );
+          if (containerRef.current) {
+            containerRef.current.scrollTo({
+              top: containerRef.current.scrollHeight,
+              behavior: "smooth",
+            });
           }
         }
-      }, 300);
+      }, 400); // 렌더링 시간 고려하여 여유있게 0.4초
     } else {
       setHighlightedParagraphIdx(null);
     }
@@ -177,45 +178,51 @@ export function DocViewer() {
         <div className="flex flex-col items-center justify-center h-full text-slate-400">
           <AlertCircle className="w-12 h-12 opacity-20 mb-4" />
           <p className="font-bold">문서 내용이 비어있습니다.</p>
-          <p className="text-xs mt-1">
-            파일이 손상되었거나 텍스트를 추출할 수 없습니다.
-          </p>
         </div>
       );
     }
 
     return (
-      <div className="max-w-5xl mx-auto bg-white min-h-full px-2 py-4 md:px-6 md:py-7 shadow-sm">
+      <div className="max-w-5xl mx-auto bg-white min-h-full px-2 py-10 md:px-6 md:py-7 shadow-sm">
         <div className="space-y-5">
           {chunks.length > 0 ? (
             chunks.map((chunk, index) => {
-              // [수정] 하이라이트 여부 결정
-              const isHighlighted =
-                highlightedParagraphIdx !== null &&
-                chunk.paragraph_idx !== null &&
-                (Number(chunk.paragraph_idx) ===
-                  Number(highlightedParagraphIdx) ||
-                  chunk.metadata?.related_paragraphs?.includes(
-                    Number(highlightedParagraphIdx)
-                  ));
+              // -------------------------------------------------------
+              // [하이라이트 로직]
+              // 1. 직접 일치 (본인 ID == 타겟 ID)
+              // 2. 간접 일치 (내 자식 목록에 타겟 ID가 있음 -> 표 병합된 경우)
+              // -------------------------------------------------------
+              const isDirectMatch =
+                Number(chunk.paragraph_idx) === Number(highlightedParagraphIdx);
+              const isIndirectMatch =
+                chunk.metadata?.related_paragraphs?.includes(
+                  Number(highlightedParagraphIdx)
+                );
+              const isHighlighted = isDirectMatch || isIndirectMatch;
 
               const { cleanText, tables } = parseContentWithTables(
                 chunk.content
               );
+
               return (
-                // [수정] Layout 변경: 좌측에 라인 번호를 표시하기 위해 Flex 적용
                 <div
                   key={`${chunk.paragraph_idx}-${index}`}
                   className="flex gap-4 group"
                 >
-                  {/* [수정] 좌측 라인 넘버 (paragraph_idx) */}
-                  <div className="shrink-0 w-2 text-right pt-3 select-none">
-                    <span className="text-[11px] font-mono text-gray-500 group-hover:text-gray-400 transition-colors">
-                      {chunk.paragraph_idx})
+                  {/* 좌측 라인 넘버 */}
+                  <div className="shrink-0 w-2 text-right pt-2.5 select-none">
+                    <span
+                      className={`text-[11px] font-mono transition-colors ${
+                        isHighlighted
+                          ? "text-blue-600 font-bold"
+                          : "text-gray-300 group-hover:text-gray-400"
+                      }`}
+                    >
+                      {chunk.paragraph_idx}
                     </span>
                   </div>
 
-                  {/* 콘텐츠 영역 */}
+                  {/* 본문 콘텐츠 */}
                   <div
                     id={`paragraph-${chunk.paragraph_idx}`}
                     ref={(el) => {
@@ -223,104 +230,94 @@ export function DocViewer() {
                         paragraphRefs.current[chunk.paragraph_idx] = el;
                       }
                     }}
-                    className={`flex-1 min-w-0 transition-all duration-300 ease-in-out px-4 py-2 rounded-xl ${
-                      isHighlighted
-                        ? "bg-blue-50 border-2 border-blue-200 shadow-md scale-[1.01]"
-                        : "border-2 border-transparent hover:bg-slate-50 hover:border-slate-200"
-                    }`}
+                    className={`flex-1 min-w-0 transition-all duration-500 ease-in-out px-4 py-2 rounded-xl border-2 
+                      ${
+                        isHighlighted
+                          ? "bg-blue-50 border-blue-300 shadow-lg ring-1 ring-blue-100"
+                          : "border-transparent hover:bg-slate-50 hover:border-slate-200"
+                      }`}
                   >
                     {cleanText && (
                       <div className="prose prose-slate max-w-none">
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
-                            p: ({ ...props }) => (
+                            // ... (기존 마크다운 컴포넌트 유지)
+                            p: (props) => (
                               <p
                                 className="mb-4 leading-[1.85] text-[15.5px] text-slate-800 font-normal tracking-[-0.01em] last:mb-0"
                                 {...props}
                               />
                             ),
-                            h1: ({ ...props }) => (
+                            h1: (props) => (
                               <h1
                                 className="text-2xl font-bold text-slate-900 mb-4 mt-6 pb-2 border-b-2 border-slate-200"
                                 {...props}
                               />
                             ),
-                            h2: ({ ...props }) => (
+                            h2: (props) => (
                               <h2
                                 className="text-xl font-bold text-slate-900 mb-3 mt-5"
                                 {...props}
                               />
                             ),
-                            h3: ({ ...props }) => (
+                            h3: (props) => (
                               <h3
                                 className="text-lg font-semibold text-slate-800 mb-3 mt-4"
                                 {...props}
                               />
                             ),
-                            h4: ({ ...props }) => (
-                              <h4
-                                className="text-base font-semibold text-slate-800 mb-2 mt-3"
-                                {...props}
-                              />
-                            ),
-                            ul: ({ ...props }) => (
+                            ul: (props) => (
                               <ul
                                 className="list-disc pl-6 mb-4 space-y-2 marker:text-blue-500"
                                 {...props}
                               />
                             ),
-                            ol: ({ ...props }) => (
+                            ol: (props) => (
                               <ol
                                 className="list-decimal pl-6 mb-4 space-y-2 marker:text-blue-500 marker:font-semibold"
                                 {...props}
                               />
                             ),
-                            li: ({ ...props }) => (
+                            li: (props) => (
                               <li
                                 className="pl-2 leading-[1.8] text-[15px] text-slate-700"
                                 {...props}
                               />
                             ),
-                            code: ({ ...props }) => (
+                            code: (props) => (
                               <code
                                 className="px-1.5 py-0.5 bg-slate-100 text-slate-800 rounded text-sm font-mono border border-slate-200"
                                 {...props}
                               />
                             ),
-                            pre: ({ ...props }) => (
+                            pre: (props) => (
                               <pre
                                 className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto mb-4 text-sm"
                                 {...props}
                               />
                             ),
-                            blockquote: ({ ...props }) => (
+                            blockquote: (props) => (
                               <blockquote
                                 className="border-l-4 border-blue-500 pl-4 py-2 my-4 italic text-slate-600 bg-slate-50 rounded-r"
                                 {...props}
                               />
                             ),
-                            strong: ({ ...props }) => (
-                              <strong
-                                className="font-semibold text-slate-900"
+                            table: (props) => (
+                              <table
+                                className="w-full text-sm text-left text-slate-700 border-collapse border border-slate-200 my-4"
                                 {...props}
                               />
                             ),
-                            em: ({ ...props }) => (
-                              <em
-                                className="italic text-slate-700"
+                            th: (props) => (
+                              <th
+                                className="border border-slate-200 bg-slate-50 px-4 py-2 font-semibold"
                                 {...props}
                               />
                             ),
-                            a: ({ ...props }) => (
-                              <a
-                                className="text-blue-600 hover:text-blue-700 underline decoration-blue-300 hover:decoration-blue-500 transition-colors"
-                                {...props}
-                              />
-                            ),
-                            hr: ({ ...props }) => (
-                              <hr
-                                className="my-6 border-t-2 border-slate-200"
+                            td: (props) => (
+                              <td
+                                className="border border-slate-200 px-4 py-2"
                                 {...props}
                               />
                             ),
@@ -331,16 +328,45 @@ export function DocViewer() {
                       </div>
                     )}
 
+                    {/* [요청사항 반영] 표 데이터 쪽에 다 하이라이트 걸기 */}
                     {tables.length > 0 && (
-                      <div className="flex flex-col gap-6 mt-5 mb-3">
+                      <div
+                        className={`flex flex-col gap-6 mt-5 mb-3 rounded-lg p-2 transition-colors duration-500
+                        ${
+                          isIndirectMatch
+                            ? "bg-yellow-100/70 border border-yellow-300 shadow-inner animate-pulse"
+                            : ""
+                        }`}
+                      >
+                        {isIndirectMatch && (
+                          <div className="text-xs text-yellow-800 font-bold flex items-center gap-1 mb-1 px-1">
+                            <Search size={12} />
+                            <span>
+                              문맥({highlightedParagraphIdx}번)이 포함된
+                              표입니다
+                            </span>
+                          </div>
+                        )}
+
                         {tables.map((table, idx) => (
                           <div
                             key={idx}
-                            className="overflow-hidden rounded-xl border-2 border-slate-200 shadow-md bg-white"
+                            className={`overflow-hidden rounded-xl border-2 shadow-md bg-white
+                              ${
+                                isIndirectMatch
+                                  ? "border-yellow-400 ring-2 ring-yellow-200/50"
+                                  : "border-slate-200"
+                              }`}
                           >
                             <div className="overflow-x-auto">
                               <table className="min-w-full divide-y divide-slate-200">
-                                <thead className="bg-linear-to-r from-slate-100 to-slate-50">
+                                <thead
+                                  className={
+                                    isIndirectMatch
+                                      ? "bg-yellow-50"
+                                      : "bg-linear-to-r from-slate-100 to-slate-50"
+                                  }
+                                >
                                   <tr>
                                     {table.headers.map((h, i) => (
                                       <th
@@ -356,7 +382,11 @@ export function DocViewer() {
                                   {table.rows.map((row, rIdx) => (
                                     <tr
                                       key={rIdx}
-                                      className="hover:bg-blue-50 transition-colors duration-150"
+                                      className={
+                                        isIndirectMatch
+                                          ? "hover:bg-yellow-50"
+                                          : "hover:bg-blue-50 transition-colors duration-150"
+                                      }
                                     >
                                       {row.map((cell, cIdx) => (
                                         <td
@@ -412,8 +442,8 @@ export function DocViewer() {
                   <span className="truncate">
                     문맥 확인
                     {selectedReference.paragraphId !== undefined && (
-                      <span className="ml-1 text-blue-500">
-                        (문단 {selectedReference.paragraphId})
+                      <span className="ml-1 text-blue-500 font-mono">
+                        ({selectedReference.paragraphId})
                       </span>
                     )}
                   </span>
@@ -462,7 +492,11 @@ export function DocViewer() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-linear-to-b from-slate-50 to-white relative custom-scrollbar">
+      {/* [수정] 스크롤 컨테이너에 ref 연결 */}
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-y-auto bg-linear-to-b from-slate-50 to-white relative custom-scrollbar"
+      >
         {renderContent()}
       </div>
 
