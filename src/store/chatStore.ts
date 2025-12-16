@@ -8,6 +8,7 @@ import {
   streamChatResponse,
   type ChatMetadata,
 } from "@/services/chat.service";
+import { fetchDocumentTitles } from "@/services/documents.service";
 
 // ----------------------------------------------------------------------
 // 타입 정의
@@ -30,7 +31,6 @@ export interface Message {
   sources?: SourceInfo[];
   contextUsed?: string;
 }
-
 // 채팅 세션(대화방) 구조체
 export interface ChatSession {
   id: string;
@@ -304,6 +304,55 @@ export const useChatStore = create(
                   return session;
                 }),
               }));
+              // 2차 업데이트: doc_id를 이용해 실제 파일명(title)을 조회하여 이름 보정
+              const docIds = metadata.sources
+                ?.map((s) => s.doc_id)
+                .filter((id) => !!id) as number[];
+
+              if (docIds && docIds.length > 0) {
+                // 중복 ID 제거
+                const uniqueIds = [...new Set(docIds)];
+
+                // [API 호출] 실제 문서 제목 가져오기
+                fetchDocumentTitles(uniqueIds)
+                  .then((titles) => {
+                    // ID -> 파일명 매핑 생성
+                    const titleMap = new Map(
+                      titles.map((t) => [t.id, t.original_filename])
+                    );
+
+                    // 스토어에 반영 (이름 덮어쓰기)
+                    set((state) => ({
+                      sessions: state.sessions.map((session) => {
+                        if (session.id === activeId) {
+                          const msgs = [...session.messages];
+                          const lastIdx = msgs.length - 1;
+                          if (lastIdx >= 0) {
+                            const updatedSources = msgs[lastIdx].sources?.map(
+                              (src) => ({
+                                ...src,
+                                // 실제 DB 파일명이 있으면 교체, 없으면 기존 이름 유지
+                                name:
+                                  (src.docId && titleMap.get(src.docId)) ||
+                                  src.name,
+                              })
+                            );
+
+                            msgs[lastIdx] = {
+                              ...msgs[lastIdx],
+                              sources: updatedSources,
+                            };
+                            return { ...session, messages: msgs };
+                          }
+                        }
+                        return session;
+                      }),
+                    }));
+                  })
+                  .catch((err) => {
+                    console.error("문서 제목 조회 실패:", err);
+                  });
+              }
             }
           );
         } catch (error) {

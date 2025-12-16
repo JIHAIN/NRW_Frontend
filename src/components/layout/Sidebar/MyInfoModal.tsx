@@ -344,7 +344,7 @@ export default function MyInfoModal({ onClose }: MyInfoModalProps) {
                   )}
 
                   {/* 이미지가 에러나서 안 보일 때를 위한 백업 아이콘 (img 태그와 겹쳐 보일 수 있으니 조건부 렌더링 추천) */}
-                  {!previewUrl && <User size={48} className="text-gray-300" />}
+                  {/* {!previewUrl && <User size={48} className="text-gray-300" />} */}
                 </div>
 
                 <div className="absolute bottom-0 right-0 bg-blue-600 text-white p-2.5 rounded-full hover:bg-blue-700 transition-colors shadow-md border-2 border-white">

@@ -1,6 +1,6 @@
 import type { FC } from "react";
-import { Download, Trash2, FileText } from "lucide-react";
-import type { Document } from "@/types/UserType";
+import { Download, Trash2, FileText, FolderOpen } from "lucide-react";
+import type { Document, Department, Project } from "@/types/UserType";
 
 // 상수 파일 임포트
 import {
@@ -11,30 +11,41 @@ import {
 
 export interface TableBodyProps {
   data: Document[];
+  // [수정] 이름 표시를 위한 데이터 props 추가
+  departments: Department[];
+  projects: Project[];
   onAction: (type: "download" | "delete", item: Document) => void;
   selectedItemIds: Set<number>;
   onCheckboxChange: (itemId: number, isChecked: boolean) => void;
   canManage: boolean;
-  onTitleClick: (item: Document) => void; //  [추가] 클릭 핸들러 타입 정의
+  onTitleClick: (item: Document) => void;
 }
 
 const TableBody: FC<TableBodyProps> = ({
   data,
+  departments,
+  projects,
   onAction,
   selectedItemIds,
   onCheckboxChange,
   canManage,
-  onTitleClick, //  [추가] 핸들러 받기
+  onTitleClick,
 }) => {
   return (
     <div className="bg-white divide-y divide-gray-100">
       {data.map((item: Document) => {
-        // 상수 파일에서 설정 가져오기
         const statusConfig =
           STATUS_CONFIG[item.status] || STATUS_CONFIG["PARSED"];
         const categoryLabel = CATEGORY_LABEL[item.category] || item.category;
         const categoryStyle =
           CATEGORY_COLOR[item.category] || CATEGORY_COLOR["GENERAL"];
+
+        // [수정] ID를 이용해 이름 찾기 (없으면 대체 텍스트)
+        const deptName =
+          departments.find((d) => d.id === item.departmentId)?.dept_name ||
+          "미지정";
+        const projName =
+          projects.find((p) => p.id === item.projectId)?.name || "미지정";
 
         return (
           <div
@@ -51,24 +62,28 @@ const TableBody: FC<TableBodyProps> = ({
               />
             </div>
 
-            {/* 2. 문서 이름 */}
+            {/* 2. 문서 이름 및 소속 */}
             <div className="w-3/12 flex items-center gap-2 overflow-hidden">
               <FileText className="w-4 h-4 text-gray-400 shrink-0" />
               <div className="flex flex-col overflow-hidden">
                 <span
-                  onClick={() => onTitleClick(item)} //  [추가] 클릭 이벤트 연결
+                  onClick={() => onTitleClick(item)}
                   className="truncate font-medium text-gray-900 cursor-pointer hover:text-blue-600 hover:underline decoration-blue-600 underline-offset-2"
                   title={item.originalFilename}
                 >
                   {item.originalFilename}
                 </span>
-                {/* 파일 경로를 이름 아래에 작게 표시 */}
-                <span
-                  className="text-[10px] text-gray-400 truncate"
-                  title={item.storedPath}
-                >
-                  {item.storedPath}
-                </span>
+                {/* [수정] 부서명 / 프로젝트명 표시 */}
+                <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-0.5">
+                  <FolderOpen className="w-3 h-3" />
+                  <span
+                    className="truncate"
+                    title={`${deptName} > ${projName}`}
+                  >
+                    {deptName} <span className="mx-0.5 text-gray-300">/</span>{" "}
+                    {projName}
+                  </span>
+                </div>
               </div>
             </div>
 

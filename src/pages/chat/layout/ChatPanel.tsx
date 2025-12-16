@@ -15,7 +15,7 @@ import { extractMetadataFromContent } from "@/utils/messageParser";
 import type { Document, DocumentStatus } from "@/types/UserType";
 import { MessageBubble, type SourceItem } from "@/utils/MessageBubble";
 
-// [수정 포인트] 백엔드 소스 참조 데이터 타입 정의 (Any 제거)
+// 백엔드 소스 참조 데이터 타입 정의
 interface BackendSourceRef {
   doc_id: number;
   paragraph_idx: number;
@@ -25,7 +25,7 @@ interface BackendSourceRef {
   name?: string;
 }
 
-// [수정 포인트] 백엔드 메시지 타입 정의
+// 백엔드 메시지 타입 정의
 interface BackendMessage {
   role: string;
   content: string;
@@ -46,6 +46,9 @@ export function ChatPanel() {
 
   const currentSessionId = store.selectedSessionId;
   const isStreaming = store.isStreaming;
+
+  // 스토어에서 문서 목록 가져오기 (매칭 및 필터링용)
+  const documents = docStore.documents;
 
   const currentSession = store.sessions.find((s) => s.id === currentSessionId);
   const messages = currentSession?.messages || [];
@@ -88,29 +91,36 @@ export function ChatPanel() {
     }
 
     const loadedMessages: Message[] = dbMessages.map((msg, idx) => {
-      // [수정 포인트] 소스 매핑 로직 강화 및 타입 안전성 확보
       const rawRefs = msg.source_refs || msg.sources || [];
 
-      let sources: SourceItem[] = rawRefs.map((ref) => {
-        // [수정] 근거목록에 문서 이름과 문단 번호를 명시적으로 표시
-        const baseName =
-          ref.doc_name ||
-          ref.original_filename ||
-          ref.name ||
-          `문서 ${ref.doc_id}`;
+      // [수정] map의 반환 타입을 명시하여 타입 호환성 오류 해결
+      const sources: SourceItem[] = rawRefs
+        .map((ref): SourceItem | null => {
+          // 1. 현재 문서 목록에서 해당 ID를 가진 문서 찾기
+          const foundDoc = documents.find((d) => d.id === ref.doc_id);
 
-        // 화면 표시용 이름에 (문단 123) 형태 추가
-        const displayName = `${baseName}${
-          ref.paragraph_idx !== undefined ? ` (문단 ${ref.paragraph_idx})` : ""
-        }`;
+          // 문서 리스트에 없으면(실존하지 않거나 권한 없음) -> null 반환 (필터링 대상)
+          if (!foundDoc) {
+            return null;
+          }
 
-        return {
-          name: displayName,
-          // ID 매핑: 명확하게 number 타입 할당
-          docId: ref.doc_id,
-          paragraphId: ref.paragraph_idx,
-        };
-      });
+          // 2. 문서가 존재하면 실제 파일명 사용
+          const realFileName = foundDoc.originalFilename;
+
+          // 화면 표시용 이름: 파일명 (문단 123)
+          const displayName = `${realFileName}${
+            ref.paragraph_idx !== undefined
+              ? ` (문단 ${ref.paragraph_idx})`
+              : ""
+          }`;
+
+          return {
+            name: displayName,
+            docId: ref.doc_id,
+            paragraphId: ref.paragraph_idx,
+          };
+        })
+        .filter((item): item is SourceItem => item !== null); // null 제거 (유효한 문서만 남김)
 
       let contextUsed = msg.contextUsed;
 
@@ -118,11 +128,12 @@ export function ChatPanel() {
       if (sources.length === 0 && msg.role === "assistant") {
         const parsed = extractMetadataFromContent(msg.content);
         if (parsed.sources.length > 0) {
-          sources = parsed.sources.map((name) => ({
+          const legacySources = parsed.sources.map((name) => ({
             name,
             docId: undefined,
             paragraphId: undefined,
           }));
+          sources.push(...legacySources);
           contextUsed = parsed.contextUsed;
         }
       }
@@ -141,39 +152,21 @@ export function ChatPanel() {
 
     const storeMsgs = sessionInStore?.messages || [];
 
-    // 로컬 메시지가 더 최신이면(개수가 많으면) 대기
-    if (storeMsgs.length > loadedMessages.length) {
-      return;
-    }
+    // 로컬 메시지와 비교하여 업데이트 필요 여부 확인
+    const shouldUpdate =
+      storeMsgs.length !== loadedMessages.length ||
+      JSON.stringify(storeMsgs.map((m) => m.sources)) !==
+        JSON.stringify(loadedMessages.map((m) => m.sources));
 
-    // 변경사항 감지 및 업데이트
-    const countMismatch = storeMsgs.length !== loadedMessages.length;
-
-    const lastStoreBotMsg = [...storeMsgs]
-      .reverse()
-      .find((m) => m.role === "assistant");
-    const lastLoadedBotMsg = [...loadedMessages]
-      .reverse()
-      .find((m) => m.role === "assistant");
-
-    // 로컬의 마지막 봇 메시지에 소스가 없는데, 로드된 메시지에는 소스가 있다면 업데이트 필요
-    const needSourceUpdate =
-      lastStoreBotMsg &&
-      lastLoadedBotMsg &&
-      (!lastStoreBotMsg.sources || lastStoreBotMsg.sources.length === 0) &&
-      lastLoadedBotMsg.sources &&
-      lastLoadedBotMsg.sources.length > 0;
-
-    if (countMismatch || needSourceUpdate) {
+    if (shouldUpdate) {
       store.setMessages(currentSessionId, loadedMessages);
     }
-  }, [sessionDetail, currentSessionId, isStreaming, store]);
+  }, [sessionDetail, currentSessionId, isStreaming, store, documents]);
 
   /**
-   * 소스 클릭 핸들러 (API 직접 조회 로직 강화)
+   * 소스 클릭 핸들러
    */
   const handleSourceClick = async (sourceItem: SourceItem, context: string) => {
-    // [수정] 클릭된 버튼의 데이터 로그 출력
     console.log("🖱️ [Click] Source Button Data:", {
       name: sourceItem.name,
       docId: sourceItem.docId,
@@ -183,22 +176,21 @@ export function ChatPanel() {
 
     const { name, docId, paragraphId } = sourceItem;
 
-    // 문서 이름 정규화 (확장자 제거 및 공백 제거)
-    // 표시용 이름에 붙은 (문단 123) 제거 후 파일명만 추출 시도
+    // 표시용 이름에서 (문단 ...) 제거 후 검색용 이름 추출
     const rawName = name.replace(/\s*\(문단\s*\d+\)$/, "");
     const normalize = (n: string) => n.replace(/\s+/g, "").toLowerCase();
     const cleanSourceName = normalize(
       rawName.replace(/\.(hwp|hwpx|pdf)$/i, "")
     );
 
-    // 1. [로컬 검색] DocStore에 이미 로드된 문서 목록에서 찾기
+    // 1. [로컬 검색] DocStore 사용
     let targetDoc: Document | undefined = undefined;
 
     if (docId) {
       targetDoc = docStore.documents.find((d) => d.id === docId);
     }
 
-    // ID로 못 찾았으면 이름으로 검색 (차선책)
+    // ID로 못 찾았으면 이름으로 검색
     if (!targetDoc) {
       targetDoc = docStore.documents.find((d) => {
         const dbFileName = normalize(
@@ -211,12 +203,10 @@ export function ChatPanel() {
       });
     }
 
-    // 2. [API 조회] 로컬에 없고 ID는 있는 경우 직접 fetch
+    // 2. [API 조회]
     if (!targetDoc && docId) {
       try {
         const docDetailResponse = await fetchDocumentContent(docId);
-
-        // [수정 포인트] BackendDocument 타입으로 캐스팅하여 Document 객체 생성 (Any 제거)
         const rawData = docDetailResponse as unknown as BackendDocument;
 
         targetDoc = {
@@ -239,7 +229,6 @@ export function ChatPanel() {
           updatedAt: rawData.updated_at || new Date().toISOString(),
         };
 
-        // React Query 캐시 수동 업데이트 (DocViewer에서 사용됨)
         queryClient.setQueryData(["docContent", docId], docDetailResponse);
       } catch (error) {
         console.error("문서 직접 조회 실패:", error);
@@ -250,15 +239,13 @@ export function ChatPanel() {
     if (targetDoc) {
       store.openDocument(targetDoc);
 
-      // [수정 포인트] paragraphId가 0인 경우도 유효하므로 null/undefined 체크만 수행
       if (paragraphId !== undefined && paragraphId !== null) {
         store.setSelectedReference({
-          sourceName: name, // 원본 이름 사용
+          sourceName: name,
           text: context,
           paragraphId: paragraphId,
         });
       } else {
-        // ID가 없으면 텍스트 컨텍스트만 전달
         store.setSelectedReference({
           sourceName: name,
           text: context,

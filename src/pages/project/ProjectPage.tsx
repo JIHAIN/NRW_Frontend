@@ -83,7 +83,6 @@ export default function ProjectPage() {
     }));
   }, [departments]);
 
-  // [버그 수정 포인트] 프로젝트 옵션 ID 매칭 정확성 확보
   const filteredProjects: OptionItem[] = useMemo(() => {
     if (!selectedDeptId) return [];
     const targetId = Number(selectedDeptId);
@@ -120,13 +119,11 @@ export default function ProjectPage() {
             </p>
           </div>
 
-          {/* 모달 버튼: 헤더에서 선택된 프로젝트 정보를 전달 */}
+          {/* 모달 버튼 */}
           {isUser ? (
             <RequestModal
               projectId={currentProjectData?.id}
               projectName={currentProjectData?.name || ""}
-              // [수정] departmentId props 전달
-              // currentProjectData.departmentId를 쓰거나, 선택된 부서 ID를 전달
               departmentId={
                 currentProjectData?.departmentId || Number(selectedDeptId)
               }
@@ -141,7 +138,7 @@ export default function ProjectPage() {
           )}
         </div>
 
-        {/* 컨텍스트 선택 카드 (필터 아님, 업로드 타겟 설정용) */}
+        {/* 컨텍스트 선택 카드 */}
         <div className="flex flex-col">
           <div className="flex items-center gap-4 p-4 justify-center">
             <SummaryCard title="부서" count={departmentCount}>
@@ -150,7 +147,7 @@ export default function ProjectPage() {
                 selectedValue={selectedDeptId}
                 onValueChange={setSelectedDeptId}
                 placeholder="부서 선택"
-                disabled={isUser || isManager} // 관리자 이하는 부서 고정
+                disabled={isUser || isManager}
                 className="w-full border-none shadow-none bg-transparent"
               />
             </SummaryCard>
@@ -179,12 +176,13 @@ export default function ProjectPage() {
 
       {/* 테이블 영역 */}
       <div className="flex-1">
-        {/* 테이블에는 '부서 ID'만 전달하여 해당 부서 문서를 모두 보여줍니다.
-          프로젝트별 필터링은 테이블 내부 컨트롤에서 수행합니다.
-        */}
         <ProjectTable
           selectedDeptId={Number(selectedDeptId) || 0}
           currentUserRole={user?.role || ""}
+          // [핵심 수정] 상단에서 선택된 프로젝트 ID를 테이블로 전달 (없으면 undefined)
+          selectedProjectId={
+            selectedProjId ? Number(selectedProjId) : undefined
+          }
         />
       </div>
     </div>

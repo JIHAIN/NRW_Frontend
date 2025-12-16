@@ -190,6 +190,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
   selectDocument: (doc) => set({ selectedDocument: doc }),
 
+  /**
+   * 파일 업로드 함수
+   * 수정사항: API 응답이 오면 즉시 COMPLETED 처리 (PARSING 단계 및 시뮬레이션 제거)
+   */
   uploadFile: async (file, metadata) => {
     const fileName = file.name;
     const taskId = fileName;
@@ -213,13 +217,20 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     });
 
     try {
+      // 1. 업로드 수행 (진행률 업데이트)
       await uploadDocument(file, metadata, (rawPercent) => {
-        const mappedPercent = Math.round(rawPercent * 0.5);
-        get().updateTaskProgress(taskId, mappedPercent);
+        // [수정] 업로드 중에는 0~99%까지만 표시하고, 완료되면 100%로 설정
+        // 기존에는 50%로 축소했으나, 즉시 완료 처리를 위해 실제 진행률 반영
+        const percent = rawPercent >= 100 ? 99 : rawPercent;
+        get().updateTaskProgress(taskId, percent);
       });
 
-      get().updateTaskStatus(taskId, "PARSING");
-      get().startSimulatedProgress(taskId);
+      // 2. [수정] 업로드 API 응답(반환) 즉시 완료 처리
+      // "파싱 중" 상태와 "시뮬레이션" 로직을 제거하고 바로 완료로 변경
+      get().updateTaskProgress(taskId, 100);
+      get().updateTaskStatus(taskId, "COMPLETED");
+
+      // 3. 목록 갱신
       await get().fetchDocuments();
     } catch (error: unknown) {
       let errMsg = "업로드 실패";
@@ -262,7 +273,6 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       };
     });
 
-    // [수정 핵심] AuthStore에서 accessToken을 직접 가져옵니다.
     const token = useAuthStore.getState().accessToken;
 
     if (!token) {
@@ -307,8 +317,6 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
     eventSource.onerror = (err) => {
       console.error(`[Req-${requestId}] SSE 에러`, err);
-      // 연결 오류 시 상태 업데이트 및 종료
-      // (일시적인 오류일 수 있으나 여기서는 종료 처리)
       get().updateTaskStatus(taskId, "ERROR", "연결 끊김");
       eventSource.close();
     };
@@ -332,7 +340,6 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     set((state) => ({
       taskQueue: state.taskQueue.map((t) => {
         if (t.id === id) {
-          // 상태 변경 시 타입 단언을 통해 안전하게 업데이트
           return { ...t, status, errorMessage: error } as BackgroundTask;
         }
         return t;

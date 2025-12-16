@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type DragEvent, type ChangeEvent } from "react";
 import { Upload, X, FileText, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,11 +49,12 @@ export function UploadModal({
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState<PendingFile[]>([]);
   const [category, setCategory] = useState<DocumentCategory>("GENERAL");
+  const [isDragging, setIsDragging] = useState(false); // 드래그 상태 관리
 
   //  스토어 액션 가져오기
   const { uploadFile } = useDocumentStore();
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files;
     if (!selected?.length) return;
     const nextFiles = Array.from(selected).map((file) => ({
@@ -68,7 +69,36 @@ export function UploadModal({
     setFiles((prev) => prev.filter((item) => item.id !== id));
   };
 
-  //  제출 버튼 (핵심 수정)
+  // [추가] 드래그 오버 핸들러
+  const handleDragOver = (e: DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) setIsDragging(true);
+  };
+
+  // [추가] 드래그 리브 핸들러
+  const handleDragLeave = (e: DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  // [추가] 드롭 핸들러
+  const handleDrop = (e: DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files).map((file) => ({
+        id: `${file.name}-${file.lastModified}`,
+        file,
+      }));
+      setFiles((prev) => [...prev, ...droppedFiles]);
+    }
+  };
+
+  //  제출 버튼
   const handleSubmit = () => {
     if (!files.length) return;
 
@@ -137,14 +167,30 @@ export function UploadModal({
             </Select>
           </div>
 
-          {/* 파일 드롭존 */}
+          {/* 파일 드롭존 (드래그 이벤트 연결) */}
           <div className="grid gap-2">
             <Label>파일 선택</Label>
-            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 border-gray-300">
+            <label
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors
+                ${
+                  isDragging
+                    ? "bg-blue-50 border-blue-400"
+                    : "bg-gray-50 hover:bg-gray-100 border-gray-300"
+                }`}
+            >
               <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <Upload className="w-8 h-8 mb-2 text-gray-400" />
+                <Upload
+                  className={`w-8 h-8 mb-2 ${
+                    isDragging ? "text-blue-500" : "text-gray-400"
+                  }`}
+                />
                 <p className="text-sm text-gray-500">
-                  클릭 또는 드래그 앤 드롭
+                  {isDragging
+                    ? "파일을 여기에 놓아주세요"
+                    : "클릭 또는 드래그 앤 드롭"}
                 </p>
               </div>
               <Input

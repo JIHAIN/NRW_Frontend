@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import TableBody from "./TableBody";
 import Pagination from "./Pagination";
 import TableControls from "./TableControls";
@@ -20,7 +20,6 @@ import type {
 import { STATUS_FILTERS, CATEGORY_FILTERS } from "@/constants/projectConstants";
 import { DocumentDetailModal } from "./modal/DocumentDetailModal";
 
-// [추가] 다이얼로그 스토어
 import { useDialogStore } from "@/store/dialogStore";
 
 const ITEMS_PER_PAGE = 10;
@@ -31,16 +30,19 @@ type FilterCategory = DocumentCategory | "ALL";
 interface ProjectTableProps {
   selectedDeptId: number;
   currentUserRole: string;
+  selectedProjectId?: number;
 }
 
 export function ProjectTable({
   selectedDeptId,
   currentUserRole,
+  selectedProjectId,
 }: ProjectTableProps): React.ReactElement {
   const queryClient = useQueryClient();
-  const { projects } = useSystemStore();
-  const dialog = useDialogStore(); // [추가] 다이얼로그 훅
+  const { projects, departments } = useSystemStore();
+  const dialog = useDialogStore();
 
+  // [수정] 초기값을 ""(선택 안함)으로 설정
   const [projectFilter, setProjectFilter] = useState<string>("");
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("ALL");
@@ -59,11 +61,26 @@ export function ProjectTable({
     currentUserRole === "SUPER_ADMIN" || currentUserRole === "MANAGER";
   const debouncedSearchText = useDebounce(searchText, 300);
 
-  // 1. 문서 목록 가져오기
+  // [수정] 상단 프로젝트 선택 시 하단 필터 동기화
+  useEffect(() => {
+    if (selectedProjectId) {
+      setProjectFilter(String(selectedProjectId));
+    } else {
+      // 상단 선택이 없으면 하단도 '선택 안함("")'으로 초기화 (기존: ALL)
+      setProjectFilter("");
+    }
+  }, [selectedProjectId]);
+
+  // 문서 목록 가져오기
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["documents", selectedDeptId, projectFilter],
-    queryFn: () => fetchDocuments(selectedDeptId, parseInt(projectFilter)),
-    // projectFilter가 빈 값이 아닐 때만 API를 호출합니다.
+    queryFn: () => {
+      // ALL이면 0(전체)으로 조회, 아니면 해당 ID로 조회
+      const pid = projectFilter === "ALL" ? 0 : parseInt(projectFilter);
+      return fetchDocuments(selectedDeptId, pid);
+    },
+    // [수정] 부서가 있고, 프로젝트 필터가 선택되었을 때만(ALL 포함) 조회 실행
+    // projectFilter가 ""(빈 문자열)이면 조회하지 않음
     enabled: selectedDeptId > 0 && !!projectFilter,
     select: (data) =>
       data.map((doc) => ({
@@ -72,7 +89,7 @@ export function ProjectTable({
       })),
   });
 
-  // 2. 필터링 로직
+  // 필터링 로직
   const filteredData = useMemo(() => {
     let filtered = documents;
 
@@ -91,14 +108,13 @@ export function ProjectTable({
     return filtered;
   }, [documents, debouncedSearchText, statusFilter, categoryFilter]);
 
-  // 3. 페이징 데이터
+  // 페이징 데이터
   const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
   const currentTableData = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredData.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredData, currentPage]);
 
-  // 4. 전체 선택 로직
   const isAllSelected =
     currentTableData.length > 0 &&
     currentTableData.every((doc) => selectedItemIds.has(doc.id));
@@ -116,7 +132,6 @@ export function ProjectTable({
     });
   };
 
-  // 5. 선택된 ID/문서 배열
   const selectedIdsArray = useMemo(
     () => Array.from(selectedItemIds),
     [selectedItemIds]
@@ -127,7 +142,6 @@ export function ProjectTable({
 
   const hasSelection = selectedItemIds.size > 0;
 
-  // 6. 개별 요청 실행 함수
   const executeBulkDelete = async (ids: number[]) => {
     const deletePromises = ids.map(async (id) => {
       try {
@@ -152,7 +166,6 @@ export function ProjectTable({
     return Promise.allSettled(downloadPromises);
   };
 
-  // 7. Mutations
   const deleteMutation = useMutation({
     mutationFn: deleteDocument,
     onSuccess: () => {
@@ -160,7 +173,6 @@ export function ProjectTable({
         queryKey: ["documents", selectedDeptId, projectFilter],
       });
       setSelectedItemIds(new Set());
-      // [수정] 성공 알림 다이얼로그
       dialog.alert({
         title: "삭제 완료",
         message: "문서가 성공적으로 삭제되었습니다.",
@@ -169,7 +181,6 @@ export function ProjectTable({
     },
     onError: (error) => {
       console.error("문서 삭제 오류:", error);
-      // [수정] 실패 알림 다이얼로그
       dialog.alert({
         title: "삭제 실패",
         message: `문서 삭제에 실패했습니다.\n(오류: ${
@@ -198,7 +209,6 @@ export function ProjectTable({
       });
       setSelectedItemIds(new Set());
 
-      // [수정] 결과 알림 다이얼로그
       dialog.alert({
         title: "일괄 삭제 완료",
         message: message,
@@ -213,7 +223,6 @@ export function ProjectTable({
     },
     onError: (error) => {
       console.error("Bulk Deletion initialization error:", error);
-      // [수정] 에러 알림 다이얼로그
       dialog.alert({
         title: "오류 발생",
         message: "문서 일괄 삭제 요청 중 오류가 발생했습니다.",
@@ -222,14 +231,12 @@ export function ProjectTable({
     },
   });
 
-  // 8. 핸들러
   const handleAction = async (type: "download" | "delete", item: Document) => {
     if (type === "download") {
       try {
         await downloadDocument(item.id, item.originalFilename);
       } catch (error) {
         console.error("Download failed:", error);
-        // [수정] 다운로드 실패 알림
         dialog.alert({
           message: "다운로드에 실패했습니다. 다시 시도해주세요.",
           variant: "error",
@@ -245,11 +252,10 @@ export function ProjectTable({
         return;
       }
 
-      // [수정] 삭제 확인 다이얼로그
       const confirmed = await dialog.confirm({
         title: "문서 삭제",
         message: `[${item.originalFilename}] 문서를 정말로 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`,
-        variant: "error", // 빨간색 강조
+        variant: "error",
       });
 
       if (confirmed) {
@@ -261,7 +267,6 @@ export function ProjectTable({
   const handleBulkDownload = async () => {
     if (selectedDocs.length === 0) return;
 
-    // [수정] 일괄 다운로드 확인 다이얼로그
     const confirmed = await dialog.confirm({
       title: "일괄 다운로드",
       message: `선택된 문서 ${selectedDocs.length}개를 다운로드 합니다.\n파일 개수에 따라 시간이 소요될 수 있습니다.`,
@@ -280,7 +285,6 @@ export function ProjectTable({
         message = `⚠️ ${fulfilledCount}건 다운로드 시작, ${rejectedCount}건 실패했습니다.`;
       }
 
-      // [수정] 다운로드 완료 알림
       dialog.alert({
         title: "다운로드 요청 완료",
         message: message,
@@ -302,7 +306,6 @@ export function ProjectTable({
       return;
     }
 
-    // [수정] 일괄 삭제 확인 다이얼로그
     const confirmed = await dialog.confirm({
       title: "일괄 삭제",
       message: `선택된 문서 ${selectedIdsArray.length}개를 정말로 삭제하시겠습니까?\n개별 요청으로 처리되며, 일부 요청이 실패할 수 있습니다.`,
@@ -338,15 +341,16 @@ export function ProjectTable({
 
   const isDeleting = bulkDeleteMutation.isPending || deleteMutation.isPending;
 
-  // Projects Option
   const projectOptions = useMemo(() => {
     const deptProjects = projects.filter(
       (p) => p.departmentId === selectedDeptId
     );
-    return deptProjects.map((p) => ({
+    const options = deptProjects.map((p) => ({
       value: String(p.id),
       label: p.name,
     }));
+
+    return [{ value: "ALL", label: "전체 프로젝트" }, ...options];
   }, [projects, selectedDeptId]);
 
   return (
@@ -403,6 +407,8 @@ export function ProjectTable({
             {currentTableData.length > 0 ? (
               <TableBody
                 data={currentTableData}
+                departments={departments}
+                projects={projects}
                 onAction={handleAction}
                 selectedItemIds={selectedItemIds}
                 onCheckboxChange={handleCheckboxChange}
@@ -411,7 +417,7 @@ export function ProjectTable({
               />
             ) : (
               <div className="text-center p-8 text-gray-500">
-                {/* 프로젝트 미선택 시 안내 메시지 분기 처리 */}
+                {/* [수정] 안내 메시지 로직: 필터가 비어있으면(선택안함) 안내 메시지 표시 */}
                 {!projectFilter
                   ? "프로젝트를 선택하여 문서를 조회해주세요."
                   : documents.length === 0

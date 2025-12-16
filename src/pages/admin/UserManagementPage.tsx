@@ -3,7 +3,10 @@ import { Trash2, Settings, Search, Plus } from "lucide-react";
 
 import type { User, UserRole } from "@/types/UserType";
 import { useAuthStore } from "@/store/authStore";
-import type { CreateUserRequest } from "@/services/user.service";
+import {
+  type CreateUserRequest,
+  deleteUserAPI, // [추가] 사용자 삭제 API 직접 호출을 위해 import
+} from "@/services/user.service";
 import { useSystemStore } from "@/store/systemStore";
 import { useUserStore } from "@/store/userStore";
 
@@ -82,7 +85,8 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
 
 export const UserManagementPage: FC = () => {
   const { departments, projects, fetchSystemData } = useSystemStore();
-  const { users, fetchUsers, deleteUser, updateUser, addUser } = useUserStore();
+  // [수정] deleteUser는 직접 API를 호출하므로 store에서 제외해도 됨 (사용 안 함)
+  const { users, fetchUsers, updateUser, addUser } = useUserStore();
   const { user: currentUser } = useAuthStore();
 
   const dialog = useDialogStore();
@@ -177,12 +181,36 @@ export const UserManagementPage: FC = () => {
     setUserToDelete(user);
   };
 
-  const handleConfirmDelete = () => {
+  // [핵심 수정] 사용자 삭제 핸들러 구현 (API 직접 호출)
+  const handleConfirmDelete = async () => {
     if (!userToDelete) return;
-    deleteUser(userToDelete.id);
-    setUserToDelete(null);
-    if (currentTableData.length === 1 && currentPage > 1) {
-      setCurrentPage(currentPage - 1);
+
+    try {
+      // 1. API 호출
+      await deleteUserAPI(userToDelete.id);
+
+      // 2. 성공 알림
+      dialog.alert({
+        title: "삭제 완료",
+        message: `${userToDelete.userName} 님이 성공적으로 삭제되었습니다.`,
+        variant: "success",
+      });
+
+      // 3. 목록 갱신
+      await fetchUsers();
+
+      // 4. 모달 닫기 및 페이지 조정
+      setUserToDelete(null);
+      if (currentTableData.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      }
+    } catch (error) {
+      console.error("사용자 삭제 오류:", error);
+      dialog.alert({
+        title: "삭제 실패",
+        message: "사용자 삭제 중 오류가 발생했습니다.",
+        variant: "error",
+      });
     }
   };
 
@@ -256,17 +284,17 @@ export const UserManagementPage: FC = () => {
         {isSuperAdmin && (
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 bg-blue-400 shadow-md shadow-blue-600 hover:shadow-md text-white rounded-4xl hover:bg-blue-600 cursor-pointer  transition-colors font-medium "
+            className="flex items-center text-[0.8rem] gap-2 px-3 py-2 bg-blue-400 shadow-md shadow-blue-600 hover:shadow-md text-white rounded-4xl hover:bg-blue-600 cursor-pointer  transition-colors font-medium "
           >
-            <Plus size={18} />
+            <Plus size={16} />
             사용자 등록
           </button>
         )}
       </div>
 
-      <div className="overflow-x-auto bg-white rounded-lg shadow-lg border-2xl border-blue-200">
+      <div className="overflow-x-auto overflow-y-auto max-h-[490px] bg-white rounded-lg shadow-lg border-2xl border-blue-200 custom-scrollbar relative">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-blue-50">
+          <thead className="bg-blue-50 sticky top-0 z-10 shadow-sm">
             <tr>
               <th className="w-3/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 이름 / 사원번호
@@ -303,9 +331,8 @@ export const UserManagementPage: FC = () => {
 
                 return (
                   <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-900">
                       <div className="font-medium">{user.userName}</div>
-                      {/* [수정] accountId 대신 employeeId 표시 (없으면 '-' 표시) */}
                       <div className="text-xs text-gray-500">
                         {user.employeeId || "-"}
                       </div>
