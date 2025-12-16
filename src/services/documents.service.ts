@@ -34,6 +34,31 @@ export interface UploadMetadata {
   category?: string;
 }
 
+// 경량 문서 응답 인터페이스
+export interface DocumentTitleResponse {
+  id: number;
+  original_filename: string;
+}
+
+// 문서 제목 목록 조회 API (경량화)
+export const fetchDocumentTitles = async (
+  docIds: number[]
+): Promise<DocumentTitleResponse[]> => {
+  const response = await fetch(`${API_BASE_URL}/api/v1/documents/titles`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ doc_ids: docIds }),
+  });
+
+  if (!response.ok) {
+    throw new Error("문서 제목 조회 실패");
+  }
+
+  return response.json();
+};
+
 // --------------------------------------------------------------------------
 // 🔄 데이터 변환 헬퍼
 // --------------------------------------------------------------------------
@@ -44,10 +69,10 @@ const mapApiToDocument = (data: BackendDocument): Document => {
     departmentId: data.dept_id,
     projectId: data.project_id,
 
-    // ✨ [수정 1] title 필드 추가 (파일명 사용)
+    // title 필드 추가 (파일명 사용)
     title: data.original_filename,
 
-    // ✨ [수정 2] content 필드 추가 (목록에서는 빈 값, 상세 조회 시 채움)
+    // content 필드 추가 (목록에서는 빈 값, 상세 조회 시 채움)
     content: "",
 
     originalFilename: data.original_filename,
@@ -100,8 +125,20 @@ export const fetchDocumentContent = async (
 
   if (!response.ok) throw new Error("Failed to fetch document content");
 
-  // [수정] 전체 JSON 객체를 반환하도록 변경
-  return response.json() as Promise<DocumentDetailResponse>;
+  // 1. 데이터를 먼저 받아옵니다.
+  const data = (await response.json()) as DocumentDetailResponse;
+
+  // 2. [추가] 콘텐츠 내의 '' (U+FFFD) 문자 제거 로직
+  // 문서 파싱 과정에서 인코딩 문제로 발생하는 Replacement Character를 제거합니다.
+  if (data.content) {
+    // 정규식 /\uFFFD/g 를 사용하여 모든 해당 특수문자를 제거
+    data.content = data.content.replace(/\uFFFD/g, "");
+
+    // 혹시 모를 null 문자(\u0000) 등 다른 제어 문자도 제거하고 싶다면 아래 정규식 사용 가능
+    // data.content = data.content.replace(/[\uFFFD\u0000]/g, "");
+  }
+
+  return data;
 };
 
 // --------------------------------------------------------------------------

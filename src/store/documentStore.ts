@@ -60,6 +60,9 @@ interface DocumentState {
   retryUpload: (fileName: string) => Promise<void>;
   removeTask: (id: string) => void;
   startRequestSSE: (requestId: number, docName: string) => void;
+  addDocuments: (newDocs: Document[]) => void;
+
+  resetDocuments: () => void; // 문서 목록 초기화용
 
   updateTaskProgress: (id: string, progress: number) => void;
   updateTaskStatus: (
@@ -89,6 +92,23 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       get().fetchDocuments();
     }
   },
+
+  addDocuments: (newDocs: Document[]) =>
+    set((state) => {
+      // 기존 문서 ID들을 Set으로 만듦 (빠른 검색용)
+      const existingIds = new Set(state.documents.map((d) => d.id));
+
+      // 기존에 없는 문서만 필터링
+      const uniqueNewDocs = newDocs.filter((d) => !existingIds.has(d.id));
+
+      // 섞어서 저장
+      return {
+        documents: [...state.documents, ...uniqueNewDocs],
+      };
+    }),
+
+  // 문서 리스트 초기화용
+  resetDocuments: () => set({ documents: [] }),
 
   // 문서 목록 조회
   fetchDocuments: async () => {

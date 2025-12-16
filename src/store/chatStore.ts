@@ -13,10 +13,11 @@ import {
 // 타입 정의
 // ----------------------------------------------------------------------
 
-// [추가] 소스 정보 상세 타입 (파일명 및 문단 ID)
+// [수정] 소스 정보 상세 타입 (파일명, 문단 ID, 문서 ID)
 export interface SourceInfo {
   name: string;
   paragraphId?: number; // 하이라이팅을 위한 문단 ID
+  docId?: number; // [추가] 문서 상세 조회를 위한 문서 ID
 }
 
 // 채팅 메시지 구조체
@@ -25,7 +26,7 @@ export interface Message {
   role: "user" | "assistant" | "system";
   content: string;
   createdAt: string;
-  // [수정] 기존 string[]에서 SourceInfo[]로 변경하여 문단 ID 정보를 포함
+  // 기존 string[]에서 SourceInfo[]로 변경하여 문단 ID 및 문서 ID 정보를 포함
   sources?: SourceInfo[];
   contextUsed?: string;
 }
@@ -52,7 +53,7 @@ interface ChatState {
     sourceName: string;
     text: string;
     paragraphId?: number;
-  } | null; // [수정] paragraphId 추가
+  } | null;
   viewMode: "list" | "viewer"; // 좌측 패널 뷰 모드
   selectedDocument: Document | null; // 현재 보고 있는 문서 객체
 
@@ -275,7 +276,7 @@ export const useChatStore = create(
                 }),
               }));
             },
-            // (2) 메타데이터 콜백: paragraph_idx를 포함하여 소스 저장
+            // (2) 메타데이터 콜백: paragraph_idx 및 doc_id 포함하여 소스 저장
             (metadata: ChatMetadata) => {
               set((state) => ({
                 sessions: state.sessions.map((session) => {
@@ -284,11 +285,12 @@ export const useChatStore = create(
                     const lastIdx = msgs.length - 1;
 
                     if (lastIdx >= 0) {
-                      // [수정] doc_name과 paragraph_idx를 모두 저장
+                      // [수정] doc_name, paragraph_idx, doc_id 모두 저장
                       const sourceInfos: SourceInfo[] =
                         metadata.sources?.map((s) => ({
                           name: s.doc_name,
                           paragraphId: s.paragraph_idx,
+                          docId: s.doc_id, // [추가] doc_id 저장
                         })) || [];
 
                       msgs[lastIdx] = {
