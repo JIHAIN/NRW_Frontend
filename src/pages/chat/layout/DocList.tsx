@@ -27,7 +27,7 @@ interface ApiChatSession {
 
 export function DocList() {
   // [수정 1] selectedSessionId 가져오기 (현재 어떤 방에 있는지 알아야 함)
-  const { openDocument, selectedSessionId } = useChatStore();
+  const { openDocument, selectedSessionId, closeDocument } = useChatStore();
   const { user } = useAuthStore();
 
   const { documents, isLoading, addDocuments, resetDocuments } =
@@ -98,6 +98,16 @@ export function DocList() {
     // 중복 제거 후 반환
     return Array.from(new Set(currentSession.refer_docs));
   }, [chatSessions, selectedSessionId]); // selectedSessionId가 바뀔 때마다 재계산
+
+  // ========================================================================
+  // [신규 추가] 세션 변경 감지 및 뷰어 초기화 로직
+  // ========================================================================
+  useEffect(() => {
+    // 세션 ID가 변경되면 무조건 문서 뷰어를 닫고 리스트를 보여줍니다.
+    if (selectedSessionId) {
+      closeDocument();
+    }
+  }, [selectedSessionId, closeDocument]);
 
   // ========================================================================
   // 4. 문서 목록 동기화 (경량 API + 리셋 로직 포함)

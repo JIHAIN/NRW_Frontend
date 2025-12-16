@@ -1,6 +1,8 @@
 import tailwindcssAnimate from "tailwindcss-animate";
 import twAnimateCss from "tw-animate-css";
 import tailwindColors from "tailwindcss/colors";
+// [수정 1] require 대신 import로 불러오기 (ESM 방식 통일)
+import typography from "@tailwindcss/typography";
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -94,5 +96,10 @@ export default {
       },
     },
   },
-  plugins: [tailwindcssAnimate, twAnimateCss],
+  // [수정 2] 플러그인 배열 문법 수정 및 변수 사용
+  plugins: [
+    tailwindcssAnimate, 
+    twAnimateCss, 
+    typography
+  ],
 };

@@ -23,23 +23,14 @@ import {
 import type { DocumentDetailResponse } from "@/types/UserType";
 import { parseContentWithTables } from "@/utils/markdownParser";
 
-/**
- * 텍스트 정규화 함수 (폴백 용도)
- * - paragraphId가 없을 경우 텍스트 매칭을 위해 사용
- */
 const normalizeText = (text: string) => {
   return text
-    .replace(/\[.*?\]/g, "") // [파일명] 태그 제거
-    .replace(/[^\w\s가-힣]/g, "") // 특수문자 제거
-    .replace(/\s+/g, "") // 공백 제거
+    .replace(/\[.*?\]/g, "")
+    .replace(/[^\w\sㄱ-힣]/g, "")
+    .replace(/\s+/g, "")
     .toLowerCase();
 };
 
-/**
- * DocViewer 컴포넌트
- * - 선택된 문서의 내용을 표시하고, 채팅방에서 참조된 문단을 하이라이팅합니다.
- * - 백엔드에서 제공하는 paragraph_idx를 기준으로 스크롤 이동 및 강조 표시를 수행합니다.
- */
 export function DocViewer() {
   const {
     selectedReference,
@@ -49,14 +40,9 @@ export function DocViewer() {
   } = useChatStore();
 
   const dialog = useDialogStore();
-
-  // 특정 문단으로 스크롤하기 위한 Refs (key: paragraph_idx)
   const paragraphRefs = useRef<Record<number, HTMLDivElement | null>>({});
-
-  // 현재 하이라이트된 문단 인덱스
   const [highlightedIdx, setHighlightedIdx] = useState<number | null>(null);
 
-  // 1. 문서 상세 내용 조회 Query
   const {
     data: docDetail,
     isLoading,
@@ -71,29 +57,19 @@ export function DocViewer() {
     staleTime: 1000 * 60 * 5,
   });
 
-  // [수정] 프론트엔드 정렬 로직 제거
-  // 백엔드에서 이미 순서대로 정렬된 chunks를 제공하므로 그대로 사용
   const chunks = useMemo(() => {
     if (!docDetail?.chunks) return [];
     return docDetail.chunks;
   }, [docDetail]);
 
-  /**
-   * 2. 참조(Reference) 변경 시 하이라이팅 및 스크롤 이동 로직
-   * - 우선순위 1: paragraphId가 있는 경우 해당 ID로 직접 이동
-   * - 우선순위 2: paragraphId가 없고 텍스트만 있는 경우 (구버전 호환) 텍스트 매칭 시도
-   */
   useEffect(() => {
     if (!selectedReference || !chunks.length) return;
 
     let targetIdx: number | undefined = undefined;
 
-    // Case A: 명시적인 문단 ID가 있는 경우 (정확도 높음)
     if (typeof selectedReference.paragraphId === "number") {
       targetIdx = selectedReference.paragraphId;
-    }
-    // Case B: ID가 없고 텍스트만 있는 경우 (텍스트 매칭 시도 - Fallback)
-    else if (selectedReference.text) {
+    } else if (selectedReference.text) {
       const targetText = normalizeText(selectedReference.text);
       if (targetText) {
         const foundChunk = chunks.find((chunk) => {
@@ -108,11 +84,9 @@ export function DocViewer() {
       }
     }
 
-    // 타겟을 찾았으면 하이라이트 및 스크롤 실행
     if (targetIdx !== undefined) {
       setHighlightedIdx(targetIdx);
 
-      // DOM 렌더링 시간을 고려하여 약간의 지연 후 스크롤
       setTimeout(() => {
         const element = paragraphRefs.current[targetIdx!];
         if (element) {
@@ -120,12 +94,10 @@ export function DocViewer() {
         }
       }, 150);
     } else {
-      // 찾지 못한 경우 하이라이트 해제
       setHighlightedIdx(null);
     }
   }, [selectedReference, chunks]);
 
-  // 3. 다운로드 핸들러
   const handleDownload = async () => {
     if (!selectedDocument) return;
     try {
@@ -139,7 +111,6 @@ export function DocViewer() {
     }
   };
 
-  // 4. 화면 렌더링 로직
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -175,11 +146,11 @@ export function DocViewer() {
     }
 
     return (
-      <div className="max-w-4xl mx-auto bg-white min-h-full p-8 md:p-12 shadow-sm">
-        {/* 전체 컨테이너의 줄간격과 폰트 설정 */}
-        <div className="space-y-2 font-serif text-slate-800 text-[15px] leading-relaxed">
+      <div className="max-w-5xl mx-auto bg-white min-h-full px-2 py-10 md:px-6 md:py-7 shadow-sm">
+        {/* 개선된 가독성을 위한 타이포그래피 설정 */}
+        <div className="space-y-5">
           {chunks.length > 0 ? (
-            chunks.map((chunk) => {
+            chunks.map((chunk, index) => {
               const isHighlighted = chunk.paragraph_idx === highlightedIdx;
               const { cleanText, tables } = parseContentWithTables(
                 chunk.content
@@ -187,43 +158,117 @@ export function DocViewer() {
 
               return (
                 <div
-                  key={chunk.paragraph_idx}
+                  key={`${chunk.paragraph_idx}-${index}`}
                   id={`paragraph-${chunk.paragraph_idx}`}
                   ref={(el) => {
                     paragraphRefs.current[chunk.paragraph_idx] = el;
                   }}
-                  // 하이라이트 시 배경색 변경
-                  className={`transition-colors duration-1000 ease-in-out px-4 py-1 rounded-lg border border-transparent ${
+                  className={`transition-all duration-300 ease-in-out px-2 rounded-xl ${
                     isHighlighted
-                      ? "bg-yellow-100 border-yellow-200 shadow-sm"
-                      : "hover:bg-gray-50"
+                      ? "bg-blue-50 border-2 border-blue-200 shadow-md scale-[1.01]"
+                      : "border-2 border-transparent hover:bg-slate-50 hover:border-slate-200"
                   }`}
                 >
                   {cleanText && (
-                    <div className="text-slate-800">
+                    <div className="prose prose-slate max-w-none">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
+                          // 본문 단락
                           p: ({ ...props }) => (
                             <p
-                              className="mb-1 leading-7 last:mb-0"
+                              className="mb-4 leading-[1.85] text-[15.5px] text-slate-800 font-normal tracking-[-0.01em] last:mb-0"
                               {...props}
                             />
                           ),
+                          // 헤딩 스타일
+                          h1: ({ ...props }) => (
+                            <h1
+                              className="text-2xl font-bold text-slate-900 mb-4 mt-6 pb-2 border-b-2 border-slate-200"
+                              {...props}
+                            />
+                          ),
+                          h2: ({ ...props }) => (
+                            <h2
+                              className="text-xl font-bold text-slate-900 mb-3 mt-5"
+                              {...props}
+                            />
+                          ),
+                          h3: ({ ...props }) => (
+                            <h3
+                              className="text-lg font-semibold text-slate-800 mb-3 mt-4"
+                              {...props}
+                            />
+                          ),
+                          h4: ({ ...props }) => (
+                            <h4
+                              className="text-base font-semibold text-slate-800 mb-2 mt-3"
+                              {...props}
+                            />
+                          ),
+                          // 리스트
                           ul: ({ ...props }) => (
                             <ul
-                              className="list-disc pl-5 mb-2 space-y-1"
+                              className="list-disc pl-6 mb-4 space-y-2 marker:text-blue-500"
                               {...props}
                             />
                           ),
                           ol: ({ ...props }) => (
                             <ol
-                              className="list-decimal pl-5 mb-2 space-y-1"
+                              className="list-decimal pl-6 mb-4 space-y-2 marker:text-blue-500 marker:font-semibold"
                               {...props}
                             />
                           ),
                           li: ({ ...props }) => (
-                            <li className="pl-1 leading-7" {...props} />
+                            <li
+                              className="pl-2 leading-[1.8] text-[15px] text-slate-700"
+                              {...props}
+                            />
+                          ),
+                          // 인라인 코드
+                          code: ({ ...props }) => (
+                            <code
+                              className="px-1.5 py-0.5 bg-slate-100 text-slate-800 rounded text-sm font-mono border border-slate-200"
+                              {...props}
+                            />
+                          ),
+                          // 코드 블록
+                          pre: ({ ...props }) => (
+                            <pre
+                              className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto mb-4 text-sm"
+                              {...props}
+                            />
+                          ),
+                          // 인용구
+                          blockquote: ({ ...props }) => (
+                            <blockquote
+                              className="border-l-4 border-blue-500 pl-4 py-2 my-4 italic text-slate-600 bg-slate-50 rounded-r"
+                              {...props}
+                            />
+                          ),
+                          // 강조
+                          strong: ({ ...props }) => (
+                            <strong
+                              className="font-semibold text-slate-900"
+                              {...props}
+                            />
+                          ),
+                          em: ({ ...props }) => (
+                            <em className="italic text-slate-700" {...props} />
+                          ),
+                          // 링크
+                          a: ({ ...props }) => (
+                            <a
+                              className="text-blue-600 hover:text-blue-700 underline decoration-blue-300 hover:decoration-blue-500 transition-colors"
+                              {...props}
+                            />
+                          ),
+                          // 수평선
+                          hr: ({ ...props }) => (
+                            <hr
+                              className="my-6 border-t-2 border-slate-200"
+                              {...props}
+                            />
                           ),
                         }}
                       >
@@ -232,35 +277,38 @@ export function DocViewer() {
                     </div>
                   )}
 
-                  {/* 표 렌더링 영역 */}
+                  {/* 개선된 표 렌더링 */}
                   {tables.length > 0 && (
-                    <div className="flex flex-col gap-4 mt-2 mb-2">
+                    <div className="flex flex-col gap-6 mt-5 mb-3">
                       {tables.map((table, idx) => (
                         <div
                           key={idx}
-                          className="overflow-hidden rounded-lg border border-gray-200 shadow-sm bg-white"
+                          className="overflow-hidden rounded-xl border-2 border-slate-200 shadow-md bg-white"
                         >
                           <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                              <thead className="bg-gray-50">
+                            <table className="min-w-full divide-y divide-slate-200">
+                              <thead className="bg-linear-to-r from-slate-100 to-slate-50">
                                 <tr>
                                   {table.headers.map((h, i) => (
                                     <th
                                       key={i}
-                                      className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200 whitespace-nowrap"
+                                      className="px-5 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wide border-b-2 border-slate-300 whitespace-nowrap"
                                     >
                                       {h}
                                     </th>
                                   ))}
                                 </tr>
                               </thead>
-                              <tbody className="bg-white divide-y divide-gray-100">
+                              <tbody className="bg-white divide-y divide-slate-100">
                                 {table.rows.map((row, rIdx) => (
-                                  <tr key={rIdx} className="hover:bg-gray-50">
+                                  <tr
+                                    key={rIdx}
+                                    className="hover:bg-blue-50 transition-colors duration-150"
+                                  >
                                     {row.map((cell, cIdx) => (
                                       <td
                                         key={cIdx}
-                                        className="px-4 py-2 text-sm text-gray-700 whitespace-pre-wrap break-all"
+                                        className="px-5 py-3.5 text-sm text-slate-700 whitespace-pre-wrap break-all leading-relaxed"
                                       >
                                         {cell}
                                       </td>
@@ -278,8 +326,7 @@ export function DocViewer() {
               );
             })
           ) : (
-            // Chunks가 없을 때 (기존 텍스트 렌더링)
-            <pre className="whitespace-pre-wrap font-sans text-sm text-slate-600 leading-relaxed">
+            <pre className="whitespace-pre-wrap font-sans text-[15px] text-slate-700 leading-relaxed">
               {docDetail.content}
             </pre>
           )}
@@ -356,7 +403,7 @@ export function DocViewer() {
       </div>
 
       {/* 본문 뷰어 영역 */}
-      <div className="flex-1 overflow-y-auto bg-slate-50 relative custom-scrollbar">
+      <div className="flex-1 overflow-y-auto bg-linear-to-b from-slate-50 to-white relative custom-scrollbar">
         {renderContent()}
       </div>
 

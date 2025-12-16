@@ -67,7 +67,7 @@ export function MainNavigation({
                     <SidebarMenuButton
                       tooltip={item.title}
                       isActive={item.isActive}
-                      className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
+                      className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer opacity-60"
                     >
                       {item.icon && <item.icon />}
                       <span className="sr-only">{item.title}</span>
@@ -78,7 +78,7 @@ export function MainNavigation({
                     side="right"
                     align="start"
                     sideOffset={20}
-                    className="w-48 rounded-lg bg-white shadow-md border border-slate-200"
+                    className="w-48 rounded-lg bg-white shadow-md border border-slate-200 "
                   >
                     <DropdownMenuLabel className="text-xs text-slate-500 font-normal px-2 py-1.5">
                       {item.title}

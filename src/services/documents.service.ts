@@ -3,11 +3,22 @@ import type {
   Document,
   DocumentDetailResponse,
   DocumentStatus,
+  DocumentChunk,
 } from "@/types/UserType";
 
 // --------------------------------------------------------------------------
 // 📝 타입 정의
 // --------------------------------------------------------------------------
+
+// [타입 정의 보완] UserType에 없는 필드를 로컬에서 확장하여 안전하게 사용
+interface ExtendedDocumentChunk extends DocumentChunk {
+  metadata: {
+    chunk_id: number;
+    paragraph_idx: number;
+    file_path: string;
+    type?: "table" | "text" | string;
+  };
+}
 
 // 백엔드에서 오는 실제 문서 데이터 모양
 export interface BackendDocument {
@@ -125,17 +136,59 @@ export const fetchDocumentContent = async (
 
   if (!response.ok) throw new Error("Failed to fetch document content");
 
-  // 1. 데이터를 먼저 받아옵니다.
   const data = (await response.json()) as DocumentDetailResponse;
 
-  // 2. [추가] 콘텐츠 내의 '' (U+FFFD) 문자 제거 로직
-  // 문서 파싱 과정에서 인코딩 문제로 발생하는 Replacement Character를 제거합니다.
   if (data.content) {
-    // 정규식 /\uFFFD/g 를 사용하여 모든 해당 특수문자를 제거
     data.content = data.content.replace(/\uFFFD/g, "");
+  }
 
-    // 혹시 모를 null 문자(\u0000) 등 다른 제어 문자도 제거하고 싶다면 아래 정규식 사용 가능
-    // data.content = data.content.replace(/[\uFFFD\u0000]/g, "");
+  if (data.chunks && Array.isArray(data.chunks)) {
+    const filteredList: DocumentChunk[] = [];
+    let isInsideSection = false;
+
+    // 타입 단언을 통해 안전하게 접근
+    const chunks = data.chunks as unknown as ExtendedDocumentChunk[];
+
+    for (const item of chunks) {
+      // 1. 기본 텍스트 정제
+      if (item.content) {
+        item.content = item.content.replace(/\uFFFD/g, "");
+      }
+
+      const contentStr = item.content || "";
+
+      // 2. 패턴 감지
+      const isSectionHeader = /^\[?\(?별[표지]/.test(contentStr);
+      // metadata.type이 'table'인지 확인
+      const isTable = item.metadata?.type === "table";
+
+      if (isSectionHeader) {
+        // [별표 4] 헤더 -> 섹션 진입 표시, 리스트에는 추가 X (제거)
+        isInsideSection = true;
+        continue;
+      }
+
+      if (isTable) {
+        // [수정] 내용을 다 지우면 안 됨! 제목([표 ...])만 제거해야 함
+        if (item.content) {
+          // 정규식: 문두(^)에 있는 [표 ...] 패턴과 그 뒤의 공백 제거
+          // 예: "[표 4: 8행 × 3열]\n\n내용..." -> "내용..."
+          item.content = item.content.replace(/^\[표[^\]]+\]\s*/, "");
+        }
+
+        filteredList.push(item);
+        continue;
+      }
+
+      if (isInsideSection) {
+        // 섹션 내부의 잡다한 텍스트 -> 제거
+        continue;
+      }
+
+      // 섹션 밖의 일반 본문 -> 포함
+      filteredList.push(item);
+    }
+    data.chunks = filteredList;
   }
 
   return data;
